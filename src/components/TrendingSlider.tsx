@@ -9,7 +9,7 @@ interface TrendingSliderProps {
   title?: string;
 }
 
-const TrendingSlider = ({ items, title }: TrendingSliderProps) => {
+const TrendingSlider = ({ items, title: sectionTitle }: TrendingSliderProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const slideTimerRef = useRef<number | null>(null);
@@ -46,13 +46,13 @@ const TrendingSlider = ({ items, title }: TrendingSliderProps) => {
 
   const currentItem = items[currentIndex];
   const isMovie = 'title' in currentItem;
-  const title = isMovie ? (currentItem as Movie).title : (currentItem as TvShow).name;
+  const itemTitle = isMovie ? (currentItem as Movie).title : (currentItem as TvShow).name;
   const linkPath = isMovie ? `/movie/${currentItem.id}` : `/tv/${currentItem.id}`;
 
   return (
     <div className="relative overflow-hidden rounded-xl">
-      {title && (
-        <h2 className="mb-4 text-2xl font-bold text-white">{title}</h2>
+      {sectionTitle && (
+        <h2 className="mb-4 text-2xl font-bold text-white">{sectionTitle}</h2>
       )}
       
       <div className="relative overflow-hidden rounded-xl bg-moviemate-card">
@@ -63,7 +63,7 @@ const TrendingSlider = ({ items, title }: TrendingSliderProps) => {
           >
             <img
               src={getImageUrl(currentItem.backdrop_path, 'original')}
-              alt={title}
+              alt={itemTitle}
               className="h-full w-full object-cover"
               onLoad={() => setImageLoaded(true)}
             />
@@ -74,7 +74,7 @@ const TrendingSlider = ({ items, title }: TrendingSliderProps) => {
           
           {/* Content */}
           <div className="absolute inset-0 flex flex-col justify-end p-8">
-            <h3 className="mb-2 text-2xl font-bold text-white sm:text-3xl md:text-4xl">{title}</h3>
+            <h3 className="mb-2 text-2xl font-bold text-white sm:text-3xl md:text-4xl">{itemTitle}</h3>
             <div className="mb-4 flex items-center gap-2">
               <span className="flex items-center gap-1 rounded bg-yellow-400 px-2 py-1 text-xs font-semibold text-black">
                 <svg 
