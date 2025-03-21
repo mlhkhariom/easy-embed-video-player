@@ -9,6 +9,10 @@ import Movie from "./pages/Movie";
 import TvShow from "./pages/TvShow";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
+import Explore from "./pages/Explore";
+import Genres from "./pages/Genres";
+import GenreContent from "./pages/GenreContent";
+import Trending from "./pages/Trending";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +27,10 @@ const App = () => (
           <Route path="/movie/:id" element={<Movie />} />
           <Route path="/tv/:id" element={<TvShow />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/genres" element={<Genres />} />
+          <Route path="/genre/:type/:id" element={<GenreContent />} />
+          <Route path="/trending" element={<Trending />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

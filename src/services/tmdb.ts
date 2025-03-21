@@ -1,5 +1,5 @@
 
-import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode } from '../types';
+import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 
 const API_KEY = '43d89010b257341339737be36dfaac13';
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -10,7 +10,7 @@ export const getImageUrl = (path: string | null, size: string = 'w500'): string 
   return `${IMAGE_BASE_URL}/${size}${path}`;
 };
 
-const fetchApi = async <T>(endpoint: string): Promise<T> => {
+export const fetchApi = async <T>(endpoint: string): Promise<T> => {
   const url = `${BASE_URL}${endpoint}`;
   const response = await fetch(url);
   
@@ -78,6 +78,13 @@ export const getEpisodeDetails = (
 };
 
 // Search
+interface MultiSearchResponse {
+  page: number;
+  results: (Movie | TvShow)[];
+  total_pages: number;
+  total_results: number;
+}
+
 export const searchMulti = (query: string): Promise<MultiSearchResponse> => {
   return fetchApi<MultiSearchResponse>(
     `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1&include_adult=false`
