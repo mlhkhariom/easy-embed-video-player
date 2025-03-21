@@ -84,6 +84,7 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
         imdbId={content.imdb_id}
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
+        title={title}
       />
     </div>
   );
