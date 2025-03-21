@@ -8,29 +8,50 @@ interface VideoPlayerProps {
   type: 'movie' | 'tv';
   season?: number;
   episode?: number;
+  onError?: (message: string) => void;
 }
 
-const VideoPlayer = ({ tmdbId, imdbId, type, season, episode }: VideoPlayerProps) => {
+const VideoPlayer = ({ 
+  tmdbId, 
+  imdbId, 
+  type, 
+  season, 
+  episode,
+  onError 
+}: VideoPlayerProps) => {
   const [playerUrl, setPlayerUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     // Reset states when props change
     setIsLoading(true);
+    setLoadError(false);
     
-    // Construct the player URL based on available IDs
-    if (tmdbId) {
-      if (type === 'movie') {
-        setPlayerUrl(`https://vidsrc.dev/embed/movie/${tmdbId}`);
-      } else if (type === 'tv' && season && episode) {
-        setPlayerUrl(`https://vidsrc.dev/embed/tv/${tmdbId}/${season}/${episode}`);
+    try {
+      // Construct the player URL based on available IDs
+      if (tmdbId) {
+        if (type === 'movie') {
+          setPlayerUrl(`https://vidsrc.dev/embed/movie/${tmdbId}`);
+        } else if (type === 'tv' && season && episode) {
+          setPlayerUrl(`https://vidsrc.dev/embed/tv/${tmdbId}/${season}/${episode}`);
+        }
+      } else if (imdbId) {
+        if (type === 'movie') {
+          setPlayerUrl(`https://vidsrc.dev/embed/movie/${imdbId}`);
+        } else if (type === 'tv' && season && episode) {
+          setPlayerUrl(`https://vidsrc.dev/embed/tv/${imdbId}/${season}/${episode}`);
+        }
+      } else {
+        // No valid ID available
+        throw new Error('No valid content ID available');
       }
-    } else if (imdbId) {
-      if (type === 'movie') {
-        setPlayerUrl(`https://vidsrc.dev/embed/movie/${imdbId}`);
-      } else if (type === 'tv' && season && episode) {
-        setPlayerUrl(`https://vidsrc.dev/embed/tv/${imdbId}/${season}/${episode}`);
+    } catch (error) {
+      console.error('Error setting up player:', error);
+      setLoadError(true);
+      if (onError) {
+        onError('Failed to load video player');
       }
     }
     
@@ -40,7 +61,14 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode }: VideoPlayerProps
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [tmdbId, imdbId, type, season, episode]);
+  }, [tmdbId, imdbId, type, season, episode, onError]);
+
+  const handleIframeError = () => {
+    setLoadError(true);
+    if (onError) {
+      onError('Failed to load video content');
+    }
+  };
 
   return (
     <motion.div 
@@ -64,7 +92,7 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode }: VideoPlayerProps
         </div>
       )}
       
-      {playerUrl && (
+      {playerUrl && !loadError && (
         <div className="relative h-full w-full">
           <motion.div 
             className="h-full w-full transform-gpu"
@@ -86,6 +114,7 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode }: VideoPlayerProps
               allow="autoplay; encrypted-media; picture-in-picture"
               loading="lazy"
               onLoad={() => setIsLoading(false)}
+              onError={handleIframeError}
             ></iframe>
           </motion.div>
           
@@ -117,6 +146,33 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode }: VideoPlayerProps
               </motion.div>
             </motion.div>
           )}
+        </div>
+      )}
+      
+      {loadError && !isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-moviemate-card">
+          <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="48" 
+              height="48" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="text-red-500"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <h3 className="text-lg font-medium text-white">Unable to load video content</h3>
+            <p className="text-sm text-gray-300">
+              There was a problem loading the video. This could be due to network issues or the content may not be available.
+            </p>
+          </div>
         </div>
       )}
       

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
 
 const Trending = () => {
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
@@ -82,10 +83,10 @@ const Trending = () => {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-xl bg-red-500/20 p-8 text-center">
-            <h2 className="mb-4 text-2xl font-bold text-white">Error</h2>
-            <p className="text-gray-300">{error}</p>
-          </div>
+          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
+            <AlertTitle className="text-white">Error</AlertTitle>
+            <AlertDescription className="text-gray-300">{error}</AlertDescription>
+          </Alert>
         ) : (
           <>
             {activeTab === 'movies' ? (
@@ -98,11 +99,11 @@ const Trending = () => {
                 {trendingMovies.map((movie) => (
                   <motion.div key={movie.id} variants={itemVariants}>
                     <MovieCard
-                      id={movie.id}
+                      movieId={movie.id}
                       title={movie.title}
                       posterPath={movie.poster_path}
                       rating={movie.vote_average}
-                      type="movie"
+                      mediaType="movie"
                     />
                   </motion.div>
                 ))}
@@ -117,11 +118,11 @@ const Trending = () => {
                 {trendingTvShows.map((tvShow) => (
                   <motion.div key={tvShow.id} variants={itemVariants}>
                     <MovieCard
-                      id={tvShow.id}
+                      movieId={tvShow.id}
                       title={tvShow.name}
                       posterPath={tvShow.poster_path}
                       rating={tvShow.vote_average}
-                      type="tv"
+                      mediaType="tv"
                     />
                   </motion.div>
                 ))}

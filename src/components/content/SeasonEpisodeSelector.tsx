@@ -1,5 +1,6 @@
 
 import { Season } from '../../types';
+import { Alert } from "@/components/ui/alert";
 
 interface SeasonEpisodeSelectorProps {
   seasons: Season[] | null;
@@ -16,7 +17,33 @@ const SeasonEpisodeSelector = ({
   onSeasonChange,
   onEpisodeChange
 }: SeasonEpisodeSelectorProps) => {
-  if (!seasons) return null;
+  if (!seasons) {
+    return (
+      <Alert className="mt-4 bg-yellow-500/20 border-yellow-500/50">
+        <p className="text-white">No season information available</p>
+      </Alert>
+    );
+  }
+  
+  const filteredSeasons = seasons.filter(season => season.season_number > 0);
+  
+  if (filteredSeasons.length === 0) {
+    return (
+      <Alert className="mt-4 bg-yellow-500/20 border-yellow-500/50">
+        <p className="text-white">No season information available</p>
+      </Alert>
+    );
+  }
+  
+  const currentSeasonEpisodeCount = getCurrentSeasonEpisodeCount(seasons, selectedSeason);
+  
+  if (currentSeasonEpisodeCount === 0) {
+    return (
+      <Alert className="mt-4 bg-yellow-500/20 border-yellow-500/50">
+        <p className="text-white">No episodes available for this season</p>
+      </Alert>
+    );
+  }
   
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -30,7 +57,7 @@ const SeasonEpisodeSelector = ({
           onChange={onSeasonChange}
           className="w-full rounded-lg border border-gray-700 bg-moviemate-card px-4 py-2 text-white"
         >
-          {seasons.filter(season => season.season_number > 0).map((season) => (
+          {filteredSeasons.map((season) => (
             <option key={season.id} value={season.season_number}>
               {season.name}
             </option>
@@ -48,7 +75,7 @@ const SeasonEpisodeSelector = ({
           onChange={onEpisodeChange}
           className="w-full rounded-lg border border-gray-700 bg-moviemate-card px-4 py-2 text-white"
         >
-          {Array.from({ length: getCurrentSeasonEpisodeCount(seasons, selectedSeason) }, (_, i) => (
+          {Array.from({ length: currentSeasonEpisodeCount }, (_, i) => (
             <option key={i + 1} value={i + 1}>
               Episode {i + 1}
             </option>

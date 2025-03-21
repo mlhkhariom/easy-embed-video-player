@@ -4,13 +4,15 @@ import { useSearchParams } from 'react-router-dom';
 import { searchMulti } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
+import { Movie, TvShow } from '../types';
+import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
 
 interface SearchResult {
   id: number;
   media_type: 'movie' | 'tv';
   title?: string;
   name?: string;
-  poster_path: string;
+  poster_path: string | null;
   vote_average: number;
 }
 
@@ -34,9 +36,11 @@ const Search = () => {
         setError(null);
         
         const data = await searchMulti(query);
-        const filteredResults = data.results.filter(
-          (item) => item.media_type === 'movie' || item.media_type === 'tv'
-        ) as SearchResult[];
+        // Cast the results to the SearchResult type
+        const filteredResults = data.results
+          .filter(item => 
+            (item as any).media_type === 'movie' || (item as any).media_type === 'tv'
+          ) as SearchResult[];
         
         setResults(filteredResults);
       } catch (error) {
@@ -68,20 +72,20 @@ const Search = () => {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-xl bg-red-500/20 p-8 text-center">
-            <h2 className="mb-4 text-2xl font-bold text-white">Error</h2>
-            <p className="text-gray-300">{error}</p>
-          </div>
+          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
+            <AlertTitle className="text-white">Error</AlertTitle>
+            <AlertDescription className="text-gray-300">{error}</AlertDescription>
+          </Alert>
         ) : results.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {results.map((item) => (
               <MovieCard
                 key={item.id}
-                id={item.id}
+                movieId={item.id}
                 title={item.title || item.name || 'Unknown Title'}
                 posterPath={item.poster_path}
                 rating={item.vote_average}
-                type={item.media_type}
+                mediaType={item.media_type}
               />
             ))}
           </div>
