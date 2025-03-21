@@ -6,27 +6,46 @@ import { getImageUrl } from '../services/tmdb';
 import { motion } from 'framer-motion';
 
 interface MovieCardProps {
-  item: Movie | TvShow;
-  type: 'movie' | 'tv';
+  item?: Movie | TvShow;
+  type?: 'movie' | 'tv';
+  movieId?: number;
+  title?: string;
+  posterPath?: string | null;
+  rating?: number;
+  mediaType?: 'movie' | 'tv';
   className?: string;
 }
 
-const MovieCard = ({ item, type, className = '' }: MovieCardProps) => {
+const MovieCard = ({ 
+  item, 
+  type, 
+  movieId, 
+  title: propTitle, 
+  posterPath: propPosterPath, 
+  rating: propRating,
+  mediaType,
+  className = '' 
+}: MovieCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   
-  // Determine if it's a movie or TV show based on the presence of 'title' property
-  const isMovie = 'title' in item;
-  const title = isMovie ? (item as Movie).title : (item as TvShow).name;
-  const releaseDate = isMovie 
-    ? (item as Movie).release_date 
-    : (item as TvShow).first_air_date;
+  // Determine if we're using props or item object
+  const isUsingProps = !!movieId;
+  
+  // If using item prop, extract values from it
+  const isMovie = item ? 'title' in item : mediaType === 'movie';
+  const title = propTitle || (isMovie && item ? (item as Movie).title : item ? (item as TvShow).name : '');
+  const posterPath = propPosterPath || (item ? item.poster_path : null);
+  const rating = propRating || (item ? item.vote_average : 0);
+  const releaseDate = item ? (isMovie ? (item as Movie).release_date : (item as TvShow).first_air_date) : '';
   
   // Format the release date to year only
   const year = releaseDate ? new Date(releaseDate).getFullYear() : '';
   
-  // Create a link path based on the type
-  const linkPath = `/${type}/${item.id}`;
+  // Create a link path based on the type or mediaType
+  const linkPath = isUsingProps 
+    ? `/${mediaType}/${movieId}`
+    : `/${type}/${item?.id}`;
 
   return (
     <motion.div 
@@ -48,7 +67,7 @@ const MovieCard = ({ item, type, className = '' }: MovieCardProps) => {
             style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
           >
             <img
-              src={getImageUrl(item.poster_path, 'w500')}
+              src={getImageUrl(posterPath, 'w500')}
               alt={title}
               className="h-full w-full object-cover"
               onLoad={() => setImageLoaded(true)}
@@ -83,7 +102,7 @@ const MovieCard = ({ item, type, className = '' }: MovieCardProps) => {
               )}
               <div className="flex items-center">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-yellow-400">{item.vote_average.toFixed(1)}</span>
+                  <span className="text-xs font-medium text-yellow-400">{rating?.toFixed(1)}</span>
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
                     width="12" 

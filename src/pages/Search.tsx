@@ -36,11 +36,17 @@ const Search = () => {
         setError(null);
         
         const data = await searchMulti(query);
-        // Cast the results to the SearchResult type
+        // Filter and ensure each result has a media_type field
         const filteredResults = data.results
-          .filter(item => 
-            (item as any).media_type === 'movie' || (item as any).media_type === 'tv'
-          ) as SearchResult[];
+          .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+          .map((item: any) => ({
+            id: item.id,
+            media_type: item.media_type,
+            title: item.title || item.name,
+            name: item.name,
+            poster_path: item.poster_path,
+            vote_average: item.vote_average
+          })) as SearchResult[];
         
         setResults(filteredResults);
       } catch (error) {
