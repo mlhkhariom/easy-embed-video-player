@@ -2,139 +2,133 @@
 import { useState, useEffect } from 'react';
 import { getTrendingMovies, getTrendingTvShows } from '../services/tmdb';
 import { Movie, TvShow } from '../types';
+import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from '@/components/ui/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 const Trending = () => {
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [trendingTvShows, setTrendingTvShows] = useState<TvShow[]>([]);
+  const [activeTab, setActiveTab] = useState<'movies' | 'tvshows'>('movies');
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTrending = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Fetch trending data in parallel
-        const [trendingMoviesRes, trendingTvShowsRes] = await Promise.all([
+        const [moviesData, tvShowsData] = await Promise.all([
           getTrendingMovies(),
-          getTrendingTvShows()
+          getTrendingTvShows(),
         ]);
         
-        setTrendingMovies(trendingMoviesRes.results);
-        setTrendingTvShows(trendingTvShowsRes.results);
-        
-        toast({
-          title: "Content loaded",
-          description: "Trending content has been updated",
-        });
+        setTrendingMovies(moviesData.results);
+        setTrendingTvShows(tvShowsData.results);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load trending content",
-        });
+        console.error('Error fetching trending content:', error);
+        setError('Failed to load trending content. Please try again later.');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchData();
+    fetchTrending();
   }, []);
   
-  // Combine and sort all content by popularity (vote_count * vote_average)
-  const allContent = [...trendingMovies, ...trendingTvShows].sort((a, b) => 
-    (b.vote_count * b.vote_average) - (a.vote_count * a.vote_average)
-  );
-  
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-  
-  const getDisplayContent = () => {
-    switch (activeTab) {
-      case 'movies':
-        return trendingMovies;
-      case 'tvshows':
-        return trendingTvShows;
-      default:
-        return allContent;
-    }
-  };
-  
-  const container = {
+  // Animation variants
+  const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
+    visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
   
-  const item = {
-    hidden: { opacity: 0, y: 50 },
-    show: { 
-      opacity: 1, 
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
       y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    }
+      opacity: 1,
+    },
   };
   
   return (
     <div className="min-h-screen bg-moviemate-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24">
-        <div className="mb-8 flex flex-col gap-2">
-          <h1 className="text-3xl font-bold text-white md:text-4xl">Trending Now</h1>
-          <p className="text-gray-400">Discover what's popular across movies and TV shows</p>
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <h1 className="text-3xl font-bold text-white">Trending Today</h1>
+          
+          <Tabs defaultValue="movies" className="w-full md:w-auto" onValueChange={(value) => setActiveTab(value as 'movies' | 'tvshows')}>
+            <TabsList className="grid w-full grid-cols-2 md:w-auto">
+              <TabsTrigger value="movies">Movies</TabsTrigger>
+              <TabsTrigger value="tvshows">TV Shows</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="mb-8 grid w-full grid-cols-3 bg-moviemate-card">
-            <TabsTrigger value="all" className="text-base">All</TabsTrigger>
-            <TabsTrigger value="movies" className="text-base">Movies</TabsTrigger>
-            <TabsTrigger value="tvshows" className="text-base">TV Shows</TabsTrigger>
-          </TabsList>
-          
-          <AnimatePresence mode="wait">
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {Array.from({ length: 18 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                    <div className="aspect-[2/3]"></div>
-                  </div>
-                ))}
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {[...Array(10)].map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="aspect-[2/3] rounded-lg bg-moviemate-card"></div>
               </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl bg-red-500/20 p-8 text-center">
+            <h2 className="mb-4 text-2xl font-bold text-white">Error</h2>
+            <p className="text-gray-300">{error}</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'movies' ? (
+              <motion.div 
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {trendingMovies.map((movie) => (
+                  <motion.div key={movie.id} variants={itemVariants}>
+                    <MovieCard
+                      id={movie.id}
+                      title={movie.title}
+                      posterPath={movie.poster_path}
+                      rating={movie.vote_average}
+                      type="movie"
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
             ) : (
               <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                variants={container}
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+                variants={containerVariants}
                 initial="hidden"
-                animate="show"
-                key={activeTab}
+                animate="visible"
               >
-                {getDisplayContent().map((item, index) => (
-                  <motion.div key={item.id} variants={item} custom={index}>
-                    <MovieCard 
-                      item={item} 
-                      type={'title' in item ? 'movie' : 'tv'} 
+                {trendingTvShows.map((tvShow) => (
+                  <motion.div key={tvShow.id} variants={itemVariants}>
+                    <MovieCard
+                      id={tvShow.id}
+                      title={tvShow.name}
+                      posterPath={tvShow.poster_path}
+                      rating={tvShow.vote_average}
+                      type="tv"
                     />
                   </motion.div>
                 ))}
               </motion.div>
             )}
-          </AnimatePresence>
-        </Tabs>
+          </>
+        )}
       </main>
     </div>
   );

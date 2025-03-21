@@ -1,81 +1,69 @@
 
-import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Movie, TvShow } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { searchMulti } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import SearchBar from '../components/SearchBar';
+
+interface SearchResult {
+  id: number;
+  media_type: 'movie' | 'tv';
+  title?: string;
+  name?: string;
+  poster_path: string;
+  vote_average: number;
+}
 
 const Search = () => {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
+  const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   
-  const [searchResults, setSearchResults] = useState<(Movie | TvShow)[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (!query) {
-      setSearchResults([]);
-      return;
-    }
-    
-    const fetchSearchResults = async () => {
+    const fetchResults = async () => {
+      if (!query.trim()) {
+        setResults([]);
+        return;
+      }
+      
       try {
         setIsLoading(true);
         setError(null);
         
-        const results = await searchMulti(query);
+        const data = await searchMulti(query);
+        const filteredResults = data.results.filter(
+          (item) => item.media_type === 'movie' || item.media_type === 'tv'
+        ) as SearchResult[];
         
-        // Filter out results with no poster image
-        const filteredResults = results.results.filter(
-          (item) => item.poster_path && (item.media_type === 'movie' || item.media_type === 'tv')
-        );
-        
-        setSearchResults(filteredResults);
+        setResults(filteredResults);
       } catch (error) {
         console.error('Error searching:', error);
-        setError('Failed to search. Please try again later.');
+        setError('Failed to load search results. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchSearchResults();
+    fetchResults();
   }, [query]);
   
   return (
     <div className="min-h-screen bg-moviemate-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 animate-fade-in">
-        {/* Search Header */}
-        <div className="mb-8">
-          <h1 className="mb-4 text-3xl font-bold text-white">Search Results</h1>
-          <SearchBar className="w-full max-w-xl" />
-        </div>
+      <main className="container mx-auto px-4 py-8">
+        <h1 className="mb-8 text-3xl font-bold text-white">
+          {query ? `Search Results for "${query}"` : 'Search'}
+        </h1>
         
-        {/* Search Query Display */}
-        {query && (
-          <h2 className="mb-6 text-xl text-gray-300">
-            {isLoading ? (
-              'Searching...'
-            ) : searchResults.length > 0 ? (
-              <>Results for <span className="font-semibold text-white">"{query}"</span></>
-            ) : (
-              <>No results found for <span className="font-semibold text-white">"{query}"</span></>
-            )}
-          </h2>
-        )}
-        
-        {/* Search Results */}
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                <div className="aspect-[2/3]"></div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {[...Array(10)].map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="aspect-[2/3] rounded-lg bg-moviemate-card"></div>
               </div>
             ))}
           </div>
@@ -84,34 +72,31 @@ const Search = () => {
             <h2 className="mb-4 text-2xl font-bold text-white">Error</h2>
             <p className="text-gray-300">{error}</p>
           </div>
-        ) : searchResults.length > 0 ? (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {searchResults.map((item) => {
-              // Check if item has the 'title' property to determine if it's a movie
-              const isMovie = 'title' in item;
-              
-              return (
-                <MovieCard 
-                  key={item.id} 
-                  item={item} 
-                  type={isMovie ? 'movie' : 'tv'} 
-                  className="animate-slide-up" 
-                />
-              );
-            })}
+        ) : results.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {results.map((item) => (
+              <MovieCard
+                key={item.id}
+                id={item.id}
+                title={item.title || item.name || 'Unknown Title'}
+                posterPath={item.poster_path}
+                rating={item.vote_average}
+                type={item.media_type}
+              />
+            ))}
           </div>
         ) : query ? (
           <div className="rounded-xl bg-moviemate-card p-8 text-center">
-            <h3 className="text-xl font-semibold text-white">No results found</h3>
-            <p className="mt-2 text-gray-300">
-              Try searching with a different term or browse our popular content.
+            <h2 className="mb-4 text-2xl font-bold text-white">No Results Found</h2>
+            <p className="text-gray-300">
+              We couldn't find any movies or TV shows matching "{query}".
             </p>
           </div>
         ) : (
           <div className="rounded-xl bg-moviemate-card p-8 text-center">
-            <h3 className="text-xl font-semibold text-white">Search for movies and TV shows</h3>
-            <p className="mt-2 text-gray-300">
-              Enter a search term to find your favorite content.
+            <h2 className="mb-4 text-2xl font-bold text-white">Search for Movies and TV Shows</h2>
+            <p className="text-gray-300">
+              Use the search bar above to find your favorite content.
             </p>
           </div>
         )}
