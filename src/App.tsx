@@ -13,6 +13,7 @@ import Explore from "./pages/Explore";
 import Genres from "./pages/Genres";
 import GenreContent from "./pages/GenreContent";
 import Trending from "./pages/Trending";
+import LiveTV from "./pages/LiveTV";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/genres" element={<Genres />} />
           <Route path="/genre/:type/:id" element={<GenreContent />} />
           <Route path="/trending" element={<Trending />} />
+          <Route path="/live-tv" element={<LiveTV />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -2,6 +2,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
+import { 
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger
+} from "@/components/ui/navigation-menu";
+import { Tv, Film, Radio } from 'lucide-react';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -26,7 +35,8 @@ const Navbar = () => {
   const navItems = [
     { label: 'Home', path: '/' },
     { label: 'Movies', path: '/movies' },
-    { label: 'TV Shows', path: '/tv' },
+    { label: 'Web Series', path: '/tv' },
+    { label: 'Live TV', path: '/live-tv' },
   ];
   
   const isActive = (path: string) => {
@@ -65,7 +75,7 @@ const Navbar = () => {
             >
               <path d="m7 2 8 4-8 4 8 4-8 4 8 4"></path>
             </svg>
-            <span className="hidden md:inline">MovieMate</span>
+            <span className="hidden md:inline">FreeCinema</span>
           </Link>
           
           {/* Desktop Navigation */}
@@ -127,12 +137,15 @@ const Navbar = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                     isActive(item.path)
                       ? 'bg-moviemate-primary text-white'
                       : 'text-gray-300 hover:bg-moviemate-card hover:text-white'
                   }`}
                 >
+                  {item.label === 'Movies' && <Film size={18} />}
+                  {item.label === 'Web Series' && <Tv size={18} />}
+                  {item.label === 'Live TV' && <Radio size={18} />}
                   {item.label}
                 </Link>
               ))}

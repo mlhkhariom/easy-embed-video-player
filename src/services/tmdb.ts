@@ -91,6 +91,19 @@ export const searchMulti = (query: string): Promise<MultiSearchResponse> => {
   );
 };
 
+// Get Indian content
+export const getIndianMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/discover/movie?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
+  );
+};
+
+export const getIndianTVShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(
+    `/discover/tv?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
+  );
+};
+
 // Get external IDs (for IMDB ID)
 export const getMovieExternalIds = async (id: number): Promise<{ imdb_id: string }> => {
   return fetchApi<{ imdb_id: string }>(`/movie/${id}/external_ids?api_key=${API_KEY}`);
