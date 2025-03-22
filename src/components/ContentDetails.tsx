@@ -1,139 +1,122 @@
-Now I need to fix the issue in the `src/services/iptv.ts` file. Looking at the error message, it's trying to import `fetchChannelsByCategory` but this function doesn't exist in the file. Instead, there's a function called `getChannelsByCategory`. Let me update the code:
 
-// IPTV API client based on https://github.com/iptv-org/api
-import { safeFetch, handleAPIError } from './error-handler';
+import React from 'react';
+import { Badge } from './ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
+import { Star, Calendar, Clock, Tag } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export interface Channel {
-  id: string;
-  name: string;
-  country: string;
-  subdivision: string;
-  city: string;
-  broadcast_area: string[];
-  languages: string[];
-  categories: string[];
-  is_nsfw: boolean;
-  website: string;
-  logo: string;
+interface ContentDetailsProps {
+  title: string;
+  overview: string;
+  releaseDate?: string;
+  runtime?: number;
+  rating?: number;
+  genres?: string[];
+  type: 'movie' | 'tv';
 }
 
-export interface Stream {
-  channel: string;
-  url: string;
-  http_referrer: string;
-  user_agent: string;
-  status: string;
-  width: number;
-  height: number;
-  bitrate: number;
-}
+const ContentDetails = ({
+  title,
+  overview,
+  releaseDate,
+  runtime,
+  rating,
+  genres,
+  type
+}: ContentDetailsProps) => {
+  // Format release date
+  const formattedDate = releaseDate 
+    ? new Date(releaseDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    : 'N/A';
 
-// Fallback URLs in case the primary URLs are blocked by CORS
-const API_URLS = {
-  channels: [
-    'https://iptv-org.github.io/api/channels.json',
-    'https://raw.githubusercontent.com/iptv-org/api/master/public/channels.json'
-  ],
-  streams: [
-    'https://iptv-org.github.io/api/streams.json',
-    'https://raw.githubusercontent.com/iptv-org/api/master/public/streams.json'
-  ]
+  // Format runtime
+  const formatRuntime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  return (
+    <motion.div 
+      className="content-details space-y-4 p-4 md:p-6 bg-card rounded-lg shadow-lg"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.h1 
+        className="text-2xl md:text-3xl font-bold"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        {title} <span className="text-muted-foreground font-normal text-lg">({type === 'movie' ? 'Movie' : 'TV Show'})</span>
+      </motion.h1>
+      
+      <motion.div 
+        className="flex flex-wrap gap-3 items-center text-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        {releaseDate && (
+          <div className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            <span>{formattedDate}</span>
+          </div>
+        )}
+        
+        {runtime && runtime > 0 && (
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            <span>{formatRuntime(runtime)}</span>
+          </div>
+        )}
+        
+        {rating && rating > 0 && (
+          <div className="flex items-center gap-1">
+            <Star className="h-4 w-4 text-yellow-500" />
+            <span>{rating.toFixed(1)}/10</span>
+          </div>
+        )}
+      </motion.div>
+      
+      {genres && genres.length > 0 && (
+        <motion.div 
+          className="flex flex-wrap gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Tag className="h-4 w-4" />
+          {genres.map((genre, index) => (
+            <HoverCard key={index}>
+              <HoverCardTrigger>
+                <Badge variant="outline" className="cursor-pointer transform transition-transform hover:scale-105">
+                  {genre}
+                </Badge>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-48">
+                <p className="text-sm">More {genre} content</p>
+              </HoverCardContent>
+            </HoverCard>
+          ))}
+        </motion.div>
+      )}
+      
+      <motion.p 
+        className="text-muted-foreground text-sm md:text-base leading-relaxed"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        {overview || 'No overview available.'}
+      </motion.p>
+    </motion.div>
+  );
 };
 
-// Helper function to try multiple URLs with fallbacks
-async function tryFetch<T>(urls: string[]): Promise<T> {
-  for (let i = 0; i < urls.length; i++) {
-    try {
-      const response = await safeFetch(urls[i]);
-      return await response.json();
-    } catch (error) {
-      // If this is the last URL, throw the error
-      if (i === urls.length - 1) {
-        throw error;
-      }
-      // Otherwise continue to the next URL
-      console.warn(`Failed to fetch from ${urls[i]}, trying fallback...`);
-    }
-  }
-  throw new Error('All fetch attempts failed');
-}
-
-export const fetchChannels = async (): Promise<Channel[]> => {
-  try {
-    return await tryFetch<Channel[]>(API_URLS.channels);
-  } catch (error) {
-    console.error('Error fetching channels:', error);
-    throw handleAPIError(error);
-  }
-};
-
-export const fetchIndianChannels = async (): Promise<Channel[]> => {
-  try {
-    const channels = await fetchChannels();
-    return channels.filter(channel => 
-      channel.broadcast_area.includes('India') || 
-      channel.country === 'IN' ||
-      channel.languages.includes('hin') || // Hindi
-      channel.languages.includes('tam') || // Tamil
-      channel.languages.includes('tel') || // Telugu
-      channel.languages.includes('mal') || // Malayalam
-      channel.languages.includes('kan') || // Kannada
-      channel.languages.includes('ben') || // Bengali
-      channel.languages.includes('mar') || // Marathi
-      channel.languages.includes('guj')    // Gujarati
-    );
-  } catch (error) {
-    console.error('Error fetching Indian channels:', error);
-    throw handleAPIError(error);
-  }
-};
-
-export const fetchStreams = async (): Promise<Stream[]> => {
-  try {
-    return await tryFetch<Stream[]>(API_URLS.streams);
-  } catch (error) {
-    console.error('Error fetching streams:', error);
-    throw handleAPIError(error);
-  }
-};
-
-export const getStreamForChannel = async (channelId: string): Promise<Stream | null> => {
-  try {
-    const streams = await fetchStreams();
-    return streams.find(stream => stream.channel === channelId) || null;
-  } catch (error) {
-    console.error('Error getting stream for channel:', error);
-    return null;
-  }
-};
-
-export const getChannelsByCategory = async (category: string): Promise<Channel[]> => {
-  try {
-    const channels = await fetchChannels();
-    return channels.filter(channel => channel.categories.includes(category));
-  } catch (error) {
-    console.error(`Error fetching ${category} channels:`, error);
-    throw handleAPIError(error);
-  }
-};
-
-// Cache streaming URLs to avoid repeated API calls
-const streamCache = new Map<string, Stream>();
-
-export const getCachedStreamForChannel = async (channelId: string): Promise<Stream | null> => {
-  if (streamCache.has(channelId)) {
-    return streamCache.get(channelId) || null;
-  }
-  
-  const stream = await getStreamForChannel(channelId);
-  if (stream) {
-    streamCache.set(channelId, stream);
-  }
-  
-  return stream;
-};
-
-// Clear cache after a certain period
-setInterval(() => {
-  streamCache.clear();
-}, 30 * 60 * 1000); // Clear every 30 minutes
+export default ContentDetails;
