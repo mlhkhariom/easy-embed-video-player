@@ -5,6 +5,7 @@ import { Movie } from '../types';
 import { getMovieDetails, getMovieExternalIds } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import ContentDetails from '../components/ContentDetails';
+import { Card } from '@/components/ui/card';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,23 +46,23 @@ const MoviePage = () => {
   }, [id]);
   
   return (
-    <div className="min-h-screen bg-moviemate-background">
+    <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="animate-fade-in">
+      <main className="container mx-auto px-4 pt-24">
         {isLoading ? (
-          <div className="container mx-auto px-4 pt-24">
-            <div className="animate-pulse">
-              <div className="h-96 rounded-xl bg-moviemate-card"></div>
+          <Card className="w-full p-8">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 w-2/3 rounded-md bg-muted"></div>
+              <div className="h-4 w-1/3 rounded-md bg-muted"></div>
+              <div className="h-32 w-full rounded-md bg-muted"></div>
             </div>
-          </div>
+          </Card>
         ) : error ? (
-          <div className="container mx-auto px-4 pt-24 text-center">
-            <div className="rounded-xl bg-red-500/20 p-8">
-              <h2 className="mb-4 text-2xl font-bold text-white">Error</h2>
-              <p className="text-gray-300">{error}</p>
-            </div>
-          </div>
+          <Card className="w-full p-8 border-red-500/20 bg-red-500/10">
+            <h2 className="mb-4 text-2xl font-bold">Error</h2>
+            <p>{error}</p>
+          </Card>
         ) : movie ? (
           <ContentDetails content={movie} type="movie" />
         ) : null}
