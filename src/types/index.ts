@@ -12,6 +12,7 @@ export interface Movie {
   genres?: Genre[];
   runtime?: number;
   imdb_id?: string;
+  name?: string; // For compatibility with search results
 }
 
 export interface TvShow {
@@ -29,6 +30,7 @@ export interface TvShow {
   number_of_episodes?: number;
   seasons?: Season[];
   imdb_id?: string;
+  title?: string; // For compatibility with search results
 }
 
 export interface Season {
@@ -88,3 +90,38 @@ export interface Credits {
   id: number;
   cast: Cast[];
 }
+
+export interface AdminSettings {
+  siteName: string;
+  siteDescription: string;
+  primaryColor: string;
+  logoUrl: string;
+  enableLiveTV: boolean;
+  enableAutoPlay: boolean;
+  enable3DEffects: boolean;
+  tmdbApiKey: string;
+  customCSS: string;
+  featuredContent: {
+    movie: number | null;
+    tvShow: number | null;
+  };
+}
+
+export interface AdminUser {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface LiveTVCategory {
+  id: string;
+  name: string;
+  enabled: boolean;
+  order: number;
+}
+
+export interface LiveTVSettings {
+  categories: LiveTVCategory[];
+  featuredChannels: string[];
+}
+

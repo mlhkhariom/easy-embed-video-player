@@ -1,118 +1,162 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { searchMulti } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Movie, TvShow } from '../types';
-import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
-import { AlertCircle } from 'lucide-react';
-
-interface SearchResult {
-  id: number;
-  media_type: 'movie' | 'tv';
-  title?: string;
-  name?: string;
-  poster_path: string | null;
-  vote_average: number;
-}
+import { SearchIcon, Film, Tv, Loader } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 
 const Search = () => {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || '';
+  const [query, setQuery] = useState(queryParam);
+  const [activeTab, setActiveTab] = useState('all');
+  const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
   
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
+  // Focus input on mount
   useEffect(() => {
-    const fetchResults = async () => {
-      if (!query.trim()) {
-        setResults([]);
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const data = await searchMulti(query);
-        // Filter and ensure each result has a media_type field
-        const filteredResults = data.results
-          .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
-          .map((item: any) => ({
-            id: item.id,
-            media_type: item.media_type,
-            title: item.title || item.name,
-            name: item.name,
-            poster_path: item.poster_path,
-            vote_average: item.vote_average
-          }));
-        
-        setResults(filteredResults as SearchResult[]);
-      } catch (error) {
-        console.error('Error searching:', error);
-        setError('Failed to load search results. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchResults();
-  }, [query]);
+    inputRef.current?.focus();
+  }, []);
+  
+  // Update query state when URL param changes
+  useEffect(() => {
+    setQuery(queryParam);
+  }, [queryParam]);
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['search', queryParam],
+    queryFn: () => searchMulti(queryParam),
+    enabled: queryParam.length > 0,
+  });
+  
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      setSearchParams({ q: query.trim() });
+    }
+  };
+  
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
+  };
+  
+  // Filter results by content type
+  const filteredResults = data?.results?.filter(item => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'movies') return 'title' in item;
+    if (activeTab === 'tv') return 'name' in item;
+    return true;
+  });
+  
+  const movies = data?.results?.filter(item => 'title' in item) as Movie[];
+  const tvShows = data?.results?.filter(item => 'name' in item && !('title' in item)) as TvShow[];
   
   return (
     <div className="min-h-screen bg-moviemate-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-8 pt-24">
-        <h1 className="mb-8 text-3xl font-bold text-white">
-          {query ? `Search Results for "${query}"` : 'Search'}
-        </h1>
-        
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {[...Array(10)].map((_, index) => (
-              <div key={index} className="animate-pulse">
-                <div className="aspect-[2/3] rounded-lg bg-moviemate-card"></div>
-              </div>
-            ))}
-          </div>
-        ) : error ? (
-          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
-            <AlertCircle className="h-5 w-5" />
-            <AlertTitle className="text-white">Error</AlertTitle>
-            <AlertDescription className="text-gray-300">{error}</AlertDescription>
-          </Alert>
-        ) : results.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {results.map((item) => (
-              <MovieCard
-                key={item.id}
-                item={{
-                  id: item.id,
-                  title: item.title || item.name || 'Unknown Title',
-                  name: item.name,
-                  poster_path: item.poster_path,
-                  vote_average: item.vote_average,
-                }}
-                type={item.media_type}
+      <main className="container mx-auto px-4 py-16 pt-24">
+        <div className="mb-8">
+          <h1 className="mb-4 text-3xl font-bold text-white">Search</h1>
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Search for movies, TV shows..."
+                className="pl-10"
               />
-            ))}
-          </div>
-        ) : query ? (
-          <div className="rounded-xl bg-moviemate-card p-8 text-center">
-            <h2 className="mb-4 text-2xl font-bold text-white">No Results Found</h2>
-            <p className="text-gray-300">
-              We couldn't find any movies or TV shows matching "{query}".
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-moviemate-card p-8 text-center">
-            <h2 className="mb-4 text-2xl font-bold text-white">Search for Movies and TV Shows</h2>
-            <p className="text-gray-300">
-              Use the search bar above to find your favorite content.
-            </p>
+            </div>
+            <Button type="submit">Search</Button>
+          </form>
+        </div>
+        
+        {queryParam && (
+          <div className="mb-8">
+            <h2 className="mb-4 text-xl text-white">
+              {isLoading 
+                ? 'Searching...' 
+                : `Search results for "${queryParam}"`}
+            </h2>
+            
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="all">
+                  All ({data?.results?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="movies">
+                  <Film className="mr-1 h-4 w-4" />
+                  Movies ({movies?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="tv">
+                  <Tv className="mr-1 h-4 w-4" />
+                  TV Shows ({tvShows?.length || 0})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value={activeTab} className="mt-0">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader className="h-8 w-8 animate-spin text-moviemate-primary" />
+                  </div>
+                ) : error ? (
+                  <div className="rounded-lg bg-red-500/10 p-4 text-center">
+                    <p className="text-red-300">Error fetching search results</p>
+                  </div>
+                ) : filteredResults?.length ? (
+                  <motion.div 
+                    className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ staggerChildren: 0.05 }}
+                  >
+                    {filteredResults.map((item) => {
+                      const isMovie = 'title' in item;
+                      const contentType = isMovie ? 'movie' : 'tv';
+                      
+                      // Ensure the item has the necessary properties for MovieCard
+                      const cardItem = {
+                        id: item.id,
+                        title: isMovie ? item.title : item.name,
+                        name: isMovie ? item.title : item.name,
+                        poster_path: item.poster_path,
+                        vote_average: item.vote_average
+                      } as Movie | TvShow;
+                      
+                      return (
+                        <MovieCard 
+                          key={`${contentType}-${item.id}`}
+                          movie={cardItem} 
+                          type={contentType as 'movie' | 'tv'} 
+                        />
+                      );
+                    })}
+                  </motion.div>
+                ) : (
+                  <div className="rounded-lg bg-moviemate-card p-8 text-center">
+                    <p className="text-xl text-gray-400">No results found</p>
+                    <p className="mt-2 text-gray-500">
+                      Try a different search term or browse our content instead
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </main>

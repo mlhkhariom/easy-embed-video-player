@@ -1,13 +1,13 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Movie, TvShow } from '../types';
 import ContentHeader from './content/ContentHeader';
 import SeasonEpisodeSelector from './content/SeasonEpisodeSelector';
 import PlayerSection from './content/PlayerSection';
 import { Button } from '@/components/ui/button';
 import { Play, Info } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { motion, useAnimation } from 'framer-motion';
+import { useAdmin } from '../contexts/AdminContext';
 
 interface ContentDetailsProps {
   content: Movie | TvShow;
@@ -15,12 +15,14 @@ interface ContentDetailsProps {
 }
 
 const ContentDetails = ({ content, type }: ContentDetailsProps) => {
+  const { settings } = useAdmin();
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [selectedEpisode, setSelectedEpisode] = useState<number>(1);
   const [showPlayer, setShowPlayer] = useState(false);
   const [showWatchButton, setShowWatchButton] = useState(true);
   const [autoPlayTimer, setAutoPlayTimer] = useState<number>(3);
-  const { toast } = useToast();
+  const firstRender = useRef(true);
+  const controls = useAnimation();
   
   const isMovie = type === 'movie';
   const title = isMovie ? (content as Movie).title : (content as TvShow).name;
@@ -73,16 +75,13 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
     }
   }, [showPlayer]);
   
-  // Auto-play countdown timer
+  // Auto-play countdown timer - only on first render
   useEffect(() => {
     let countdownInterval: NodeJS.Timeout;
     
-    if (!showPlayer && autoPlayTimer > 0) {
-      toast({
-        title: "Auto-play starting soon",
-        description: `Your content will start in ${autoPlayTimer} seconds. Click the Watch Now button to start immediately.`,
-        duration: 3000,
-      });
+    // Only start the countdown if it's the first render and auto-play is enabled
+    if (firstRender.current && settings.enableAutoPlay && !showPlayer && autoPlayTimer > 0) {
+      firstRender.current = false;
       
       countdownInterval = setInterval(() => {
         setAutoPlayTimer(prev => {
@@ -98,17 +97,30 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
     return () => {
       if (countdownInterval) clearInterval(countdownInterval);
     };
-  }, []);
+  }, [settings.enableAutoPlay]);
+  
+  // 3D mouse follow effect for the watch now button
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!settings.enable3DEffects) return;
+      
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      
+      controls.start({
+        rotateX: (y - 0.5) * 10,
+        rotateY: (x - 0.5) * -10,
+        transition: { type: 'spring', stiffness: 150, damping: 15 }
+      });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [controls, settings.enable3DEffects]);
   
   const startWatching = () => {
     setShowPlayer(true);
     setShowWatchButton(false);
-    
-    toast({
-      title: "FreeCinema Premium",
-      description: `Now playing: ${title}`,
-      duration: 3000,
-    });
   };
   
   return (
@@ -120,13 +132,29 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.5, type: 'spring' }}
+          style={{ perspective: 1000 }}
+          animate={controls}
         >
           <Button 
             onClick={startWatching}
-            className="group flex items-center gap-2 bg-moviemate-primary px-8 py-6 text-lg font-medium text-white hover:bg-moviemate-primary/90"
+            className="group relative flex items-center gap-2 bg-moviemate-primary px-8 py-6 text-lg font-medium text-white hover:bg-moviemate-primary/90"
+            style={{ 
+              background: `linear-gradient(135deg, ${settings.primaryColor}, rgba(139, 92, 246, 0.7))` 
+            }}
           >
+            {settings.enable3DEffects && (
+              <div className="absolute inset-0 -z-10 rounded-md bg-black/20 blur-xl"></div>
+            )}
+            <motion.div
+              className="absolute inset-0 -z-10 rounded-md opacity-50"
+              animate={{ 
+                boxShadow: ['0 0 10px rgba(139, 92, 246, 0.5)', '0 0 20px rgba(139, 92, 246, 0.7)', '0 0 10px rgba(139, 92, 246, 0.5)'] 
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            
             <Play className="transition-transform group-hover:-translate-x-1" size={24} />
-            Watch Now ({autoPlayTimer}s)
+            Watch Now {settings.enableAutoPlay && `(${autoPlayTimer}s)`}
           </Button>
         </motion.div>
       )}
