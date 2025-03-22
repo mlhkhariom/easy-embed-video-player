@@ -4,6 +4,7 @@ import { Badge } from './ui/badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 import { Star, Calendar, Clock, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Movie, TvShow } from '../types';
 
 interface ContentDetailsProps {
   title: string;
@@ -15,15 +16,42 @@ interface ContentDetailsProps {
   type: 'movie' | 'tv';
 }
 
-const ContentDetails = ({
-  title,
-  overview,
-  releaseDate,
-  runtime,
-  rating,
-  genres,
-  type
-}: ContentDetailsProps) => {
+// Add a union type prop for directly passing content objects
+interface ContentObjectProps {
+  content: Movie | TvShow;
+  type: 'movie' | 'tv';
+}
+
+// Using function overloading to handle both prop types
+const ContentDetails = (props: ContentDetailsProps | ContentObjectProps) => {
+  // Check if we're receiving a content object or direct props
+  const isContentObject = 'content' in props;
+  
+  // Extract props accordingly
+  const {
+    title,
+    overview,
+    releaseDate,
+    runtime,
+    rating,
+    genres,
+    type
+  } = isContentObject ? {
+    title: props.type === 'movie' 
+      ? (props.content as Movie).title 
+      : (props.content as TvShow).name,
+    overview: props.content.overview,
+    releaseDate: props.type === 'movie' 
+      ? (props.content as Movie).release_date 
+      : (props.content as TvShow).first_air_date,
+    runtime: props.type === 'movie' 
+      ? (props.content as Movie).runtime 
+      : undefined,
+    rating: props.content.vote_average,
+    genres: props.content.genres?.map(genre => genre.name),
+    type: props.type
+  } : props;
+
   // Format release date
   const formattedDate = releaseDate 
     ? new Date(releaseDate).toLocaleDateString('en-US', {
