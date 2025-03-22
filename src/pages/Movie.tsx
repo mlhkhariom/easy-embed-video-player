@@ -6,12 +6,15 @@ import { getMovieDetails, getMovieExternalIds } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import ContentDetails from '../components/ContentDetails';
 import { Card } from '@/components/ui/card';
+import ContentHeader from '../components/content/ContentHeader';
+import PlayerSection from '../components/content/PlayerSection';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPlayer, setShowPlayer] = useState(false);
   
   useEffect(() => {
     const fetchMovieDetails = async () => {
@@ -20,6 +23,7 @@ const MoviePage = () => {
       try {
         setIsLoading(true);
         setError(null);
+        setShowPlayer(false);
         
         // Fetch the movie details
         const movieId = parseInt(id);
@@ -45,11 +49,35 @@ const MoviePage = () => {
     fetchMovieDetails();
   }, [id]);
   
+  // Format movie details for header
+  const getFormattedMovieDetails = () => {
+    if (!movie) return { title: '', formattedDate: '', formattedRuntime: '', rating: '' };
+    
+    const title = movie.title;
+    const formattedDate = movie.release_date 
+      ? new Date(movie.release_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      : '';
+    
+    const formattedRuntime = movie.runtime 
+      ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
+      : '';
+    
+    const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '0.0';
+    
+    return { title, formattedDate, formattedRuntime, rating };
+  };
+  
+  const { title, formattedDate, formattedRuntime, rating } = getFormattedMovieDetails();
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24">
+      <main className="container mx-auto px-4 pt-24 pb-12">
         {isLoading ? (
           <Card className="w-full p-8">
             <div className="animate-pulse space-y-4">
@@ -64,7 +92,31 @@ const MoviePage = () => {
             <p>{error}</p>
           </Card>
         ) : movie ? (
-          <ContentDetails content={movie} type="movie" />
+          <div className="space-y-8">
+            {/* Content Header with Backdrop */}
+            <ContentHeader 
+              content={movie} 
+              type="movie"
+              title={title}
+              formattedDate={formattedDate}
+              formattedRuntime={formattedRuntime}
+              rating={rating}
+              showPlayer={showPlayer}
+              setShowPlayer={setShowPlayer}
+            />
+            
+            {/* Player Section */}
+            <PlayerSection 
+              showPlayer={showPlayer}
+              isMovie={true}
+              contentId={movie.id}
+              imdbId={movie.imdb_id}
+              title={movie.title}
+            />
+            
+            {/* Additional Details */}
+            <ContentDetails content={movie} type="movie" />
+          </div>
         ) : null}
       </main>
     </div>

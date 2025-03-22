@@ -9,12 +9,12 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 
 // Props for direct values
 interface ContentDetailsProps {
-  title: string;
-  overview: string;
+  title?: string;
+  overview?: string;
   releaseDate?: string;
   runtime?: number;
   rating?: number;
-  genres?: string[];
+  genres?: { id: number; name: string }[];
   type: 'movie' | 'tv';
 }
 
@@ -52,7 +52,7 @@ const ContentDetails = (props: ContentDetailsProps | ContentObjectProps) => {
           ? (props.content as Movie).runtime 
           : undefined,
         rating: props.content.vote_average,
-        genres: props.content.genres?.map(genre => genre.name),
+        genres: props.content.genres,
         type: props.type
       } 
     : props;
@@ -67,7 +67,8 @@ const ContentDetails = (props: ContentDetailsProps | ContentObjectProps) => {
     : 'N/A';
 
   // Format runtime
-  const formatRuntime = (minutes: number) => {
+  const formatRuntime = (minutes?: number) => {
+    if (!minutes) return 'N/A';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
@@ -77,31 +78,8 @@ const ContentDetails = (props: ContentDetailsProps | ContentObjectProps) => {
     <Card className="container mx-auto my-8 max-w-5xl bg-card">
       <CardHeader>
         <CardTitle className="text-2xl md:text-3xl font-bold">
-          {title} <span className="text-muted-foreground font-normal text-lg">({type === 'movie' ? 'Movie' : 'TV Show'})</span>
+          About this {type === 'movie' ? 'Movie' : 'TV Show'}
         </CardTitle>
-        
-        <div className="flex flex-wrap gap-3 items-center text-sm">
-          {releaseDate && (
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{formattedDate}</span>
-            </div>
-          )}
-          
-          {runtime && runtime > 0 && (
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>{formatRuntime(runtime)}</span>
-            </div>
-          )}
-          
-          {rating && rating > 0 && (
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 text-yellow-500" />
-              <span>{rating.toFixed(1)}/10</span>
-            </div>
-          )}
-        </div>
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -112,20 +90,57 @@ const ContentDetails = (props: ContentDetailsProps | ContentObjectProps) => {
               <HoverCard key={index}>
                 <HoverCardTrigger>
                   <Badge variant="outline" className="cursor-pointer">
-                    {genre}
+                    {genre.name}
                   </Badge>
                 </HoverCardTrigger>
                 <HoverCardContent className="w-48">
-                  <p className="text-sm">More {genre} content</p>
+                  <p className="text-sm">More {genre.name} content</p>
                 </HoverCardContent>
               </HoverCard>
             ))}
           </div>
         )}
         
-        <p className="text-muted-foreground">
-          {overview || 'No overview available.'}
-        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-semibold mb-2">Synopsis</h3>
+            <p className="text-muted-foreground">
+              {overview || 'No overview available.'}
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            {releaseDate && (
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <span className="text-sm font-medium">Release Date</span>
+                  <p className="text-muted-foreground">{formattedDate}</p>
+                </div>
+              </div>
+            )}
+            
+            {runtime && runtime > 0 && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <span className="text-sm font-medium">Runtime</span>
+                  <p className="text-muted-foreground">{formatRuntime(runtime)}</p>
+                </div>
+              </div>
+            )}
+            
+            {rating && rating > 0 && (
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                <div>
+                  <span className="text-sm font-medium">Rating</span>
+                  <p className="text-muted-foreground">{rating.toFixed(1)}/10</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
