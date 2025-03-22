@@ -1,5 +1,6 @@
 
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
+import { safeFetch, handleAPIError } from './error-handler';
 
 const API_KEY = '43d89010b257341339737be36dfaac13';
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -11,14 +12,13 @@ export const getImageUrl = (path: string | null, size: string = 'w500'): string 
 };
 
 export const fetchApi = async <T>(endpoint: string): Promise<T> => {
-  const url = `${BASE_URL}${endpoint}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  try {
+    const url = `${BASE_URL}${endpoint}`;
+    const response = await safeFetch(url);
+    return await response.json();
+  } catch (error) {
+    throw handleAPIError(error);
   }
-  
-  return response.json() as Promise<T>;
 };
 
 // Movies
@@ -111,4 +111,29 @@ export const getMovieExternalIds = async (id: number): Promise<{ imdb_id: string
 
 export const getTvExternalIds = async (id: number): Promise<{ imdb_id: string }> => {
   return fetchApi<{ imdb_id: string }>(`/tv/${id}/external_ids?api_key=${API_KEY}`);
+};
+
+// Cache API responses
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
+export const getCachedApi = async <T>(endpoint: string, forceFresh = false): Promise<T> => {
+  const cacheKey = endpoint;
+  
+  if (!forceFresh && cache.has(cacheKey)) {
+    const cachedData = cache.get(cacheKey)!;
+    const now = Date.now();
+    
+    if (now - cachedData.timestamp < CACHE_DURATION) {
+      return cachedData.data as T;
+    }
+  }
+  
+  const data = await fetchApi<T>(endpoint);
+  cache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  return data;
 };

@@ -1,5 +1,5 @@
-
 // IPTV API client based on https://github.com/iptv-org/api
+import { safeFetch, handleAPIError } from './error-handler';
 
 export interface Channel {
   id: string;
@@ -26,14 +26,42 @@ export interface Stream {
   bitrate: number;
 }
 
+// Fallback URLs in case the primary URLs are blocked by CORS
+const API_URLS = {
+  channels: [
+    'https://iptv-org.github.io/api/channels.json',
+    'https://raw.githubusercontent.com/iptv-org/api/master/public/channels.json'
+  ],
+  streams: [
+    'https://iptv-org.github.io/api/streams.json',
+    'https://raw.githubusercontent.com/iptv-org/api/master/public/streams.json'
+  ]
+};
+
+// Helper function to try multiple URLs with fallbacks
+async function tryFetch<T>(urls: string[]): Promise<T> {
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      const response = await safeFetch(urls[i]);
+      return await response.json();
+    } catch (error) {
+      // If this is the last URL, throw the error
+      if (i === urls.length - 1) {
+        throw error;
+      }
+      // Otherwise continue to the next URL
+      console.warn(`Failed to fetch from ${urls[i]}, trying fallback...`);
+    }
+  }
+  throw new Error('All fetch attempts failed');
+}
+
 export const fetchChannels = async (): Promise<Channel[]> => {
   try {
-    const response = await fetch('https://iptv-org.github.io/api/channels.json');
-    if (!response.ok) throw new Error('Failed to fetch channels');
-    return await response.json();
+    return await tryFetch<Channel[]>(API_URLS.channels);
   } catch (error) {
     console.error('Error fetching channels:', error);
-    return [];
+    throw handleAPIError(error);
   }
 };
 
@@ -54,18 +82,16 @@ export const fetchIndianChannels = async (): Promise<Channel[]> => {
     );
   } catch (error) {
     console.error('Error fetching Indian channels:', error);
-    return [];
+    throw handleAPIError(error);
   }
 };
 
 export const fetchStreams = async (): Promise<Stream[]> => {
   try {
-    const response = await fetch('https://iptv-org.github.io/api/streams.json');
-    if (!response.ok) throw new Error('Failed to fetch streams');
-    return await response.json();
+    return await tryFetch<Stream[]>(API_URLS.streams);
   } catch (error) {
     console.error('Error fetching streams:', error);
-    return [];
+    throw handleAPIError(error);
   }
 };
 
@@ -85,6 +111,27 @@ export const getChannelsByCategory = async (category: string): Promise<Channel[]
     return channels.filter(channel => channel.categories.includes(category));
   } catch (error) {
     console.error(`Error fetching ${category} channels:`, error);
-    return [];
+    throw handleAPIError(error);
   }
 };
+
+// Cache streaming URLs to avoid repeated API calls
+const streamCache = new Map<string, Stream>();
+
+export const getCachedStreamForChannel = async (channelId: string): Promise<Stream | null> => {
+  if (streamCache.has(channelId)) {
+    return streamCache.get(channelId) || null;
+  }
+  
+  const stream = await getStreamForChannel(channelId);
+  if (stream) {
+    streamCache.set(channelId, stream);
+  }
+  
+  return stream;
+};
+
+// Clear cache after a certain period
+setInterval(() => {
+  streamCache.clear();
+}, 30 * 60 * 1000); // Clear every 30 minutes

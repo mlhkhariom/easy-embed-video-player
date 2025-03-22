@@ -14,8 +14,22 @@ import Genres from "./pages/Genres";
 import GenreContent from "./pages/GenreContent";
 import Trending from "./pages/Trending";
 import LiveTV from "./pages/LiveTV";
+import Movies from "./pages/Movies";
+import WebSeries from "./pages/WebSeries";
 
-const queryClient = new QueryClient();
+// Customize QueryClient with error handling
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      onError: (error) => {
+        console.error('Query error:', error);
+      }
+    }
+  }
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -25,7 +39,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/movies" element={<Movies />} />
           <Route path="/movie/:id" element={<Movie />} />
+          <Route path="/tv" element={<WebSeries />} />
           <Route path="/tv/:id" element={<TvShow />} />
           <Route path="/search" element={<Search />} />
           <Route path="/explore" element={<Explore />} />

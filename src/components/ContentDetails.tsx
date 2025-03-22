@@ -7,6 +7,7 @@ import PlayerSection from './content/PlayerSection';
 import { Button } from '@/components/ui/button';
 import { Play, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ContentDetailsProps {
   content: Movie | TvShow;
@@ -18,6 +19,8 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
   const [selectedEpisode, setSelectedEpisode] = useState<number>(1);
   const [showPlayer, setShowPlayer] = useState(false);
   const [showWatchButton, setShowWatchButton] = useState(true);
+  const [autoPlayTimer, setAutoPlayTimer] = useState<number>(3);
+  const { toast } = useToast();
   
   const isMovie = type === 'movie';
   const title = isMovie ? (content as Movie).title : (content as TvShow).name;
@@ -70,20 +73,42 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
     }
   }, [showPlayer]);
   
-  // Auto-play content after 3 seconds on page load
+  // Auto-play countdown timer
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!showPlayer) {
-        startWatching();
-      }
-    }, 3000);
+    let countdownInterval: NodeJS.Timeout;
     
-    return () => clearTimeout(timer);
+    if (!showPlayer && autoPlayTimer > 0) {
+      toast({
+        title: "Auto-play starting soon",
+        description: `Your content will start in ${autoPlayTimer} seconds. Click the Watch Now button to start immediately.`,
+        duration: 3000,
+      });
+      
+      countdownInterval = setInterval(() => {
+        setAutoPlayTimer(prev => {
+          if (prev <= 1) {
+            startWatching();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (countdownInterval) clearInterval(countdownInterval);
+    };
   }, []);
   
   const startWatching = () => {
     setShowPlayer(true);
     setShowWatchButton(false);
+    
+    toast({
+      title: "FreeCinema Premium",
+      description: `Now playing: ${title}`,
+      duration: 3000,
+    });
   };
   
   return (
@@ -101,7 +126,7 @@ const ContentDetails = ({ content, type }: ContentDetailsProps) => {
             className="group flex items-center gap-2 bg-moviemate-primary px-8 py-6 text-lg font-medium text-white hover:bg-moviemate-primary/90"
           >
             <Play className="transition-transform group-hover:-translate-x-1" size={24} />
-            Watch Now
+            Watch Now ({autoPlayTimer}s)
           </Button>
         </motion.div>
       )}

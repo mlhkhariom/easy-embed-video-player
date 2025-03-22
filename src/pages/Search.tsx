@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { Movie, TvShow } from '../types';
 import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
+import { AlertCircle } from 'lucide-react';
 
 interface SearchResult {
   id: number;
@@ -46,9 +47,9 @@ const Search = () => {
             name: item.name,
             poster_path: item.poster_path,
             vote_average: item.vote_average
-          })) as SearchResult[];
+          }));
         
-        setResults(filteredResults);
+        setResults(filteredResults as SearchResult[]);
       } catch (error) {
         console.error('Error searching:', error);
         setError('Failed to load search results. Please try again.');
@@ -64,7 +65,7 @@ const Search = () => {
     <div className="min-h-screen bg-moviemate-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pt-24">
         <h1 className="mb-8 text-3xl font-bold text-white">
           {query ? `Search Results for "${query}"` : 'Search'}
         </h1>
@@ -79,6 +80,7 @@ const Search = () => {
           </div>
         ) : error ? (
           <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
+            <AlertCircle className="h-5 w-5" />
             <AlertTitle className="text-white">Error</AlertTitle>
             <AlertDescription className="text-gray-300">{error}</AlertDescription>
           </Alert>
@@ -87,11 +89,14 @@ const Search = () => {
             {results.map((item) => (
               <MovieCard
                 key={item.id}
-                movieId={item.id}
-                title={item.title || item.name || 'Unknown Title'}
-                posterPath={item.poster_path}
-                rating={item.vote_average}
-                mediaType={item.media_type}
+                item={{
+                  id: item.id,
+                  title: item.title || item.name || 'Unknown Title',
+                  name: item.name,
+                  poster_path: item.poster_path,
+                  vote_average: item.vote_average,
+                }}
+                type={item.media_type}
               />
             ))}
           </div>

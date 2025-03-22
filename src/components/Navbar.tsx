@@ -10,7 +10,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger
 } from "@/components/ui/navigation-menu";
-import { Tv, Film, Radio } from 'lucide-react';
+import { Tv, Film, Radio, TrendingUp, ListFilter } from 'lucide-react';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -37,6 +37,7 @@ const Navbar = () => {
     { label: 'Movies', path: '/movies' },
     { label: 'Web Series', path: '/tv' },
     { label: 'Live TV', path: '/live-tv' },
+    { label: 'Trending', path: '/trending' },
   ];
   
   const isActive = (path: string) => {
@@ -104,6 +105,7 @@ const Navbar = () => {
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="flex items-center md:hidden"
+            aria-label="Toggle menu"
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -143,9 +145,11 @@ const Navbar = () => {
                       : 'text-gray-300 hover:bg-moviemate-card hover:text-white'
                   }`}
                 >
+                  {item.label === 'Home' && <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>}
                   {item.label === 'Movies' && <Film size={18} />}
                   {item.label === 'Web Series' && <Tv size={18} />}
                   {item.label === 'Live TV' && <Radio size={18} />}
+                  {item.label === 'Trending' && <TrendingUp size={18} />}
                   {item.label}
                 </Link>
               ))}
