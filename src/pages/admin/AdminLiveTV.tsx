@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -27,7 +26,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { fetchChannelsByCategory, Channel } from '../../services/iptv';
+import { getChannelsByCategory, Channel } from '../../services/iptv';
 import { useQuery } from '@tanstack/react-query';
 import { LiveTVCategory } from '../../types';
 
@@ -47,19 +46,19 @@ const AdminLiveTV = () => {
   // Get all available IPTV categories
   const { data: entertainmentChannels } = useQuery({
     queryKey: ['channels', 'entertainment'],
-    queryFn: () => fetchChannelsByCategory('entertainment'),
+    queryFn: () => getChannelsByCategory('entertainment'),
     enabled: settings.enableLiveTV
   });
   
   const { data: newsChannels } = useQuery({
     queryKey: ['channels', 'news'],
-    queryFn: () => fetchChannelsByCategory('news'),
+    queryFn: () => getChannelsByCategory('news'),
     enabled: settings.enableLiveTV
   });
   
   const { data: sportsChannels } = useQuery({
     queryKey: ['channels', 'sports'],
-    queryFn: () => fetchChannelsByCategory('sports'),
+    queryFn: () => getChannelsByCategory('sports'),
     enabled: settings.enableLiveTV
   });
   

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { searchMulti } from '../services/tmdb';
@@ -129,19 +128,10 @@ const Search = () => {
                       const isMovie = 'title' in item;
                       const contentType = isMovie ? 'movie' : 'tv';
                       
-                      // Ensure the item has the necessary properties for MovieCard
-                      const cardItem = {
-                        id: item.id,
-                        title: isMovie ? item.title : item.name,
-                        name: isMovie ? item.title : item.name,
-                        poster_path: item.poster_path,
-                        vote_average: item.vote_average
-                      } as Movie | TvShow;
-                      
                       return (
                         <MovieCard 
                           key={`${contentType}-${item.id}`}
-                          movie={cardItem} 
+                          item={item}
                           type={contentType as 'movie' | 'tv'} 
                         />
                       );
