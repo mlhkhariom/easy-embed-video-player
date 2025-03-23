@@ -1,0 +1,35 @@
+name: "Dependabot Updates"
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 3 * * 1" # Runs every Monday at 03:00 UTC
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure Git
+        run: |
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global url."https://github.com/".insteadOf git@github.com:
+          git config --global url."https://github.com/".insteadOf git@github.com/
+          git config --global url."https://github.com/".insteadOf git://github.com/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Run Dependabot
+        run: |
+          npx npm-check-updates -u
+          npm install
+          git add package.json package-lock.json
+          git commit -m "chore: update dependencies"
+          git push
