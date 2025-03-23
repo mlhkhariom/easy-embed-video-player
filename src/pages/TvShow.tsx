@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { TvShow, Episode } from '../types';
@@ -13,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { handleAPIError } from '../services/error-handler';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { MovieCard } from '../components/MovieCard';
+import MovieCard from '../components/MovieCard';
 
 const TvShowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,12 +29,10 @@ const TvShowPage = () => {
   const lastShowElementRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Handle the episode selection directly with the number
   const handleEpisodeChange = (episodeNumber: number) => {
     setSelectedEpisode(episodeNumber);
   };
   
-  // Fetch episode details when season or episode changes
   useEffect(() => {
     const fetchEpisodeDetails = async () => {
       if (!id || !selectedSeason || !selectedEpisode) return;
@@ -67,11 +64,9 @@ const TvShowPage = () => {
         setError(null);
         setShowPlayer(false);
         
-        // Fetch the TV show details
         const tvId = parseInt(id);
         const tvData = await getTvShowDetails(tvId);
         
-        // Get external IDs (for IMDB ID)
         try {
           const externalIds = await getTvExternalIds(tvId);
           tvData.imdb_id = externalIds.imdb_id;
@@ -81,7 +76,6 @@ const TvShowPage = () => {
         
         setTvShow(tvData);
         
-        // Fetch related shows
         try {
           const related = await getRelatedTvShows(tvId);
           setRelatedShows(related.results.slice(0, 8));
@@ -89,7 +83,6 @@ const TvShowPage = () => {
           console.error('Error fetching related shows:', error);
         }
         
-        // Set initial season and episode if available
         if (tvData.seasons && tvData.seasons.length > 0) {
           const firstRegularSeason = tvData.seasons.find(s => s.season_number > 0);
           if (firstRegularSeason) {
@@ -112,7 +105,6 @@ const TvShowPage = () => {
     
     fetchTvShowDetails();
     
-    // Cleanup function
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -120,7 +112,6 @@ const TvShowPage = () => {
     };
   }, [id, toast]);
   
-  // Handle intersection for infinite loading
   const lastShowRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoadingMore) return;
     
@@ -130,7 +121,6 @@ const TvShowPage = () => {
     
     observerRef.current = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && relatedShows.length > 0) {
-        // Load more related shows
         const loadMoreRelatedShows = async () => {
           if (!id) return;
           
@@ -158,16 +148,14 @@ const TvShowPage = () => {
   const handleSeasonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSeason = parseInt(e.target.value);
     setSelectedSeason(newSeason);
-    setSelectedEpisode(1); // Reset episode when season changes
+    setSelectedEpisode(1);
     
-    // Auto-scroll to episode selector for better UX
     document.querySelector('.episode-selector')?.scrollIntoView({ 
       behavior: 'smooth',
       block: 'start'
     });
   };
   
-  // Format TV show details for header
   const getFormattedTvShowDetails = () => {
     if (!tvShow) return { title: '', formattedDate: '', formattedRuntime: '', rating: '' };
     
@@ -211,7 +199,6 @@ const TvShowPage = () => {
           </Card>
         ) : tvShow ? (
           <div className="space-y-8">
-            {/* Content Header with Backdrop */}
             <ContentHeader 
               content={tvShow} 
               type="tv"
@@ -223,7 +210,6 @@ const TvShowPage = () => {
               setShowPlayer={setShowPlayer}
             />
             
-            {/* Season and Episode Selector */}
             <div className="episode-selector">
               {showPlayer && tvShow && (
                 <SeasonEpisodeSelector 
@@ -237,7 +223,6 @@ const TvShowPage = () => {
               )}
             </div>
             
-            {/* Player Section */}
             <PlayerSection 
               showPlayer={showPlayer}
               isMovie={false}
@@ -249,7 +234,6 @@ const TvShowPage = () => {
               episodeTitle={currentEpisode?.name}
             />
             
-            {/* Current Episode Details */}
             {showPlayer && currentEpisode && (
               <Card className="bg-moviemate-card border-gray-700">
                 <div className="p-6">
@@ -275,10 +259,8 @@ const TvShowPage = () => {
               </Card>
             )}
             
-            {/* Additional Details */}
             <ContentDetails content={tvShow} type="tv" />
             
-            {/* Related TV Shows */}
             {relatedShows.length > 0 && (
               <div className="mt-12">
                 <h2 className="text-2xl font-bold mb-4">You May Also Like</h2>

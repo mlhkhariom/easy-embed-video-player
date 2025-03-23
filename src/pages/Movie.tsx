@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Movie } from '../types';
@@ -12,7 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { handleAPIError } from '../services/error-handler';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { MovieCard } from '../components/MovieCard';
+import MovieCard from '../components/MovieCard';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();

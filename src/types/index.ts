@@ -1,4 +1,3 @@
-
 export interface Movie {
   id: number;
   title: string;
@@ -40,6 +39,7 @@ export interface Season {
   episode_count: number;
   poster_path: string;
   overview: string;
+  episodes?: Episode[];
 }
 
 export interface Episode {
@@ -124,4 +124,3 @@ export interface LiveTVSettings {
   categories: LiveTVCategory[];
   featuredChannels: string[];
 }
-
