@@ -273,12 +273,11 @@ const TvShowPage = () => {
                       ref={index === relatedShows.length - 1 ? lastShowRef : null}
                     >
                       <MovieCard 
-                        id={show.id}
+                        movieId={show.id}
                         title={show.name}
                         posterPath={show.poster_path}
-                        voteAverage={show.vote_average}
-                        type="tv"
-                        genreIds={show.genre_ids || []}
+                        rating={show.vote_average}
+                        mediaType="tv"
                       />
                     </div>
                   ))}

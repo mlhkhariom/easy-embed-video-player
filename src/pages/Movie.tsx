@@ -33,11 +33,9 @@ const MoviePage = () => {
         setError(null);
         setShowPlayer(false);
         
-        // Fetch the movie details
         const movieId = parseInt(id);
         const movieData = await getMovieDetails(movieId);
         
-        // Get external IDs (for IMDB ID)
         try {
           const externalIds = await getMovieExternalIds(movieId);
           movieData.imdb_id = externalIds.imdb_id;
@@ -47,7 +45,6 @@ const MoviePage = () => {
         
         setMovie(movieData);
         
-        // Fetch related movies
         try {
           const related = await getRelatedMovies(movieId);
           setRelatedMovies(related.results.slice(0, 10));
@@ -70,7 +67,6 @@ const MoviePage = () => {
     
     fetchMovieDetails();
     
-    // Cleanup function
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -78,7 +74,6 @@ const MoviePage = () => {
     };
   }, [id, toast]);
   
-  // Handle intersection for infinite loading
   const lastMovieRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoadingMore) return;
     
@@ -88,7 +83,6 @@ const MoviePage = () => {
     
     observerRef.current = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && relatedMovies.length > 0) {
-        // Load more related movies
         const loadMoreRelatedMovies = async () => {
           if (!id) return;
           
@@ -113,7 +107,6 @@ const MoviePage = () => {
     }
   }, [id, isLoadingMore, relatedMovies.length]);
   
-  // Format movie details for header
   const getFormattedMovieDetails = () => {
     if (!movie) return { title: '', formattedDate: '', formattedRuntime: '', rating: '' };
     
@@ -157,7 +150,6 @@ const MoviePage = () => {
           </Card>
         ) : movie ? (
           <div className="space-y-8">
-            {/* Content Header with Backdrop */}
             <ContentHeader 
               content={movie} 
               type="movie"
@@ -169,7 +161,6 @@ const MoviePage = () => {
               setShowPlayer={setShowPlayer}
             />
             
-            {/* Player Section */}
             <PlayerSection 
               showPlayer={showPlayer}
               isMovie={true}
@@ -178,10 +169,8 @@ const MoviePage = () => {
               title={movie.title}
             />
             
-            {/* Additional Details */}
             <ContentDetails content={movie} type="movie" />
             
-            {/* Related Movies */}
             {relatedMovies.length > 0 && (
               <div className="mt-12">
                 <h2 className="text-2xl font-bold mb-4">You May Also Like</h2>
@@ -194,12 +183,11 @@ const MoviePage = () => {
                       ref={index === relatedMovies.length - 1 ? lastMovieRef : null}
                     >
                       <MovieCard 
-                        id={relatedMovie.id}
+                        movieId={relatedMovie.id}
                         title={relatedMovie.title}
                         posterPath={relatedMovie.poster_path}
-                        voteAverage={relatedMovie.vote_average}
-                        type="movie"
-                        genreIds={relatedMovie.genre_ids || []}
+                        rating={relatedMovie.vote_average}
+                        mediaType="movie"
                       />
                     </div>
                   ))}
