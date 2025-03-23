@@ -1,6 +1,6 @@
 
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
-import { safeFetch, handleAPIError } from './error-handler';
+import { safeFetch, handleAPIError, APIError } from './error-handler';
 
 const API_KEY = '43d89010b257341339737be36dfaac13';
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -77,6 +77,19 @@ export const getEpisodeDetails = (
   );
 };
 
+// Related content
+export const getRelatedMovies = (id: number, page: number = 1): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/movie/${id}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`
+  );
+};
+
+export const getRelatedTvShows = (id: number, page: number = 1): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(
+    `/tv/${id}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`
+  );
+};
+
 // Search
 interface MultiSearchResponse {
   page: number;
@@ -85,9 +98,9 @@ interface MultiSearchResponse {
   total_results: number;
 }
 
-export const searchMulti = (query: string): Promise<MultiSearchResponse> => {
+export const searchMulti = (query: string, page: number = 1): Promise<MultiSearchResponse> => {
   return fetchApi<MultiSearchResponse>(
-    `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1&include_adult=false`
+    `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=${page}&include_adult=false`
   );
 };
 
@@ -136,4 +149,44 @@ export const getCachedApi = async <T>(endpoint: string, forceFresh = false): Pro
   });
   
   return data;
+};
+
+// Rate limiting and error handling
+let lastRequestTime = 0;
+const REQUEST_INTERVAL = 100; // 100ms between requests
+
+export const rateControlledFetch = async <T>(endpoint: string): Promise<T> => {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  
+  lastRequestTime = Date.now();
+  return fetchApi<T>(endpoint);
+};
+
+// Error handling and retry logic
+export const fetchWithRetry = async <T>(
+  endpoint: string, 
+  retries: number = 3
+): Promise<T> => {
+  try {
+    return await fetchApi<T>(endpoint);
+  } catch (error) {
+    if (retries <= 0) throw error;
+    
+    if (error instanceof APIError && error.status === 429) {
+      // Rate limit exceeded - wait longer before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return fetchWithRetry(endpoint, retries - 1);
+    } else if (error instanceof APIError && (error.status === 500 || error.status === 503)) {
+      // Server error - wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchWithRetry(endpoint, retries - 1);
+    }
+    
+    throw error;
+  }
 };

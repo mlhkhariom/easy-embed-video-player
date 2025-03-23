@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +25,7 @@ interface PlayerSectionProps {
   selectedSeason?: number;
   selectedEpisode?: number;
   title?: string;
+  episodeTitle?: string;
 }
 
 const PlayerSection = ({
@@ -35,7 +35,8 @@ const PlayerSection = ({
   imdbId,
   selectedSeason,
   selectedEpisode,
-  title
+  title,
+  episodeTitle
 }: PlayerSectionProps) => {
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -48,7 +49,6 @@ const PlayerSection = ({
   const playerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    // Auto-hide controls after 3 seconds
     let timer: NodeJS.Timeout;
     
     if (showControls) {
@@ -63,7 +63,6 @@ const PlayerSection = ({
   }, [showControls]);
   
   useEffect(() => {
-    // Simulate loading effect when content changes
     setIsLoading(true);
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -73,7 +72,6 @@ const PlayerSection = ({
   }, [contentId, selectedSeason, selectedEpisode]);
   
   useEffect(() => {
-    // Auto-play when content is loaded
     const timer = setTimeout(() => {
       setIsPlaying(true);
     }, 2500);
@@ -83,7 +81,6 @@ const PlayerSection = ({
   
   if (!showPlayer) return null;
   
-  // Handle player error
   const handlePlayerError = (error: string) => {
     setPlayerError(error);
     setIsLoading(false);
@@ -92,7 +89,6 @@ const PlayerSection = ({
   const resetError = () => {
     setPlayerError(null);
     setIsLoading(true);
-    // Simulate retry loading
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);
@@ -140,7 +136,11 @@ const PlayerSection = ({
               <Film size={16} className="text-white" />
             </div>
             <h2 className="text-2xl font-bold text-white">
-              {isMovie ? 'Now Playing' : `Season ${selectedSeason}, Episode ${selectedEpisode}`}
+              {isMovie ? 'Now Playing' : (
+                episodeTitle ? 
+                  `${episodeTitle} (S${selectedSeason}:E${selectedEpisode})` : 
+                  `Season ${selectedSeason}, Episode ${selectedEpisode}`
+              )}
             </h2>
           </div>
           
@@ -190,7 +190,6 @@ const PlayerSection = ({
           className="relative overflow-hidden rounded-xl shadow-2xl"
           onMouseMove={handleMouseMove}
         >
-          {/* Custom Player UI Layer */}
           <div className="freecinema-player relative aspect-video w-full bg-black">
             <VideoPlayer
               tmdbId={contentId}
@@ -201,7 +200,6 @@ const PlayerSection = ({
               onError={handlePlayerError}
             />
             
-            {/* Loading Overlay */}
             <AnimatePresence>
               {isLoading && (
                 <motion.div 
@@ -214,14 +212,17 @@ const PlayerSection = ({
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-moviemate-primary/20 backdrop-blur-sm">
                       <Loader size={30} className="animate-spin text-moviemate-primary" />
                     </div>
-                    <p className="text-lg font-medium text-white">Loading {isMovie ? 'Movie' : 'Episode'}...</p>
+                    <p className="text-lg font-medium text-white">
+                      Loading {isMovie ? 'Movie' : (
+                        episodeTitle ? `"${episodeTitle}"` : `Episode ${selectedEpisode}`
+                      )}...
+                    </p>
                     <p className="mt-1 text-sm text-gray-400">FreeCinema Premium Stream</p>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
             
-            {/* Play/Pause Big Button Overlay (only visible on clicking the video) */}
             <AnimatePresence>
               {!isLoading && (
                 <motion.div
@@ -245,7 +246,6 @@ const PlayerSection = ({
               )}
             </AnimatePresence>
             
-            {/* Player Controls */}
             <AnimatePresence>
               {showControls && !isLoading && (
                 <motion.div 
@@ -254,7 +254,6 @@ const PlayerSection = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  {/* Top Bar */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-moviemate-primary">
@@ -273,16 +272,13 @@ const PlayerSection = ({
                     </div>
                   </div>
                   
-                  {/* Bottom Controls */}
                   <div className="space-y-4">
-                    {/* Progress Bar */}
                     <div className="freecinema-progress" onClick={() => setProgress(Math.random() * 100)}>
                       <div className="freecinema-progress-bar" style={{ width: `${progress}%` }}></div>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {/* Play/Pause */}
                         <button 
                           className="freecinema-glass-button"
                           onClick={togglePlay}
@@ -293,17 +289,14 @@ const PlayerSection = ({
                           }
                         </button>
                         
-                        {/* Skip Back */}
                         <button className="freecinema-glass-button">
                           <SkipBack size={18} className="text-white" />
                         </button>
                         
-                        {/* Skip Forward */}
                         <button className="freecinema-glass-button">
                           <SkipForward size={18} className="text-white" />
                         </button>
                         
-                        {/* Volume */}
                         <div className="group relative flex items-center">
                           <button 
                             className="freecinema-glass-button"
@@ -334,7 +327,6 @@ const PlayerSection = ({
                       </div>
                       
                       <div>
-                        {/* Fullscreen */}
                         <button 
                           className="freecinema-glass-button"
                           onClick={toggleFullscreen}
@@ -349,7 +341,6 @@ const PlayerSection = ({
             </AnimatePresence>
           </div>
           
-          {/* Player Decorations */}
           <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-moviemate-primary/10 blur-3xl"></div>
           <div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-purple-700/10 blur-3xl"></div>
         </div>
