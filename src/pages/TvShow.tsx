@@ -13,6 +13,7 @@ import { handleAPIError } from '../services/error-handler';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import MovieCard from '../components/MovieCard';
+import SeasonCarousel from '../components/content/SeasonCarousel';
 
 const TvShowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,16 @@ const TvShowPage = () => {
   
   const handleEpisodeChange = (episodeNumber: number) => {
     setSelectedEpisode(episodeNumber);
+  };
+  
+  const handleSeasonChange = (seasonNumber: number) => {
+    setSelectedSeason(seasonNumber);
+    setSelectedEpisode(1);
+    
+    document.querySelector('.episode-selector')?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
   };
   
   useEffect(() => {
@@ -145,17 +156,6 @@ const TvShowPage = () => {
     }
   }, [id, isLoadingMore, relatedShows.length]);
   
-  const handleSeasonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSeason = parseInt(e.target.value);
-    setSelectedSeason(newSeason);
-    setSelectedEpisode(1);
-    
-    document.querySelector('.episode-selector')?.scrollIntoView({ 
-      behavior: 'smooth',
-      block: 'start'
-    });
-  };
-  
   const getFormattedTvShowDetails = () => {
     if (!tvShow) return { title: '', formattedDate: '', formattedRuntime: '', rating: '' };
     
@@ -210,29 +210,38 @@ const TvShowPage = () => {
               setShowPlayer={setShowPlayer}
             />
             
-            <div className="episode-selector">
-              {showPlayer && tvShow && (
-                <SeasonEpisodeSelector 
+            {showPlayer && (
+              <>
+                <SeasonCarousel
                   seasons={tvShow.seasons || null}
                   selectedSeason={selectedSeason}
-                  selectedEpisode={selectedEpisode}
                   onSeasonChange={handleSeasonChange}
-                  onEpisodeChange={handleEpisodeChange}
                   tvShowId={tvShow.id}
                 />
-              )}
-            </div>
-            
-            <PlayerSection 
-              showPlayer={showPlayer}
-              isMovie={false}
-              contentId={tvShow.id}
-              imdbId={tvShow.imdb_id}
-              selectedSeason={selectedSeason}
-              selectedEpisode={selectedEpisode}
-              title={tvShow.name}
-              episodeTitle={currentEpisode?.name}
-            />
+                
+                <PlayerSection 
+                  showPlayer={showPlayer}
+                  isMovie={false}
+                  contentId={tvShow.id}
+                  imdbId={tvShow.imdb_id}
+                  selectedSeason={selectedSeason}
+                  selectedEpisode={selectedEpisode}
+                  title={tvShow.name}
+                  episodeTitle={currentEpisode?.name}
+                />
+                
+                <div className="episode-selector">
+                  <SeasonEpisodeSelector 
+                    seasons={tvShow.seasons || null}
+                    selectedSeason={selectedSeason}
+                    selectedEpisode={selectedEpisode}
+                    onSeasonChange={(e) => handleSeasonChange(parseInt(e.target.value))}
+                    onEpisodeChange={handleEpisodeChange}
+                    tvShowId={tvShow.id}
+                  />
+                </div>
+              </>
+            )}
             
             {showPlayer && currentEpisode && (
               <Card className="bg-moviemate-card border-gray-700">
@@ -270,7 +279,7 @@ const TvShowPage = () => {
                   {relatedShows.map((show, index) => (
                     <div 
                       key={show.id} 
-                      ref={index === relatedShows.length - 1 ? lastShowRef : null}
+                      ref={index === relatedShows.length - 1 ? lastShowElementRef : null}
                     >
                       <MovieCard 
                         movieId={show.id}

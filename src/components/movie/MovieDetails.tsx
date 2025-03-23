@@ -45,13 +45,15 @@ const MovieDetails = ({ movie, showPlayer, setShowPlayer }: MovieDetailsProps) =
         setShowPlayer={setShowPlayer}
       />
       
-      <PlayerSection 
-        showPlayer={showPlayer}
-        isMovie={true}
-        contentId={movie.id}
-        imdbId={movie.imdb_id}
-        title={movie.title}
-      />
+      {showPlayer && (
+        <PlayerSection 
+          showPlayer={showPlayer}
+          isMovie={true}
+          contentId={movie.id}
+          imdbId={movie.imdb_id}
+          title={movie.title}
+        />
+      )}
       
       <ContentDetails content={movie} type="movie" />
     </div>
