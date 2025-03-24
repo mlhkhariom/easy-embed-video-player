@@ -133,7 +133,7 @@ export const searchCloudStreamContent = async (
     
     return {
       results,
-      hasMore: false
+      hasMore: results.length > 0 && Math.random() > 0.3 // Randomly determine if there are more results
     };
   } catch (error) {
     console.error('Error searching CloudStream content:', error);

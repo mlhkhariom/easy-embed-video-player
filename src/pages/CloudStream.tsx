@@ -40,11 +40,11 @@ const CloudStream = () => {
   const categories = Object.keys(groupedSources).sort();
 
   // Search content query
-  const { data, isLoading, error, refetch, isFetching, hasNextPage } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['cloudstreamContent', searchQuery, selectedSources, page],
-    queryFn: () => searchCloudStreamContent(searchQuery, selectedSources.length ? selectedSources : undefined, page),
+    queryFn: () => searchCloudStreamContent(searchQuery, selectedSources.length ? selectedSources : undefined),
     enabled: true,
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   // Update combined results when new data arrives
