@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
-import { Search, Filter, ExternalLink, Cloud } from 'lucide-react';
+import { Search, Filter, ExternalLink, Cloud, Loader2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
@@ -20,6 +20,10 @@ const CloudStream = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [combinedResults, setCombinedResults] = useState<CloudStreamContent[]>([]);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { settings } = useAdmin();
   const isMobile = useIsMobile();
@@ -36,16 +40,54 @@ const CloudStream = () => {
   const categories = Object.keys(groupedSources).sort();
 
   // Search content query
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['cloudstreamContent', searchQuery, selectedSources],
-    queryFn: () => searchCloudStreamContent(searchQuery, selectedSources.length ? selectedSources : undefined),
+  const { data, isLoading, error, refetch, isFetching, hasNextPage } = useQuery({
+    queryKey: ['cloudstreamContent', searchQuery, selectedSources, page],
+    queryFn: () => searchCloudStreamContent(searchQuery, selectedSources.length ? selectedSources : undefined, page),
     enabled: true,
+    keepPreviousData: true,
   });
+
+  // Update combined results when new data arrives
+  useEffect(() => {
+    if (data?.results && !isLoading) {
+      if (page === 1) {
+        // Reset results for first page
+        setCombinedResults(data.results);
+      } else {
+        // Append results for subsequent pages
+        setCombinedResults(prev => [...prev, ...data.results]);
+      }
+    }
+  }, [data, isLoading, page]);
+
+  // Infinite scrolling
+  useEffect(() => {
+    if (loadMoreRef.current && !isLoading) {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+
+      observerRef.current = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && data?.hasMore) {
+          setPage(prev => prev + 1);
+        }
+      });
+
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [data, isLoading]);
 
   // Handle search submission
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchParams({ q: searchQuery });
+    setPage(1);
     refetch();
   };
 
@@ -100,6 +142,15 @@ const CloudStream = () => {
     </div>
   );
 
+  // Handle filter apply
+  const applyFilters = () => {
+    setPage(1);
+    refetch();
+    if (isMobile) {
+      setShowFilters(false);
+    }
+  };
+
   if (!settings.enableCloudStream) {
     return (
       <div className="min-h-screen bg-background">
@@ -140,8 +191,14 @@ const CloudStream = () => {
                 <Button 
                   type="submit"
                   className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                  disabled={isLoading}
                 >
-                  Search
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Searching...
+                    </>
+                  ) : 'Search'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -176,8 +233,8 @@ const CloudStream = () => {
                   ))}
                 </Tabs>
                 
-                {selectedSources.length > 0 && (
-                  <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-between">
+                  {selectedSources.length > 0 && (
                     <Button 
                       variant="ghost"
                       size="sm"
@@ -185,14 +242,22 @@ const CloudStream = () => {
                     >
                       Clear Filters
                     </Button>
-                  </div>
-                )}
+                  )}
+                  <Button 
+                    variant="default"
+                    size="sm"
+                    onClick={applyFilters}
+                    disabled={isLoading}
+                  >
+                    Apply Filters
+                  </Button>
+                </div>
               </div>
             )}
           </form>
         </div>
         
-        {isLoading ? (
+        {isLoading && page === 1 ? (
           <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {Array.from({ length: isMobile ? 6 : 12 }).map((_, i) => (
               <div key={i} className="aspect-[2/3] animate-pulse rounded-lg bg-moviemate-card/40"></div>
@@ -203,12 +268,29 @@ const CloudStream = () => {
             <h3 className="text-lg font-semibold">Error Loading Content</h3>
             <p className="mt-2">There was an error loading content. Please try again later.</p>
           </div>
-        ) : data && data.results.length > 0 ? (
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {data.results.map((content) => (
-              <ContentCard key={content.id} content={content} />
-            ))}
-          </div>
+        ) : combinedResults.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {combinedResults.map((content, index) => (
+                <ContentCard key={`${content.id}-${index}`} content={content} />
+              ))}
+            </div>
+            
+            {/* Loading indicator for infinite scroll */}
+            {data?.hasMore && (
+              <div 
+                ref={loadMoreRef} 
+                className="flex justify-center items-center py-8"
+              >
+                {isFetching && (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-moviemate-primary" />
+                    <span className="text-sm text-gray-400">Loading more content...</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold">No Results Found</h3>

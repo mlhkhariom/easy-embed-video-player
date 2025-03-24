@@ -25,6 +25,7 @@ import AdminContent from "./pages/admin/AdminContent";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Customize QueryClient with error handling
 const queryClient = new QueryClient({
@@ -40,37 +41,41 @@ const queryClient = new QueryClient({
 const App = () => (
   <AdminProvider>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <DynamicStyles />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/movies" element={<Movies />} />
-            <Route path="/movie/:id" element={<Movie />} />
-            <Route path="/tv" element={<WebSeries />} />
-            <Route path="/tv/:id" element={<TvShow />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/genres" element={<Genres />} />
-            <Route path="/genre/:type/:id" element={<GenreContent />} />
-            <Route path="/trending" element={<Trending />} />
-            <Route path="/live-tv" element={<LiveTV />} />
-            <Route path="/cloudstream" element={<CloudStream />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-            <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
-            <Route path="/admin/live-tv" element={<AdminGuard><AdminLiveTV /></AdminGuard>} />
-            <Route path="/admin/content" element={<AdminGuard><AdminContent /></AdminGuard>} />
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <DynamicStyles />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <div className="flex min-h-screen flex-col bg-moviemate-background text-white">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/movies" element={<Movies />} />
+                <Route path="/movie/:id" element={<Movie />} />
+                <Route path="/tv" element={<WebSeries />} />
+                <Route path="/tv/:id" element={<TvShow />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/genres" element={<Genres />} />
+                <Route path="/genre/:type/:id" element={<GenreContent />} />
+                <Route path="/trending" element={<Trending />} />
+                <Route path="/live-tv" element={<LiveTV />} />
+                <Route path="/cloudstream" element={<CloudStream />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+                <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+                <Route path="/admin/live-tv" element={<AdminGuard><AdminLiveTV /></AdminGuard>} />
+                <Route path="/admin/content" element={<AdminGuard><AdminContent /></AdminGuard>} />
+                
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   </AdminProvider>
 );

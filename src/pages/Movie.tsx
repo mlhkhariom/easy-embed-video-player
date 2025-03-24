@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Movie } from '../types';
 import { getMovieDetails, getMovieExternalIds, getRelatedMovies } from '../services/tmdb';
@@ -18,51 +18,58 @@ const MoviePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [relatedMovies, setRelatedMovies] = useState<Movie[]>([]);
+  const [isRetrying, setIsRetrying] = useState(false);
   const { toast } = useToast();
   
-  useEffect(() => {
-    const fetchMovieDetails = async () => {
-      if (!id) return;
+  const fetchMovieDetails = useCallback(async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      setShowPlayer(false);
+      
+      const movieId = parseInt(id);
+      const movieData = await getMovieDetails(movieId);
       
       try {
-        setIsLoading(true);
-        setError(null);
-        setShowPlayer(false);
-        
-        const movieId = parseInt(id);
-        const movieData = await getMovieDetails(movieId);
-        
-        try {
-          const externalIds = await getMovieExternalIds(movieId);
-          movieData.imdb_id = externalIds.imdb_id;
-        } catch (error) {
-          console.error('Error fetching external IDs:', error);
-        }
-        
-        setMovie(movieData);
-        
-        try {
-          const related = await getRelatedMovies(movieId);
-          setRelatedMovies(related.results.slice(0, 10));
-        } catch (error) {
-          console.error('Error fetching related movies:', error);
-        }
-        
+        const externalIds = await getMovieExternalIds(movieId);
+        movieData.imdb_id = externalIds.imdb_id;
       } catch (error) {
-        const apiError = handleAPIError(error);
-        setError(apiError.message);
-        toast({
-          variant: "destructive",
-          title: "Error loading content",
-          description: apiError.message,
-        });
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching external IDs:', error);
       }
-    };
-    
-    fetchMovieDetails();
+      
+      setMovie(movieData);
+      
+      try {
+        const related = await getRelatedMovies(movieId);
+        setRelatedMovies(related.results.slice(0, 10));
+      } catch (error) {
+        console.error('Error fetching related movies:', error);
+      }
+      
+    } catch (error) {
+      const apiError = handleAPIError(error);
+      setError(apiError.message);
+      toast({
+        variant: "destructive",
+        title: "Error loading content",
+        description: apiError.message,
+      });
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
+    }
   }, [id, toast]);
+  
+  useEffect(() => {
+    fetchMovieDetails();
+  }, [fetchMovieDetails]);
+  
+  const handleRetry = () => {
+    setIsRetrying(true);
+    fetchMovieDetails();
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -72,7 +79,7 @@ const MoviePage = () => {
         {isLoading ? (
           <MovieLoading />
         ) : error ? (
-          <MovieError message={error} />
+          <MovieError message={error} onRetry={handleRetry} isRetrying={isRetrying} />
         ) : movie ? (
           <>
             <MovieDetails 
@@ -86,7 +93,9 @@ const MoviePage = () => {
               initialMovies={relatedMovies}
             />
           </>
-        ) : null}
+        ) : (
+          <MovieError message="Movie not found" onRetry={handleRetry} isRetrying={isRetrying} />
+        )}
       </main>
     </div>
   );

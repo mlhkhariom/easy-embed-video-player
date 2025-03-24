@@ -1,12 +1,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Channel, Stream } from '../services/iptv';
+import { Channel } from '../services/iptv';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Settings, 
   Radio, Globe, Info, ArrowLeft, Layers, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Script } from '@/components/ui/script';
 
 interface LiveTVPlayerProps {
   channel: Channel;
@@ -31,10 +32,76 @@ const LiveTVPlayer = ({
   const [qualityOptions] = useState(['Auto', '1080p', '720p', '480p']);
   const [selectedQuality, setSelectedQuality] = useState('Auto');
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [jwPlayerReady, setJwPlayerReady] = useState(false);
   const playerRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const jwPlayerRef = useRef<any>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  // Load JW Player script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jwplayer.com/libraries/IDzF9Zmk.js';
+    script.async = true;
+    script.onload = () => {
+      setJwPlayerReady(true);
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // Initialize JW Player when ready and stream URL is available
+  useEffect(() => {
+    if (jwPlayerReady && streamUrl && playerContainerRef.current && !isLoading) {
+      try {
+        // @ts-ignore
+        jwPlayerRef.current = jwplayer(playerContainerRef.current.id).setup({
+          file: streamUrl,
+          image: channel.logo || undefined,
+          width: '100%',
+          aspectratio: '16:9',
+          mute: isMuted,
+          volume: volume * 100,
+          autostart: true,
+          primary: 'html5',
+          hlshtml: true,
+          cast: {},
+          playbackRateControls: true,
+          stretching: 'uniform',
+        });
+
+        jwPlayerRef.current.on('ready', () => {
+          setIsPlaying(true);
+          setPlayerError(null);
+        });
+
+        jwPlayerRef.current.on('error', () => {
+          setPlayerError('Unable to load the stream. Please try another source or check your connection.');
+        });
+
+        jwPlayerRef.current.on('play', () => {
+          setIsPlaying(true);
+        });
+
+        jwPlayerRef.current.on('pause', () => {
+          setIsPlaying(false);
+        });
+
+        return () => {
+          if (jwPlayerRef.current) {
+            jwPlayerRef.current.remove();
+          }
+        };
+      } catch (error) {
+        console.error('JW Player initialization error:', error);
+        setPlayerError('Failed to initialize player. Please try again later.');
+      }
+    }
+  }, [jwPlayerReady, streamUrl, isLoading, channel.logo, isMuted, volume]);
 
   // Show controls on mouse move and hide after inactivity
   const handleMouseMove = () => {
@@ -53,36 +120,40 @@ const LiveTVPlayer = ({
 
   // Toggle play/pause
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-    // In a real implementation, you would control the video player here
+    if (jwPlayerRef.current) {
+      if (isPlaying) {
+        jwPlayerRef.current.pause();
+      } else {
+        jwPlayerRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
   };
 
   // Toggle mute
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-    // In a real implementation, you would control the video player here
+    if (jwPlayerRef.current) {
+      jwPlayerRef.current.setMute(!isMuted);
+      setIsMuted(!isMuted);
+    }
   };
 
   // Handle volume change
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-    // In a real implementation, you would control the video player here
+    
+    if (jwPlayerRef.current) {
+      jwPlayerRef.current.setVolume(newVolume * 100);
+      jwPlayerRef.current.setMute(newVolume === 0);
+      setIsMuted(newVolume === 0);
+    }
   };
 
   // Toggle fullscreen
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      playerRef.current?.requestFullscreen().catch(err => {
-        toast({
-          title: "Fullscreen Error",
-          description: `Error attempting to enable fullscreen: ${err.message}`,
-          variant: "destructive",
-        });
-      });
-    } else {
-      document.exitFullscreen();
+    if (jwPlayerRef.current) {
+      jwPlayerRef.current.setFullscreen(!isFullscreen);
     }
   };
 
@@ -103,17 +174,40 @@ const LiveTVPlayer = ({
   // Handle quality change
   const changeQuality = (quality: string) => {
     setSelectedQuality(quality);
+    
+    if (jwPlayerRef.current) {
+      const levels = jwPlayerRef.current.getQualityLevels();
+      
+      if (quality === 'Auto') {
+        jwPlayerRef.current.setCurrentQuality(-1);
+      } else {
+        const qualityLevel = levels.findIndex((level: any) => 
+          level.label.includes(quality.replace('p', ''))
+        );
+        
+        if (qualityLevel !== -1) {
+          jwPlayerRef.current.setCurrentQuality(qualityLevel);
+        }
+      }
+    }
+    
     toast({
       title: "Quality Changed",
       description: `Streaming quality set to ${quality}`,
     });
+    
     setShowSettings(false);
   };
 
   // Reset player error
   const handleRetry = () => {
     setPlayerError(null);
-    // In a real implementation, you would reload the stream here
+    
+    if (jwPlayerRef.current) {
+      jwPlayerRef.current.load();
+      jwPlayerRef.current.play();
+    }
+    
     toast({
       title: "Retrying Stream",
       description: "Attempting to reconnect to the channel...",
@@ -138,21 +232,6 @@ const LiveTVPlayer = ({
       }
     };
   }, []);
-
-  // Set playing status after loading
-  useEffect(() => {
-    if (!isLoading && streamUrl) {
-      const timer = setTimeout(() => {
-        setIsPlaying(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, streamUrl]);
-
-  // Error handling for iframe
-  const handleIframeError = () => {
-    setPlayerError("Unable to load the channel stream. Please try again later.");
-  };
 
   return (
     <motion.div 
@@ -216,17 +295,12 @@ const LiveTVPlayer = ({
         )}
       </AnimatePresence>
 
-      {/* Video Stream */}
-      {streamUrl && !playerError && (
-        <iframe
-          ref={iframeRef}
-          src={streamUrl}
-          className="h-full w-full border-0"
-          allowFullScreen
-          sandbox="allow-same-origin allow-scripts"
-          onError={handleIframeError}
-        ></iframe>
-      )}
+      {/* JW Player Container */}
+      <div 
+        id="livetv-player-container" 
+        ref={playerContainerRef} 
+        className="h-full w-full"
+      />
 
       {/* Information Overlay */}
       <AnimatePresence>

@@ -88,12 +88,12 @@ const Navbar = () => {
           </Link>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:gap-1">
+          <div className="hidden md:flex md:items-center md:gap-1 md:overflow-x-auto">
             {filteredNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all hover:bg-moviemate-card ${
+                className={`rounded-full px-3 py-2 text-sm font-medium transition-all hover:bg-moviemate-card whitespace-nowrap ${
                   isActive(item.path)
                     ? 'bg-moviemate-primary text-white'
                     : 'text-gray-300 hover:text-white'
