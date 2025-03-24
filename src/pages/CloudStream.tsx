@@ -1,19 +1,21 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
-import { Search, Filter, ExternalLink, Cloud, Loader2 } from 'lucide-react';
+import { Search, Filter, Cloud, Loader2, AlertCircle } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Checkbox } from '../components/ui/checkbox';
-import { Label } from '../components/ui/label';
 import { Card } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '../components/ui/use-toast';
 import { useAdmin } from '../contexts/AdminContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import CloudStreamSourceCard from '@/components/cloudstream/CloudStreamSourceCard';
+import CloudStreamContentCard from '@/components/cloudstream/CloudStreamContentCard';
+import CloudStreamFilterSection from '@/components/cloudstream/CloudStreamFilterSection';
 
 const CloudStream = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,6 +29,7 @@ const CloudStream = () => {
   const { toast } = useToast();
   const { settings } = useAdmin();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Group sources by category
   const groupedSources: Record<string, CloudStreamSource[]> = CLOUDSTREAM_SOURCES.reduce((acc, source) => {
@@ -100,48 +103,6 @@ const CloudStream = () => {
     );
   };
 
-  // Source selector card component
-  const SourceCard = ({ source }: { source: CloudStreamSource }) => (
-    <div className="flex items-center space-x-3 p-3 rounded-lg bg-moviemate-card/40 backdrop-blur-sm">
-      <Checkbox 
-        id={`source-${source.name}`} 
-        checked={selectedSources.includes(source.name)}
-        onCheckedChange={() => toggleSource(source.name)}
-      />
-      <div className="flex-1">
-        <Label htmlFor={`source-${source.name}`} className="font-medium">{source.name}</Label>
-        {source.language && (
-          <div className="text-xs text-gray-400">{source.language.toUpperCase()}</div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Content card component
-  const ContentCard = ({ content }: { content: CloudStreamContent }) => (
-    <div className="group relative overflow-hidden rounded-lg bg-moviemate-card transition-all hover:scale-105">
-      <div 
-        className="aspect-[2/3] bg-cover bg-center" 
-        style={{ backgroundImage: `url(${content.poster})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black opacity-70"></div>
-      </div>
-      <div className="absolute bottom-0 w-full p-3">
-        <h3 className="text-sm font-bold text-white line-clamp-2">{content.title}</h3>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-xs text-gray-300">{content.year}</span>
-          <span className="text-xs font-medium text-moviemate-primary">{content.source}</span>
-        </div>
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center bg-black/70 opacity-0 transition-opacity group-hover:opacity-100">
-        <Button variant="outline" size="sm" className="gap-2">
-          <ExternalLink className="h-4 w-4" />
-          View Details
-        </Button>
-      </div>
-    </div>
-  );
-
   // Handle filter apply
   const applyFilters = () => {
     setPage(1);
@@ -150,6 +111,122 @@ const CloudStream = () => {
       setShowFilters(false);
     }
   };
+
+  // Clear filters
+  const clearFilters = () => {
+    setSelectedSources([]);
+  };
+
+  // Handle content click to navigate to details
+  const handleContentClick = (content: CloudStreamContent) => {
+    const [_, sourceId, contentId] = content.url.split('/').filter(Boolean);
+    navigate(`/cloudstream/${sourceId}/${contentId}`);
+  };
+
+  // Render loading state
+  const renderLoadingState = () => (
+    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      {Array.from({ length: isMobile ? 6 : 12 }).map((_, i) => (
+        <div key={i} className="aspect-[2/3] animate-pulse rounded-lg bg-moviemate-card/40"></div>
+      ))}
+    </div>
+  );
+
+  // Render error state
+  const renderErrorState = () => (
+    <Alert variant="destructive" className="mb-6">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Error</AlertTitle>
+      <AlertDescription>
+        Failed to load content. Please try again later.
+      </AlertDescription>
+    </Alert>
+  );
+
+  // Render empty state
+  const renderEmptyState = () => (
+    <div className="text-center py-12">
+      <h3 className="text-xl font-semibold">No Results Found</h3>
+      <p className="mt-2 text-gray-400">
+        {searchQuery 
+          ? `No results found for "${searchQuery}". Try a different search term or source.` 
+          : 'Start by searching for content or selecting sources.'}
+      </p>
+    </div>
+  );
+
+  // Render content
+  const renderContent = () => (
+    <>
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        {combinedResults.map((content, index) => (
+          <CloudStreamContentCard 
+            key={`${content.id}-${index}`} 
+            content={content} 
+            onClick={handleContentClick} 
+          />
+        ))}
+      </div>
+      
+      {/* Loading indicator for infinite scroll */}
+      {data?.hasMore && (
+        <div 
+          ref={loadMoreRef} 
+          className="flex justify-center items-center py-8"
+        >
+          {isFetching && (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-moviemate-primary" />
+              <span className="text-sm text-gray-400">Loading more content...</span>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {!data?.hasMore && combinedResults.length > 0 && (
+        <div className="py-8">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => {
+                    if (page > 1) {
+                      setPage(prev => prev - 1);
+                      window.scrollTo(0, 0);
+                    }
+                  }}
+                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {[...Array(Math.min(5, Math.max(page + 2, 3)))].map((_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink
+                    isActive={page === i + 1}
+                    onClick={() => {
+                      setPage(i + 1);
+                      window.scrollTo(0, 0);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => {
+                    setPage(prev => prev + 1);
+                    window.scrollTo(0, 0);
+                  }}
+                  className="cursor-pointer"
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+    </>
+  );
 
   if (!settings.enableCloudStream) {
     return (
@@ -211,96 +288,24 @@ const CloudStream = () => {
             </div>
             
             {showFilters && (
-              <div className="rounded-md border border-border bg-card p-4">
-                <h4 className="mb-4 text-sm font-medium">Filter by Source</h4>
-                <Tabs defaultValue={categories[0]}>
-                  <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 overflow-x-auto">
-                    {categories.map(category => (
-                      <TabsTrigger key={category} value={category} className="capitalize whitespace-nowrap">
-                        {category}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  
-                  {categories.map(category => (
-                    <TabsContent key={category} value={category} className="mt-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {groupedSources[category].map(source => (
-                          <SourceCard key={source.name} source={source} />
-                        ))}
-                      </div>
-                    </TabsContent>
-                  ))}
-                </Tabs>
-                
-                <div className="mt-4 flex justify-between">
-                  {selectedSources.length > 0 && (
-                    <Button 
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedSources([])}
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                  <Button 
-                    variant="default"
-                    size="sm"
-                    onClick={applyFilters}
-                    disabled={isLoading}
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
-              </div>
+              <CloudStreamFilterSection
+                selectedSources={selectedSources}
+                toggleSource={toggleSource}
+                applyFilters={applyFilters}
+                clearFilters={clearFilters}
+                categories={categories}
+                groupedSources={groupedSources}
+                isLoading={isLoading}
+              />
             )}
           </form>
         </div>
         
-        {isLoading && page === 1 ? (
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {Array.from({ length: isMobile ? 6 : 12 }).map((_, i) => (
-              <div key={i} className="aspect-[2/3] animate-pulse rounded-lg bg-moviemate-card/40"></div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
-            <h3 className="text-lg font-semibold">Error Loading Content</h3>
-            <p className="mt-2">There was an error loading content. Please try again later.</p>
-          </div>
-        ) : combinedResults.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {combinedResults.map((content, index) => (
-                <ContentCard key={`${content.id}-${index}`} content={content} />
-              ))}
-            </div>
-            
-            {/* Loading indicator for infinite scroll */}
-            {data?.hasMore && (
-              <div 
-                ref={loadMoreRef} 
-                className="flex justify-center items-center py-8"
-              >
-                {isFetching && (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-moviemate-primary" />
-                    <span className="text-sm text-gray-400">Loading more content...</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold">No Results Found</h3>
-            <p className="mt-2 text-gray-400">
-              {searchQuery 
-                ? `No results found for "${searchQuery}". Try a different search term or source.` 
-                : 'Start by searching for content or selecting sources.'}
-            </p>
-          </div>
-        )}
+        {isLoading && page === 1 ? renderLoadingState() 
+          : error ? renderErrorState() 
+          : combinedResults.length > 0 ? renderContent() 
+          : renderEmptyState()
+        }
       </main>
     </div>
   );

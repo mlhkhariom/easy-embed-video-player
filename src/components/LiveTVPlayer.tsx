@@ -39,27 +39,48 @@ const LiveTVPlayer = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Load JW Player script
+  // Initialize JW Player when component mounts
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jwplayer.com/libraries/IDzF9Zmk.js';
-    script.async = true;
-    script.onload = () => {
-      setJwPlayerReady(true);
+    const loadJwPlayer = () => {
+      if (window.jwplayer) {
+        setJwPlayerReady(true);
+      } else {
+        // If JW Player isn't loaded yet, retry in 200ms
+        setTimeout(loadJwPlayer, 200);
+      }
     };
-    document.body.appendChild(script);
-
+    
+    loadJwPlayer();
+    
     return () => {
-      document.body.removeChild(script);
+      if (jwPlayerRef.current) {
+        try {
+          jwPlayerRef.current.remove();
+        } catch (err) {
+          console.error("Error cleaning up JW Player:", err);
+        }
+      }
     };
   }, []);
 
-  // Initialize JW Player when ready and stream URL is available
+  // Setup or update JW Player when stream URL changes or player is ready
   useEffect(() => {
     if (jwPlayerReady && streamUrl && playerContainerRef.current && !isLoading) {
       try {
-        // @ts-ignore
-        jwPlayerRef.current = jwplayer(playerContainerRef.current.id).setup({
+        // Clean up previous player instance if it exists
+        if (jwPlayerRef.current) {
+          try {
+            jwPlayerRef.current.remove();
+          } catch (e) {
+            console.error("Error removing previous player:", e);
+          }
+        }
+        
+        // Initialize new player instance
+        jwPlayerRef.current = window.jwplayer(playerContainerRef.current.id);
+        
+        // Configure and setup player
+        jwPlayerRef.current.setup({
           file: streamUrl,
           image: channel.logo || undefined,
           width: '100%',
@@ -72,14 +93,19 @@ const LiveTVPlayer = ({
           cast: {},
           playbackRateControls: true,
           stretching: 'uniform',
+          skin: {
+            name: "netflix"
+          }
         });
 
+        // Player event listeners
         jwPlayerRef.current.on('ready', () => {
           setIsPlaying(true);
           setPlayerError(null);
         });
 
-        jwPlayerRef.current.on('error', () => {
+        jwPlayerRef.current.on('error', (e: any) => {
+          console.error("JW Player error:", e);
           setPlayerError('Unable to load the stream. Please try another source or check your connection.');
         });
 
@@ -91,11 +117,14 @@ const LiveTVPlayer = ({
           setIsPlaying(false);
         });
 
-        return () => {
-          if (jwPlayerRef.current) {
-            jwPlayerRef.current.remove();
-          }
-        };
+        jwPlayerRef.current.on('fullscreen', (state: {fullscreen: boolean}) => {
+          setIsFullscreen(state.fullscreen);
+        });
+        
+        jwPlayerRef.current.on('mute', (state: {mute: boolean}) => {
+          setIsMuted(state.mute);
+        });
+        
       } catch (error) {
         console.error('JW Player initialization error:', error);
         setPlayerError('Failed to initialize player. Please try again later.');
@@ -126,7 +155,6 @@ const LiveTVPlayer = ({
       } else {
         jwPlayerRef.current.play();
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -134,7 +162,6 @@ const LiveTVPlayer = ({
   const toggleMute = () => {
     if (jwPlayerRef.current) {
       jwPlayerRef.current.setMute(!isMuted);
-      setIsMuted(!isMuted);
     }
   };
 
@@ -145,8 +172,13 @@ const LiveTVPlayer = ({
     
     if (jwPlayerRef.current) {
       jwPlayerRef.current.setVolume(newVolume * 100);
-      jwPlayerRef.current.setMute(newVolume === 0);
-      setIsMuted(newVolume === 0);
+      if (newVolume === 0) {
+        jwPlayerRef.current.setMute(true);
+        setIsMuted(true);
+      } else if (isMuted) {
+        jwPlayerRef.current.setMute(false);
+        setIsMuted(false);
+      }
     }
   };
 
@@ -214,16 +246,6 @@ const LiveTVPlayer = ({
     });
   };
 
-  // Listen for fullscreen changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -241,9 +263,19 @@ const LiveTVPlayer = ({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
       onMouseMove={handleMouseMove}
+      onTouchStart={() => setShowControls(true)}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && !showInfo && !showSettings && setShowControls(false)}
     >
+      {/* JW Player Script */}
+      <Script 
+        src="https://cdn.jwplayer.com/libraries/IDzF9Zmk.js" 
+        async 
+        defer
+        onLoad={() => setJwPlayerReady(true)}
+        onError={() => setPlayerError("Failed to load player. Please refresh the page and try again.")}
+      />
+      
       {/* Loading Overlay */}
       <AnimatePresence>
         {isLoading && (
@@ -306,14 +338,14 @@ const LiveTVPlayer = ({
       <AnimatePresence>
         {showInfo && (
           <motion.div 
-            className="absolute inset-0 z-20 flex flex-col justify-between bg-black/70 p-6 backdrop-blur-sm"
+            className="absolute inset-0 z-20 flex flex-col justify-between bg-black/70 p-4 sm:p-6 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="mb-1 text-2xl font-bold text-white">{channel.name}</h2>
+                <h2 className="mb-1 text-xl sm:text-2xl font-bold text-white">{channel.name}</h2>
                 <div className="flex flex-wrap items-center gap-2">
                   {channel.categories.map((category, index) => (
                     <span key={index} className="rounded-full bg-moviemate-card px-2 py-0.5 text-xs text-gray-300">
@@ -421,7 +453,7 @@ const LiveTVPlayer = ({
       <AnimatePresence>
         {showControls && !showInfo && !showSettings && (
           <motion.div 
-            className="absolute inset-0 z-10 flex flex-col justify-between bg-gradient-to-t from-black/70 via-transparent to-black/60 p-4"
+            className="absolute inset-0 z-10 flex flex-col justify-between bg-gradient-to-t from-black/70 via-transparent to-black/60 p-2 sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -435,23 +467,23 @@ const LiveTVPlayer = ({
                     onClick={onBackClick}
                     className="rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                   >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={16} className="sm:size-18" />
                   </button>
                 )}
                 <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-moviemate-primary">
+                  <div className="hidden sm:flex h-7 w-7 items-center justify-center rounded-full bg-moviemate-primary">
                     <Radio size={14} className="text-white" />
                   </div>
-                  <span className="text-sm font-medium text-white">{channel.name}</span>
+                  <span className="text-xs sm:text-sm font-medium text-white">{channel.name}</span>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
                 <button 
                   onClick={toggleInfo}
-                  className="rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="rounded-full bg-white/10 p-1.5 sm:p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
-                  <Info size={18} />
+                  <Info size={16} className="sm:size-18" />
                 </button>
               </div>
             </div>
@@ -461,40 +493,40 @@ const LiveTVPlayer = ({
               {!isPlaying && (
                 <motion.button
                   onClick={togglePlay}
-                  className="rounded-full bg-moviemate-primary/80 p-4 transition-all hover:bg-moviemate-primary"
+                  className="rounded-full bg-moviemate-primary/80 p-3 sm:p-4 transition-all hover:bg-moviemate-primary"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Play size={32} className="text-white" />
+                  <Play size={24} className="sm:size-32 text-white" />
                 </motion.button>
               )}
             </div>
             
             {/* Bottom Controls */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button 
                   onClick={togglePlay}
-                  className="rounded-full bg-white/10 p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="rounded-full bg-white/10 p-1.5 sm:p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
                   {isPlaying ? 
-                    <Pause size={18} className="text-white" /> : 
-                    <Play size={18} className="text-white" />
+                    <Pause size={16} className="sm:size-18 text-white" /> : 
+                    <Play size={16} className="sm:size-18 text-white" />
                   }
                 </button>
                 
                 <div className="group relative flex items-center">
                   <button 
                     onClick={toggleMute}
-                    className="rounded-full bg-white/10 p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
+                    className="rounded-full bg-white/10 p-1.5 sm:p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
                   >
                     {isMuted || volume === 0 ? 
-                      <VolumeX size={18} className="text-white" /> : 
-                      <Volume2 size={18} className="text-white" />
+                      <VolumeX size={16} className="sm:size-18 text-white" /> : 
+                      <Volume2 size={16} className="sm:size-18 text-white" />
                     }
                   </button>
                   
-                  <div className="ml-2 hidden w-24 items-center group-hover:flex">
+                  <div className="hidden ml-2 w-16 sm:w-24 items-center sm:group-hover:flex">
                     <input
                       type="range"
                       min="0"
@@ -518,16 +550,16 @@ const LiveTVPlayer = ({
               <div className="flex items-center gap-2">
                 <button 
                   onClick={toggleSettings}
-                  className="rounded-full bg-white/10 p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="rounded-full bg-white/10 p-1.5 sm:p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
-                  <Settings size={18} className="text-white" />
+                  <Settings size={16} className="sm:size-18 text-white" />
                 </button>
                 
                 <button 
                   onClick={toggleFullscreen}
-                  className="rounded-full bg-white/10 p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="rounded-full bg-white/10 p-1.5 sm:p-2 backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
-                  <Maximize size={18} className="text-white" />
+                  <Maximize size={16} className="sm:size-18 text-white" />
                 </button>
               </div>
             </div>
