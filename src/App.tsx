@@ -14,6 +14,7 @@ import Genres from "./pages/Genres";
 import GenreContent from "./pages/GenreContent";
 import Trending from "./pages/Trending";
 import LiveTV from "./pages/LiveTV";
+import CloudStream from "./pages/CloudStream";
 import Movies from "./pages/Movies";
 import WebSeries from "./pages/WebSeries";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/genre/:type/:id" element={<GenreContent />} />
           <Route path="/trending" element={<Trending />} />
           <Route path="/live-tv" element={<LiveTV />} />
+          <Route path="/cloudstream" element={<CloudStream />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

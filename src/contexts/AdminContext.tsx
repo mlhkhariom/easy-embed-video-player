@@ -20,6 +20,7 @@ const defaultSettings: AdminSettings = {
   primaryColor: '#9b87f5', // Default moviemate-primary color
   logoUrl: '',
   enableLiveTV: true,
+  enableCloudStream: true,
   enableAutoPlay: true,
   enable3DEffects: true,
   tmdbApiKey: '43d89010b257341339737be36dfaac13',

@@ -1,3 +1,4 @@
+
 export interface Movie {
   id: number;
   title: string;
@@ -97,6 +98,7 @@ export interface AdminSettings {
   primaryColor: string;
   logoUrl: string;
   enableLiveTV: boolean;
+  enableCloudStream: boolean; // New setting for CloudStream
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   tmdbApiKey: string;

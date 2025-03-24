@@ -230,6 +230,18 @@ const AdminSettings = () => {
                   
                   <div className="flex items-center justify-between">
                     <div>
+                      <Label htmlFor="enableCloudStream" className="text-base">CloudStream Content</Label>
+                      <p className="text-sm text-gray-500">Enable CloudStream content from CSX and Phisher extensions</p>
+                    </div>
+                    <Switch
+                      id="enableCloudStream"
+                      checked={formData.enableCloudStream}
+                      onCheckedChange={(checked) => handleSwitchChange('enableCloudStream', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
                       <Label htmlFor="enableAutoPlay" className="text-base">Auto Play</Label>
                       <p className="text-sm text-gray-500">Automatically play content after a countdown</p>
                     </div>
