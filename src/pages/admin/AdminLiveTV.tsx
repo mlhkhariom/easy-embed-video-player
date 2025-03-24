@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Button } from '../../components/ui/button';
@@ -24,7 +23,6 @@ const DataTableSearch = ({ data, onFilter }: { data: Channel[], onFilter: (filte
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
-    // Get unique categories from all channels
     const allCategories = Array.from(new Set(data.flatMap(channel => channel.categories))).sort();
 
     useEffect(() => {
@@ -103,7 +101,6 @@ const ChannelPreviewDialog = ({ channel }: { channel: Channel }) => {
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
-    // Load the stream when the dialog opens
     useEffect(() => {
         const loadStream = async () => {
             try {
@@ -472,7 +469,12 @@ const AdminLiveTV = () => {
                                                 </p>
                                                 <Button 
                                                     variant="outline" 
-                                                    onClick={() => document.querySelector('[data-value="browse"]')?.click()}
+                                                    onClick={() => {
+                                                        const browseTab = document.querySelector('[data-value="browse"]');
+                                                        if (browseTab && browseTab instanceof HTMLElement) {
+                                                            browseTab.click();
+                                                        }
+                                                    }}
                                                 >
                                                     Browse Channels
                                                 </Button>
