@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
-import { Search, Filter, ExternalLink } from 'lucide-react';
+import { Search, Filter, ExternalLink, Cloud } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
@@ -13,6 +13,7 @@ import { Card } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useToast } from '../components/ui/use-toast';
 import { useAdmin } from '../contexts/AdminContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const CloudStream = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,6 +22,7 @@ const CloudStream = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const { settings } = useAdmin();
+  const isMobile = useIsMobile();
 
   // Group sources by category
   const groupedSources: Record<string, CloudStreamSource[]> = CLOUDSTREAM_SOURCES.reduce((acc, source) => {
@@ -98,7 +100,7 @@ const CloudStream = () => {
     </div>
   );
 
-  if (!settings.enableLiveTV) {
+  if (!settings.enableCloudStream) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -117,12 +119,15 @@ const CloudStream = () => {
       <Navbar />
       
       <main className="container mx-auto px-4 py-24">
-        <h1 className="mb-8 text-3xl font-bold text-center text-white">CloudStream Content</h1>
+        <h1 className="mb-8 text-3xl font-bold text-center text-white flex items-center justify-center gap-2">
+          <Cloud className="h-8 w-8 text-moviemate-primary" />
+          CloudStream Content
+        </h1>
         
         <div className="mb-8">
           <form onSubmit={handleSearch} className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="relative flex-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <Input
                   className="pl-8"
@@ -131,28 +136,30 @@ const CloudStream = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button 
-                type="submit"
-                className="bg-moviemate-primary hover:bg-moviemate-primary/80"
-              >
-                Search
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  type="submit"
+                  className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                >
+                  Search
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             
             {showFilters && (
               <div className="rounded-md border border-border bg-card p-4">
                 <h4 className="mb-4 text-sm font-medium">Filter by Source</h4>
                 <Tabs defaultValue={categories[0]}>
-                  <TabsList className="mb-4 grid w-full grid-cols-4 sm:grid-cols-5">
+                  <TabsList className="mb-4 grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 overflow-x-auto">
                     {categories.map(category => (
-                      <TabsTrigger key={category} value={category} className="capitalize">
+                      <TabsTrigger key={category} value={category} className="capitalize whitespace-nowrap">
                         {category}
                       </TabsTrigger>
                     ))}
@@ -186,8 +193,8 @@ const CloudStream = () => {
         </div>
         
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {Array.from({ length: isMobile ? 6 : 12 }).map((_, i) => (
               <div key={i} className="aspect-[2/3] animate-pulse rounded-lg bg-moviemate-card/40"></div>
             ))}
           </div>
@@ -197,7 +204,7 @@ const CloudStream = () => {
             <p className="mt-2">There was an error loading content. Please try again later.</p>
           </div>
         ) : data && data.results.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {data.results.map((content) => (
               <ContentCard key={content.id} content={content} />
             ))}

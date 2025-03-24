@@ -10,13 +10,15 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger
 } from "@/components/ui/navigation-menu";
-import { Tv, Film, Radio, TrendingUp, ListFilter } from 'lucide-react';
+import { Tv, Film, Radio, TrendingUp, ListFilter, Cloud } from 'lucide-react';
+import { useAdmin } from '@/contexts/AdminContext';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { settings } = useAdmin();
   
   useEffect(() => {
     const handleScroll = () => {
@@ -36,9 +38,15 @@ const Navbar = () => {
     { label: 'Home', path: '/' },
     { label: 'Movies', path: '/movies' },
     { label: 'Web Series', path: '/tv' },
-    { label: 'Live TV', path: '/live-tv' },
+    { label: 'Live TV', path: '/live-tv', isConditional: true, enabledSetting: 'enableLiveTV' },
+    { label: 'CloudStream', path: '/cloudstream', isConditional: true, enabledSetting: 'enableCloudStream' },
     { label: 'Trending', path: '/trending' },
   ];
+  
+  // Filter out conditional nav items based on settings
+  const filteredNavItems = navItems.filter(item => 
+    !item.isConditional || settings[item.enabledSetting as keyof typeof settings]
+  );
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -81,7 +89,7 @@ const Navbar = () => {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:gap-1">
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -135,7 +143,7 @@ const Navbar = () => {
               <SearchBar minimal />
             </div>
             <div className="flex flex-col gap-2">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
@@ -149,6 +157,7 @@ const Navbar = () => {
                   {item.label === 'Movies' && <Film size={18} />}
                   {item.label === 'Web Series' && <Tv size={18} />}
                   {item.label === 'Live TV' && <Radio size={18} />}
+                  {item.label === 'CloudStream' && <Cloud size={18} />}
                   {item.label === 'Trending' && <TrendingUp size={18} />}
                   {item.label}
                 </Link>
