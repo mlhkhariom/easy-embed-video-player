@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface AdminUser {
@@ -137,6 +136,7 @@ export interface TvShow {
   tagline?: string;
   type?: string;
   imdb_id?: string;
+  show_type?: 'web_series' | 'tv_serial'; // New field to distinguish between types
   networks?: {
     id: number;
     name: string;

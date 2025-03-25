@@ -16,6 +16,7 @@ import Navbar from '../components/Navbar';
 import TrendingSlider from '../components/TrendingSlider';
 import MovieCard from '../components/MovieCard';
 import SearchBar from '../components/SearchBar';
+import LiveTVSlider from '../components/LiveTVSlider';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Film, Tv, Globe, Play, PlayCircle } from 'lucide-react';
 
@@ -27,6 +28,8 @@ const Index = () => {
   const [popularTvShows, setPopularTvShows] = useState<TvShow[]>([]);
   const [indianMovies, setIndianMovies] = useState<Movie[]>([]);
   const [indianTvShows, setIndianTvShows] = useState<TvShow[]>([]);
+  const [webSeries, setWebSeries] = useState<TvShow[]>([]);
+  const [tvSerials, setTvSerials] = useState<TvShow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentFeatured, setCurrentFeatured] = useState<(Movie | TvShow) | null>(null);
   
@@ -61,6 +64,22 @@ const Index = () => {
         setPopularTvShows(popularTvShowsRes.results);
         setIndianMovies(indianMoviesRes.results);
         setIndianTvShows(indianTvShowsRes.results);
+        
+        // Separate Web Series and TV Serials
+        // For this example, we'll distinguish based on network and episode count
+        // Networks like Netflix, Prime Video, etc. are typically for web series
+        const webSeriesNetworks = [213, 1024, 2739, 2552, 2, 3]; // IDs for Netflix, Prime, Disney+, etc.
+        
+        // Simple heuristic: shows with many episodes are likely TV serials
+        setWebSeries(popularTvShowsRes.results.filter(show => 
+          webSeriesNetworks.some(id => show.networks?.some(network => network.id === id)) || 
+          (show.number_of_episodes < 100 && show.number_of_seasons < 10)
+        ));
+        
+        setTvSerials(popularTvShowsRes.results.filter(show => 
+          !webSeriesNetworks.some(id => show.networks?.some(network => network.id === id)) && 
+          (show.number_of_episodes >= 100 || show.number_of_seasons >= 10)
+        ));
         
         // Set a random featured content
         const allTop = [
@@ -293,7 +312,7 @@ const Index = () => {
             )}
           </section>
           
-          {/* Indian TV Shows */}
+          {/* Indian Web Series */}
           <section>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">Indian Web Series</h2>
@@ -327,6 +346,77 @@ const Index = () => {
             )}
           </section>
           
+          {/* Web Series (OTT) */}
+          <section>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Web Series</h2>
+              <Link to="/tv" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
+                View All
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+            
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
+                    <div className="aspect-[2/3]"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <motion.div 
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {webSeries.slice(0, 6).map((show, index) => (
+                  <motion.div key={show.id} variants={itemVariants} custom={index}>
+                    <MovieCard item={show} type="tv" />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </section>
+          
+          {/* TV Serials */}
+          <section>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">TV Serials</h2>
+              <Link to="/tv-serials" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
+                View All
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+            
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
+                    <div className="aspect-[2/3]"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <motion.div 
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {tvSerials.slice(0, 6).map((show, index) => (
+                  <motion.div key={show.id} variants={itemVariants} custom={index}>
+                    <MovieCard item={show} type="tv" />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </section>
+          
+          {/* Live TV Slider */}
+          <LiveTVSlider />
+          
           {/* Popular Movies */}
           <section>
             <div className="mb-6 flex items-center justify-between">
@@ -355,40 +445,6 @@ const Index = () => {
                 {popularMovies.slice(0, 6).map((movie, index) => (
                   <motion.div key={movie.id} variants={itemVariants} custom={index}>
                     <MovieCard item={movie} type="movie" />
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </section>
-          
-          {/* Web Series */}
-          <section>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Popular Web Series</h2>
-              <Link to="/explore" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
-                View All
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-            
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                    <div className="aspect-[2/3]"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {popularTvShows.slice(0, 6).map((show, index) => (
-                  <motion.div key={show.id} variants={itemVariants} custom={index}>
-                    <MovieCard item={show} type="tv" />
                   </motion.div>
                 ))}
               </motion.div>

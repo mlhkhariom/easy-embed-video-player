@@ -18,6 +18,7 @@ import CloudStream from "./pages/CloudStream";
 import CloudStreamDetails from "./pages/CloudStreamDetails";
 import Movies from "./pages/Movies";
 import WebSeries from "./pages/WebSeries";
+import TvSerials from "./pages/TvSerials";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/movies" element={<Movies />} />
                 <Route path="/movie/:id" element={<Movie />} />
                 <Route path="/tv" element={<WebSeries />} />
+                <Route path="/tv-serials" element={<TvSerials />} />
                 <Route path="/tv/:id" element={<TvShow />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/explore" element={<Explore />} />
