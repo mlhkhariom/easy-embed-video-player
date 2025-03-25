@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/Navbar';
@@ -25,7 +24,6 @@ const LiveTV = () => {
     queryFn: fetchIndianChannels,
   });
 
-  // Fetch stream URL when a channel is selected
   useEffect(() => {
     if (selectedChannel) {
       const fetchStream = async () => {
@@ -57,12 +55,10 @@ const LiveTV = () => {
       
       fetchStream();
       
-      // Scroll to top when a channel is selected
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [selectedChannel, toast]);
 
-  // Group channels by category
   const categorizedChannels = channels ? 
     channels.reduce((acc: Record<string, Channel[]>, channel) => {
       channel.categories.forEach(category => {
@@ -72,13 +68,12 @@ const LiveTV = () => {
       return acc;
     }, {}) : {};
 
-  // Get available categories based on admin settings
   const categories = channels ? 
     Array.from(new Set(channels.flatMap(channel => channel.categories)))
       .filter(category => {
         if (liveTVCategories.length > 0) {
           const adminCategory = liveTVCategories.find(cat => cat.id === category);
-          return adminCategory ? adminCategory.enabled : false;
+          return adminCategory ? adminCategory.isEnabled : false;
         }
         return Boolean(category);
       })
@@ -91,23 +86,19 @@ const LiveTV = () => {
         return a.localeCompare(b);
       }) : [];
 
-  // Filter channels based on active category
   const filteredChannels = activeCategory === 'all' 
     ? channels 
     : (categorizedChannels[activeCategory] || []);
 
-  // Get featured channels list
   const featuredChannelsList = channels ? 
     channels.filter(channel => featuredChannels.includes(channel.id)) 
     : [];
 
-  // Clear selected channel to return to the channel list
   const handleBackClick = useCallback(() => {
     setSelectedChannel(null);
     setStreamUrl(null);
   }, []);
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -168,7 +159,6 @@ const LiveTV = () => {
               />
             </div>
             
-            {/* Channel description card - displayed after the player */}
             <motion.div 
               className="mb-8 rounded-xl bg-moviemate-card p-6"
               initial={{ opacity: 0, y: 20 }}
@@ -223,7 +213,6 @@ const LiveTV = () => {
               </div>
             </motion.div>
             
-            {/* Related channels section */}
             {filteredChannels && filteredChannels.length > 0 && (
               <div className="mt-12">
                 <h2 className="mb-4 text-xl font-bold text-white">Related Channels</h2>
