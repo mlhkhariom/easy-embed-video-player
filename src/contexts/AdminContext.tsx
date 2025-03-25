@@ -12,12 +12,25 @@ interface AdminContextType {
   updateLiveTVCategories: (categories: LiveTVCategory[]) => void;
   featuredChannels: string[];
   updateFeaturedChannels: (channels: string[]) => void;
+  m3uSources: M3USource[];
+  updateM3USources: (sources: M3USource[]) => void;
+}
+
+export interface M3USource {
+  id: string;
+  name: string;
+  url: string;
+  isEnabled: boolean;
+  lastSynced?: string;
 }
 
 const defaultSettings: AdminSettings = {
   siteName: 'FreeCinema',
   siteDescription: 'Watch movies and TV shows online for free',
   primaryColor: '#9b87f5', // Default moviemate-primary color
+  secondaryColor: '#7E69AB',
+  accentColor: '#6E59A5',
+  sidebarBackgroundColor: '#1a1f2c',
   logoUrl: '',
   enableLiveTV: true,
   enableCloudStream: true,
@@ -51,6 +64,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [featuredChannels, setFeaturedChannels] = useState<string[]>(
     JSON.parse(localStorage.getItem('featuredChannels') || '[]')
   );
+  const [m3uSources, setM3USources] = useState<M3USource[]>(
+    JSON.parse(localStorage.getItem('m3uSources') || '[]')
+  );
 
   // Check if the user is already authenticated
   useEffect(() => {
@@ -74,6 +90,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('featuredChannels', JSON.stringify(featuredChannels));
   }, [featuredChannels]);
+
+  // Save M3U sources to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('m3uSources', JSON.stringify(m3uSources));
+  }, [m3uSources]);
 
   const login = (email: string, password: string): boolean => {
     if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
@@ -101,6 +122,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setFeaturedChannels(channels);
   };
 
+  const updateM3USources = (sources: M3USource[]) => {
+    setM3USources(sources);
+  };
+
   return (
     <AdminContext.Provider
       value={{
@@ -113,6 +138,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateLiveTVCategories,
         featuredChannels,
         updateFeaturedChannels,
+        m3uSources,
+        updateM3USources,
       }}
     >
       {children}

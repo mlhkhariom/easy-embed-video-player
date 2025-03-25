@@ -1,9 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useToast } from '../../components/ui/use-toast';
-import { MoonStar, Sun, Menu, X, Settings, Film, Radio, Home, Cloud } from 'lucide-react';
+import { 
+  MoonStar, 
+  Sun, 
+  Menu, 
+  X, 
+  Settings, 
+  Film, 
+  Radio, 
+  Home, 
+  Cloud,
+  Upload,
+  RefreshCw,
+  Layers,
+  LayoutDashboard
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,7 +27,7 @@ interface AdminLayoutProps {
 }
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
-  const { logout } = useAdmin();
+  const { logout, settings } = useAdmin();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,11 +35,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const isMobile = useIsMobile();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
+  // Apply theme when component mounts or theme changes
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
   const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
     toast({
       title: "Theme Changed",
-      description: `Switched to ${theme === 'light' ? 'dark' : 'light'} mode`,
+      description: `Switched to ${newTheme} mode`,
     });
   };
 
@@ -39,7 +59,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   };
 
   const menuItems = [
-    { path: '/admin', label: 'Dashboard', icon: <Home className="mr-2 h-4 w-4" /> },
+    { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="mr-2 h-4 w-4" /> },
     { path: '/admin/content', label: 'Content', icon: <Film className="mr-2 h-4 w-4" /> },
     { path: '/admin/live-tv', label: 'Live TV', icon: <Radio className="mr-2 h-4 w-4" /> },
     { path: '/admin/cloudstream', label: 'CloudStream', icon: <Cloud className="mr-2 h-4 w-4" /> },
@@ -52,9 +72,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <li key={item.path}>
           <Link
             to={item.path}
-            className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium ${
+            className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               location.pathname === item.path
-                ? 'bg-moviemate-primary text-white'
+                ? `bg-${settings.primaryColor} text-white bg-opacity-90`
                 : 'hover:bg-moviemate-card/50 text-gray-300 hover:text-white'
             }`}
             onClick={() => isMobile && setIsOpen(false)}
@@ -72,7 +92,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       <div>
         <div className="mb-6 flex items-center justify-between">
           <Link to="/admin" className="flex items-center">
-            <span className="text-xl font-bold text-white">Admin Panel</span>
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="h-8 w-auto mr-2" />
+            ) : null}
+            <span className="text-xl font-bold text-white">{settings.siteName} Admin</span>
           </Link>
           {isMobile && (
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>

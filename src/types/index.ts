@@ -1,104 +1,22 @@
 
-export interface Movie {
-  id: number;
-  title: string;
-  poster_path: string;
-  backdrop_path: string;
-  overview: string;
-  release_date: string;
-  vote_average: number;
-  vote_count: number;
-  genre_ids: number[];
-  genres?: Genre[];
-  runtime?: number;
-  imdb_id?: string;
-  name?: string; // For compatibility with search results
-}
+// src/types/index.ts
 
-export interface TvShow {
-  id: number;
+export interface AdminUser {
+  email: string;
+  password: string;
   name: string;
-  poster_path: string;
-  backdrop_path: string;
-  overview: string;
-  first_air_date: string;
-  vote_average: number;
-  vote_count: number;
-  genre_ids: number[];
-  genres?: Genre[];
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  seasons?: Season[];
-  imdb_id?: string;
-  title?: string; // For compatibility with search results
-}
-
-export interface Season {
-  id: number;
-  name: string;
-  season_number: number;
-  episode_count: number;
-  poster_path: string;
-  overview: string;
-  episodes?: Episode[];
-}
-
-export interface Episode {
-  id: number;
-  name: string;
-  episode_number: number;
-  season_number: number;
-  overview: string;
-  still_path: string;
-  air_date: string;
-  vote_average: number;
-}
-
-export interface Genre {
-  id: number;
-  name: string;
-}
-
-export interface MovieResponse {
-  page: number;
-  results: Movie[];
-  total_pages: number;
-  total_results: number;
-}
-
-export interface TvResponse {
-  page: number;
-  results: TvShow[];
-  total_pages: number;
-  total_results: number;
-}
-
-export interface MultiSearchResponse {
-  page: number;
-  results: (Movie | TvShow)[];
-  total_pages: number;
-  total_results: number;
-}
-
-export interface Cast {
-  id: number;
-  name: string;
-  character: string;
-  profile_path: string | null;
-}
-
-export interface Credits {
-  id: number;
-  cast: Cast[];
 }
 
 export interface AdminSettings {
   siteName: string;
   siteDescription: string;
   primaryColor: string;
+  secondaryColor?: string;
+  accentColor?: string;
+  sidebarBackgroundColor?: string;
   logoUrl: string;
   enableLiveTV: boolean;
-  enableCloudStream: boolean; // New setting for CloudStream
+  enableCloudStream: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   tmdbApiKey: string;
@@ -109,20 +27,53 @@ export interface AdminSettings {
   };
 }
 
-export interface AdminUser {
-  email: string;
-  password: string;
-  name: string;
-}
-
 export interface LiveTVCategory {
   id: string;
   name: string;
-  enabled: boolean;
   order: number;
+  icon: string;
+  isEnabled: boolean;
 }
 
-export interface LiveTVSettings {
-  categories: LiveTVCategory[];
-  featuredChannels: string[];
+export interface M3UData {
+  url: string;
+  name: string;
+  channels: Channel[];
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  url: string;
+  logo?: string;
+  category?: string;
+  language?: string;
+}
+
+export interface CloudStreamSource {
+  id: string;
+  name: string;
+  url: string;
+  logo?: string;
+  language?: string;
+  categories: string[];
+  repo: string;
+  description?: string;
+  is_enabled: boolean;
+}
+
+export interface CloudStreamContent {
+  id: string;
+  source_id: string;
+  title: string;
+  type: 'movie' | 'series';
+  year?: number;
+  poster?: string;
+  backdrop?: string;
+  rating?: number;
+  plot?: string;
+  genres?: string[];
+  url: string;
+  created_at: string;
+  updated_at: string;
 }
