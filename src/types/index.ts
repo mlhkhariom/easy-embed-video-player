@@ -136,6 +136,7 @@ export interface TvShow {
   status?: string;
   tagline?: string;
   type?: string;
+  imdb_id?: string;
   networks?: {
     id: number;
     name: string;
