@@ -12,37 +12,55 @@ import {
 } from "@/components/ui/carousel";
 import { fetchIndianChannels } from '../services/iptv';
 import { Channel as IPTVChannel } from '../services/iptv';
+import { useToast } from '@/components/ui/use-toast';
+import { handleAPIError } from '../services/error-handler';
 
 const LiveTVSlider = () => {
   const [channels, setChannels] = useState<IPTVChannel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchChannels = async () => {
       try {
         setIsLoading(true);
-        // Get a subset of popular channels
+        // Get Indian channels
         const data = await fetchIndianChannels();
+        
+        if (data.length === 0) {
+          toast({
+            title: "No channels found",
+            description: "Could not find any Indian live TV channels. Please try again later.",
+            variant: "default"
+          });
+        }
+        
         setChannels(data.slice(0, 10)); // Limit to 10 channels for the slider
       } catch (error) {
         console.error('Error fetching live TV channels:', error);
+        const errorMessage = handleAPIError(error);
+        toast({
+          title: "Error loading live TV",
+          description: errorMessage.message || "There was a problem loading live TV channels. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchChannels();
-  }, []);
+  }, [toast]);
 
   if (isLoading) {
     return (
       <div className="w-full px-4">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Live TV</h2>
+          <h2 className="text-2xl font-bold text-white">Indian Live TV</h2>
         </div>
         <div className="grid grid-cols-3 gap-4 md:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
+            <div key={i} className="animate-pulse rounded-lg bg-moviemate-card/60 backdrop-blur-sm">
               <div className="aspect-video"></div>
               <div className="p-2">
                 <div className="h-4 w-2/3 rounded-full bg-gray-700"></div>
@@ -61,7 +79,7 @@ const LiveTVSlider = () => {
   return (
     <div className="w-full px-4">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Live TV</h2>
+        <h2 className="text-2xl font-bold text-white">Indian Live TV</h2>
         <Link to="/live-tv" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
           View All
           <svg
@@ -91,7 +109,7 @@ const LiveTVSlider = () => {
         <CarouselContent>
           {channels.map((channel) => (
             <CarouselItem key={channel.id} className="basis-1/2 md:basis-1/4 lg:basis-1/5">
-              <div className="relative overflow-hidden rounded-lg bg-moviemate-card transition-all hover:scale-[1.02] hover:shadow-xl">
+              <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-moviemate-card to-purple-900/30 transition-all hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
                 <div className="relative aspect-video overflow-hidden">
                   {channel.logo ? (
                     <img
@@ -111,6 +129,9 @@ const LiveTVSlider = () => {
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-3">
                   <h3 className="truncate text-sm font-medium text-white">{channel.name}</h3>
+                  {channel.language && (
+                    <span className="text-xs text-gray-300">{channel.language}</span>
+                  )}
                 </div>
                 <Link
                   to={`/live-tv?channel=${channel.id}`}

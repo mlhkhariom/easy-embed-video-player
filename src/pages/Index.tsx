@@ -2,13 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MovieResponse, TvResponse, Movie, TvShow } from '../types';
+import { Movie, TvShow } from '../types';
 import { 
-  getTrendingMovies, 
-  getPopularMovies, 
-  getTopRatedMovies,
-  getTrendingTvShows,
-  getPopularTvShows,
   getIndianMovies,
   getIndianTVShows
 } from '../services/tmdb';
@@ -17,88 +12,79 @@ import TrendingSlider from '../components/TrendingSlider';
 import MovieCard from '../components/MovieCard';
 import SearchBar from '../components/SearchBar';
 import LiveTVSlider from '../components/LiveTVSlider';
+import ContinueWatching from '../components/ContinueWatching';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Film, Tv, Globe, Play, PlayCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { handleAPIError } from '../services/error-handler';
 
 const Index = () => {
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
-  const [trendingTvShows, setTrendingTvShows] = useState<TvShow[]>([]);
-  const [popularTvShows, setPopularTvShows] = useState<TvShow[]>([]);
   const [indianMovies, setIndianMovies] = useState<Movie[]>([]);
   const [indianTvShows, setIndianTvShows] = useState<TvShow[]>([]);
   const [webSeries, setWebSeries] = useState<TvShow[]>([]);
   const [tvSerials, setTvSerials] = useState<TvShow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentFeatured, setCurrentFeatured] = useState<(Movie | TvShow) | null>(null);
+  const { toast } = useToast();
   
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
-        // Fetch all data in parallel
+        // Fetch Indian content only
         const [
-          trendingMoviesRes,
-          popularMoviesRes,
-          topRatedMoviesRes,
-          trendingTvShowsRes,
-          popularTvShowsRes,
           indianMoviesRes,
           indianTvShowsRes
         ] = await Promise.all([
-          getTrendingMovies(),
-          getPopularMovies(),
-          getTopRatedMovies(),
-          getTrendingTvShows(),
-          getPopularTvShows(),
           getIndianMovies(),
           getIndianTVShows()
         ]);
         
-        setTrendingMovies(trendingMoviesRes.results);
-        setPopularMovies(popularMoviesRes.results);
-        setTopRatedMovies(topRatedMoviesRes.results);
-        setTrendingTvShows(trendingTvShowsRes.results);
-        setPopularTvShows(popularTvShowsRes.results);
         setIndianMovies(indianMoviesRes.results);
         setIndianTvShows(indianTvShowsRes.results);
         
         // Separate Web Series and TV Serials
-        // For this example, we'll distinguish based on network and episode count
-        // Networks like Netflix, Prime Video, etc. are typically for web series
-        const webSeriesNetworks = [213, 1024, 2739, 2552, 2, 3]; // IDs for Netflix, Prime, Disney+, etc.
+        const webSeriesResults = indianTvShowsRes.results.filter(show => 
+          (show.number_of_episodes < 100 && show.number_of_seasons < 10) ||
+          show.show_type === 'web_series'
+        );
         
-        // Simple heuristic: shows with many episodes are likely TV serials
-        setWebSeries(popularTvShowsRes.results.filter(show => 
-          webSeriesNetworks.some(id => show.networks?.some(network => network.id === id)) || 
-          (show.number_of_episodes < 100 && show.number_of_seasons < 10)
-        ));
+        const tvSerialsResults = indianTvShowsRes.results.filter(show => 
+          (show.number_of_episodes >= 100 || show.number_of_seasons >= 10) ||
+          show.show_type === 'tv_serial'
+        );
         
-        setTvSerials(popularTvShowsRes.results.filter(show => 
-          !webSeriesNetworks.some(id => show.networks?.some(network => network.id === id)) && 
-          (show.number_of_episodes >= 100 || show.number_of_seasons >= 10)
-        ));
+        setWebSeries(webSeriesResults);
+        setTvSerials(tvSerialsResults);
         
-        // Set a random featured content
-        const allTop = [
-          ...trendingMoviesRes.results.slice(0, 3),
-          ...trendingTvShowsRes.results.slice(0, 3)
+        // Set a featured content from Indian movies or shows
+        const allTopIndian = [
+          ...indianMoviesRes.results.slice(0, 3),
+          ...webSeriesResults.slice(0, 3)
         ];
-        setCurrentFeatured(allTop[Math.floor(Math.random() * allTop.length)]);
+        
+        if (allTopIndian.length > 0) {
+          setCurrentFeatured(allTopIndian[Math.floor(Math.random() * allTopIndian.length)]);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
+        const errorMessage = handleAPIError(error);
+        toast({
+          title: "Error loading content",
+          description: errorMessage.message || "There was a problem loading content. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchData();
-  }, []);
+  }, [toast]);
   
   // Combine trending movies and TV shows for the main slider
-  const trendingContent = [...trendingMovies.slice(0, 5), ...trendingTvShows.slice(0, 5)];
+  const trendingContent = [...indianMovies.slice(0, 5), ...indianTvShows.slice(0, 5)];
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -120,7 +106,7 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen bg-moviemate-background">
+    <div className="min-h-screen bg-gradient-to-b from-moviemate-background to-purple-900/20">
       <Navbar />
       
       <main className="container mx-auto px-4 pt-16">
@@ -175,7 +161,7 @@ const Index = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.9, duration: 0.7 }}
                 >
-                  {currentFeatured.overview.slice(0, 150)}...
+                  {currentFeatured.overview ? (currentFeatured.overview.slice(0, 150) + '...') : 'No description available'}
                 </motion.p>
                 
                 <motion.div
@@ -197,8 +183,8 @@ const Index = () => {
         )}
         
         {/* Hero Search Section for Mobile */}
-        <div className="mb-8 flex flex-col gap-4 rounded-xl bg-moviemate-card p-6 md:hidden">
-          <h1 className="text-2xl font-bold text-white">Find your favorite movies and TV shows</h1>
+        <div className="mb-8 flex flex-col gap-4 rounded-xl bg-gradient-to-br from-moviemate-card/70 to-purple-900/30 p-6 backdrop-blur-sm md:hidden">
+          <h1 className="text-2xl font-bold text-white">Find your favorite Indian movies and shows</h1>
           <SearchBar minimal className="w-full" />
         </div>
         
@@ -214,9 +200,14 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <TrendingSlider items={trendingContent} title="Featured Content" />
+            <TrendingSlider items={trendingContent} title="Featured Indian Content" />
           </motion.div>
         )}
+        
+        {/* Continue Watching Section */}
+        <div className="mt-12">
+          <ContinueWatching />
+        </div>
         
         {/* Quick Navigation */}
         <motion.div 
@@ -226,15 +217,12 @@ const Index = () => {
           animate="visible"
         >
           <motion.div variants={itemVariants}>
-            <Link to="/trending">
+            <Link to="/movies">
               <div className="group flex flex-col items-center gap-3 rounded-xl bg-gradient-to-br from-purple-600/20 to-purple-900/20 p-6 text-center backdrop-blur transition hover:from-purple-600/30 hover:to-purple-900/30">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600/30 group-hover:bg-purple-600/50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                    <polyline points="17 6 23 6 23 12"></polyline>
-                  </svg>
+                  <Film className="text-white" size={20} />
                 </div>
-                <span className="text-lg font-semibold text-white">Trending</span>
+                <span className="text-lg font-semibold text-white">Movies</span>
               </div>
             </Link>
           </motion.div>
@@ -251,26 +239,23 @@ const Index = () => {
           </motion.div>
           
           <motion.div variants={itemVariants}>
+            <Link to="/tv-serials">
+              <div className="group flex flex-col items-center gap-3 rounded-xl bg-gradient-to-br from-pink-600/20 to-pink-900/20 p-6 text-center backdrop-blur transition hover:from-pink-600/30 hover:to-pink-900/30">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-600/30 group-hover:bg-pink-600/50">
+                  <Tv className="text-white" size={20} />
+                </div>
+                <span className="text-lg font-semibold text-white">TV Serials</span>
+              </div>
+            </Link>
+          </motion.div>
+          
+          <motion.div variants={itemVariants}>
             <Link to="/live-tv">
               <div className="group flex flex-col items-center gap-3 rounded-xl bg-gradient-to-br from-teal-600/20 to-teal-900/20 p-6 text-center backdrop-blur transition hover:from-teal-600/30 hover:to-teal-900/30">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-600/30 group-hover:bg-teal-600/50">
                   <Globe className="text-white" size={20} />
                 </div>
                 <span className="text-lg font-semibold text-white">Live TV</span>
-              </div>
-            </Link>
-          </motion.div>
-          
-          <motion.div variants={itemVariants}>
-            <Link to="/search">
-              <div className="group flex flex-col items-center gap-3 rounded-xl bg-gradient-to-br from-pink-600/20 to-pink-900/20 p-6 text-center backdrop-blur transition hover:from-pink-600/30 hover:to-pink-900/30">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-600/30 group-hover:bg-pink-600/50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </div>
-                <span className="text-lg font-semibold text-white">Search</span>
               </div>
             </Link>
           </motion.div>
@@ -282,7 +267,7 @@ const Index = () => {
           <section>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">Indian Movies</h2>
-              <Link to="/genre/movie/hi" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
+              <Link to="/movies" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
                 View All
                 <ArrowRight size={16} />
               </Link>
@@ -316,40 +301,6 @@ const Index = () => {
           <section>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">Indian Web Series</h2>
-              <Link to="/genre/tv/hi" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
-                View All
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-            
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                    <div className="aspect-[2/3]"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {indianTvShows.slice(0, 6).map((show, index) => (
-                  <motion.div key={show.id} variants={itemVariants} custom={index}>
-                    <MovieCard item={show} type="tv" />
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </section>
-          
-          {/* Web Series (OTT) */}
-          <section>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Web Series</h2>
               <Link to="/tv" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
                 View All
                 <ArrowRight size={16} />
@@ -383,7 +334,7 @@ const Index = () => {
           {/* TV Serials */}
           <section>
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">TV Serials</h2>
+              <h2 className="text-2xl font-bold text-white">Indian TV Serials</h2>
               <Link to="/tv-serials" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
                 View All
                 <ArrowRight size={16} />
@@ -416,53 +367,19 @@ const Index = () => {
           
           {/* Live TV Slider */}
           <LiveTVSlider />
-          
-          {/* Popular Movies */}
-          <section>
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Popular Movies</h2>
-              <Link to="/explore" className="flex items-center gap-1 text-sm font-medium text-moviemate-primary hover:underline">
-                View All
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-            
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                    <div className="aspect-[2/3]"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {popularMovies.slice(0, 6).map((movie, index) => (
-                  <motion.div key={movie.id} variants={itemVariants} custom={index}>
-                    <MovieCard item={movie} type="movie" />
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </section>
         </div>
         
         {/* CTA Section */}
         <motion.div 
-          className="my-16 overflow-hidden rounded-xl bg-gradient-to-r from-moviemate-primary/20 to-purple-900/20 p-8 lg:p-12"
+          className="my-16 overflow-hidden rounded-xl bg-gradient-to-r from-moviemate-primary/20 to-purple-900/20 p-8 backdrop-blur-sm lg:p-12"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <div className="flex flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left">
             <div className="max-w-2xl">
-              <h2 className="mb-3 text-2xl font-bold text-white lg:text-3xl">Discover, Watch, and Enjoy Your Favorite Content</h2>
-              <p className="text-gray-300">Access thousands of movies and TV shows with our easy-to-use streaming platform. Start watching now!</p>
+              <h2 className="mb-3 text-2xl font-bold text-white lg:text-3xl">Discover Indian Entertainment</h2>
+              <p className="text-gray-300">Access thousands of Indian movies, web series, and TV shows with our easy-to-use streaming platform.</p>
             </div>
             <Button className="bg-moviemate-primary px-6 py-6 text-base hover:bg-moviemate-primary/90">Start Watching</Button>
           </div>
