@@ -9,7 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      cloudstream_content: {
+        Row: {
+          backdrop: string | null
+          created_at: string | null
+          external_id: string | null
+          id: string
+          plot: string | null
+          poster: string | null
+          rating: number | null
+          source_id: string | null
+          title: string
+          type: string
+          updated_at: string | null
+          year: number | null
+        }
+        Insert: {
+          backdrop?: string | null
+          created_at?: string | null
+          external_id?: string | null
+          id?: string
+          plot?: string | null
+          poster?: string | null
+          rating?: number | null
+          source_id?: string | null
+          title: string
+          type: string
+          updated_at?: string | null
+          year?: number | null
+        }
+        Update: {
+          backdrop?: string | null
+          created_at?: string | null
+          external_id?: string | null
+          id?: string
+          plot?: string | null
+          poster?: string | null
+          rating?: number | null
+          source_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cloudstream_content_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "cloudstream_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cloudstream_sources: {
+        Row: {
+          categories: string[] | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_enabled: boolean | null
+          language: string | null
+          logo: string | null
+          name: string
+          repo: string
+          url: string
+        }
+        Insert: {
+          categories?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string | null
+          logo?: string | null
+          name: string
+          repo: string
+          url: string
+        }
+        Update: {
+          categories?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string | null
+          logo?: string | null
+          name?: string
+          repo?: string
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

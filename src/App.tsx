@@ -23,6 +23,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLiveTV from "./pages/admin/AdminLiveTV";
 import AdminContent from "./pages/admin/AdminContent";
+import AdminCloudStream from "./pages/admin/AdminCloudStream";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
@@ -70,6 +71,7 @@ const App = () => (
                 <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/admin/live-tv" element={<AdminGuard><AdminLiveTV /></AdminGuard>} />
                 <Route path="/admin/content" element={<AdminGuard><AdminContent /></AdminGuard>} />
+                <Route path="/admin/cloudstream" element={<AdminGuard><AdminCloudStream /></AdminGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

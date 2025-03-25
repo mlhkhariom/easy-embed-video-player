@@ -1,8 +1,10 @@
 
 import { safeFetch, handleAPIError } from './error-handler';
+import { supabase } from "@/integrations/supabase/client";
 
 // Define base types for CloudStream content
 export interface CloudStreamSource {
+  id?: string;
   name: string;
   url: string;
   logo?: string;
@@ -10,6 +12,7 @@ export interface CloudStreamSource {
   categories?: string[];
   repo: string;
   description?: string;
+  is_enabled?: boolean;
 }
 
 export interface CloudStreamContent {
@@ -23,6 +26,7 @@ export interface CloudStreamContent {
   type: 'movie' | 'series';
   url: string;
   source: string;
+  external_id?: string;
 }
 
 export interface CloudStreamSearchResponse {
@@ -82,118 +86,98 @@ const KEKIK_SOURCES: CloudStreamSource[] = [
 // Combined sources
 export const CLOUDSTREAM_SOURCES = [...CSX_SOURCES, ...PHISHER_SOURCES, ...KEKIK_SOURCES].sort((a, b) => a.name.localeCompare(b.name));
 
-// Fetch raw content from GitHub repository
-const fetchRepoContent = async (url: string): Promise<string> => {
+// Sync predefined sources to Supabase
+export const syncSourcesToSupabase = async (): Promise<boolean> => {
   try {
-    const response = await safeFetch(url);
-    return await response.text();
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'syncSources',
+        sources: CLOUDSTREAM_SOURCES
+      }),
+    });
+    
+    const result = await response.json();
+    return result.success;
   } catch (error) {
-    throw handleAPIError(error);
+    console.error('Error syncing sources to Supabase:', error);
+    return false;
   }
 };
 
-// Parse raw Kotlin file content to extract information
-const parseProviderKotlinFile = (content: string, source: CloudStreamSource): CloudStreamSource => {
-  const updatedSource = { ...source };
-  
-  // Extract name
-  const nameMatch = content.match(/name\s*=\s*"([^"]+)"/);
-  if (nameMatch) {
-    updatedSource.name = nameMatch[1];
-  }
-  
-  // Extract language
-  const languageMatch = content.match(/lang\s*=\s*"([^"]+)"/);
-  if (languageMatch) {
-    updatedSource.language = languageMatch[1];
-  }
-  
-  // Extract logo
-  const logoMatch = content.match(/iconUrl\s*=\s*"([^"]+)"/);
-  if (logoMatch) {
-    updatedSource.logo = logoMatch[1];
-  }
-  
-  // Try to extract description
-  const descMatch = content.match(/override\s+val\s+mainUrl\s*=\s*"([^"]+)"/);
-  if (descMatch) {
-    updatedSource.description = `Provider for ${descMatch[1]}`;
-  }
-  
-  return updatedSource;
-};
-
-// Fetch providers from GitHub (only when explicitly requested)
-export const fetchProvidersFromGitHub = async (repo: keyof typeof CS_REPOS): Promise<CloudStreamSource[]> => {
-  try {
-    const repoInfo = CS_REPOS[repo];
-    const response = await safeFetch(repoInfo.apiUrl);
-    const data = await response.json();
-    
-    // Filter only directories (potential providers)
-    const providerDirs = data.filter((item: any) => item.type === 'dir' && !item.name.startsWith('.'));
-    
-    const providers: CloudStreamSource[] = [];
-    
-    for (const dir of providerDirs) {
-      try {
-        // Check if directory contains a provider file
-        const providerFile = `${repoInfo.url}/${dir.name}/src/main/kotlin/com/${dir.name.toLowerCase()}/${dir.name}.kt`;
-        const content = await fetchRepoContent(providerFile);
-        
-        // Create base provider info
-        const provider: CloudStreamSource = {
-          name: dir.name,
-          url: providerFile,
-          repo: repo,
-          categories: []
-        };
-        
-        // Parse provider details from content
-        const enrichedProvider = parseProviderKotlinFile(content, provider);
-        providers.push(enrichedProvider);
-      } catch (error) {
-        console.warn(`Failed to fetch provider ${dir.name} from ${repo}:`, error);
-        // Continue with next provider
-      }
-    }
-    
-    return providers;
-    
-  } catch (error) {
-    console.error(`Error fetching providers from ${repo}:`, error);
-    throw handleAPIError(error);
-  }
-};
-
-// Get all available sources with metadata
+// Get all available sources from Supabase with realtime support
 export const fetchAllSources = async (): Promise<CloudStreamSource[]> => {
   try {
-    // First return the predefined list
-    return CLOUDSTREAM_SOURCES;
+    const { data: sources, error } = await supabase
+      .from('cloudstream_sources')
+      .select('*')
+      .eq('is_enabled', true)
+      .order('name');
     
-    // In a production implementation, we would fetch and parse the actual repositories
-    // This is commented out because it would make too many API calls to GitHub
-    // const csx = await fetchProvidersFromGitHub('CSX');
-    // const phisher = await fetchProvidersFromGitHub('PHISHER');
-    // const kekik = await fetchProvidersFromGitHub('KEKIK');
-    // return [...csx, ...phisher, ...kekik].sort((a, b) => a.name.localeCompare(b.name));
+    if (error) {
+      throw error;
+    }
+    
+    return sources || [];
   } catch (error) {
     console.error('Error fetching CloudStream sources:', error);
     return CLOUDSTREAM_SOURCES; // Fallback to static list if API fails
   }
 };
 
-// Mock search function as we can't actually use the CloudStream backend
+// Search content with Supabase and real-time data
 export const searchCloudStreamContent = async (
   query: string,
   sourceIds: string[] = []
 ): Promise<CloudStreamSearchResponse> => {
   try {
-    // In a real implementation, we would call the actual API
-    // For demo purposes, we'll return mock data based on the query
+    // First, try to get real content from Supabase
+    let supabaseQuery = supabase
+      .from('cloudstream_content')
+      .select('*, cloudstream_sources(name)')
+      .order('title');
     
-    // Simulate API delay
+    // Add search filter if query is provided
+    if (query && query.trim() !== '') {
+      supabaseQuery = supabaseQuery.ilike('title', `%${query}%`);
+    }
+    
+    // Add source filter if sourceIds are provided
+    if (sourceIds.length > 0) {
+      supabaseQuery = supabaseQuery.in('cloudstream_sources.name', sourceIds);
+    }
+    
+    const { data, error } = await supabaseQuery;
+    
+    if (error) {
+      throw error;
+    }
+    
+    // If we got data from Supabase, format and return it
+    if (data && data.length > 0) {
+      const results: CloudStreamContent[] = data.map(item => ({
+        id: item.id,
+        title: item.title,
+        year: item.year,
+        poster: item.poster,
+        backdrop: item.backdrop,
+        plot: item.plot,
+        rating: item.rating,
+        type: item.type as 'movie' | 'series',
+        url: `/cloudstream/${item.cloudstream_sources.name}/${item.external_id}`,
+        source: item.cloudstream_sources.name
+      }));
+      
+      return {
+        results,
+        hasMore: false // We don't support pagination for real data yet
+      };
+    }
+    
+    // If no data in Supabase yet, fall back to mock data
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // Generate mock results
@@ -241,31 +225,92 @@ export const searchCloudStreamContent = async (
   }
 };
 
-// Get content details (mock implementation)
+// Get content details from Supabase
 export const getCloudStreamContentDetails = async (
-  id: string,
+  contentId: string,
   sourceId: string
 ): Promise<CloudStreamContent | null> => {
   try {
+    // Try to get from Supabase first
+    const { data, error } = await supabase
+      .from('cloudstream_content')
+      .select('*, cloudstream_sources(name)')
+      .eq('external_id', contentId)
+      .eq('cloudstream_sources.name', sourceId)
+      .maybeSingle();
+    
+    if (error) {
+      throw error;
+    }
+    
+    // If we found the content in Supabase, return it
+    if (data) {
+      return {
+        id: data.id,
+        title: data.title,
+        year: data.year,
+        poster: data.poster,
+        backdrop: data.backdrop,
+        plot: data.plot,
+        rating: data.rating,
+        type: data.type as 'movie' | 'series',
+        url: `/cloudstream/${data.cloudstream_sources.name}/${data.external_id}`,
+        source: data.cloudstream_sources.name,
+        external_id: data.external_id
+      };
+    }
+    
     // Find the source
     const source = CLOUDSTREAM_SOURCES.find(s => s.name === sourceId);
     if (!source) return null;
     
-    // Mock content details
+    // Mock content details as fallback
     return {
-      id,
-      title: `${sourceId} Content ${id}`,
+      id: contentId,
+      title: `${sourceId} Content ${contentId}`,
       year: 2022,
-      poster: `https://picsum.photos/seed/${sourceId}${id}/300/450`,
-      backdrop: `https://picsum.photos/seed/${sourceId}${id}-bg/1280/720`,
+      poster: `https://picsum.photos/seed/${sourceId}${contentId}/300/450`,
+      backdrop: `https://picsum.photos/seed/${sourceId}${contentId}-bg/1280/720`,
       plot: `This is a detailed description for content from ${sourceId}.`,
       rating: 8.5,
       type: Math.random() > 0.5 ? 'movie' : 'series',
-      url: `#/cloudstream/${sourceId}/${id}`,
-      source: sourceId
+      url: `#/cloudstream/${sourceId}/${contentId}`,
+      source: sourceId,
+      external_id: contentId
     };
   } catch (error) {
     console.error('Error fetching CloudStream content details:', error);
     return null;
   }
+};
+
+// Listen for real-time updates to CloudStream content
+export const subscribeToCloudStreamUpdates = (callback: () => void) => {
+  const channel = supabase
+    .channel('cloudstream-changes')
+    .on('postgres_changes', 
+      {
+        event: '*', 
+        schema: 'public',
+        table: 'cloudstream_content'
+      }, 
+      () => {
+        callback();
+      }
+    )
+    .on('postgres_changes', 
+      {
+        event: '*', 
+        schema: 'public',
+        table: 'cloudstream_sources'
+      }, 
+      () => {
+        callback();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };

@@ -1,146 +1,128 @@
 
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
-import { cn } from '@/lib/utils';
+import { useToast } from '../../components/ui/use-toast';
+import { MoonStar, Sun, Menu, X, Settings, Film, Radio, Home, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  LayoutDashboard,
-  Settings,
-  Radio,
-  Film,
-  LogOut,
-  Menu,
-  X,
-  ChevronRight,
-  Home
-} from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/components/ui/use-toast';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { logout, settings } = useAdmin();
+const AdminLayout = ({ children }: AdminLayoutProps) => {
+  const { logout } = useAdmin();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const location = useLocation();
-  
-  const menuItems = [
-    {
-      path: '/admin',
-      label: 'Dashboard',
-      icon: <LayoutDashboard className="h-5 w-5" />
-    },
-    {
-      path: '/admin/settings',
-      label: 'Site Settings',
-      icon: <Settings className="h-5 w-5" />
-    },
-    {
-      path: '/admin/live-tv',
-      label: 'Live TV',
-      icon: <Radio className="h-5 w-5" />
-    },
-    {
-      path: '/admin/content',
-      label: 'Content',
-      icon: <Film className="h-5 w-5" />
-    },
-    {
-      path: '/',
-      label: 'View Site',
-      icon: <Home className="h-5 w-5" />
-    }
-  ];
-  
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+    toast({
+      title: "Theme Changed",
+      description: `Switched to ${theme === 'light' ? 'dark' : 'light'} mode`,
+    });
+  };
+
   const handleLogout = () => {
     logout();
     toast({
-      title: 'Logged out',
-      description: 'You have been logged out of the admin panel',
+      title: "Logged Out",
+      description: "You have been logged out successfully",
     });
     navigate('/admin/login');
   };
-  
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-  
-  return (
-    <div className="flex h-screen bg-moviemate-background">
-      {/* Mobile sidebar toggle button */}
-      <button
-        className="fixed left-4 top-4 z-50 block rounded-full bg-moviemate-primary p-2 text-white shadow-lg md:hidden"
-        onClick={toggleSidebar}
-      >
-        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-      
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 transform bg-moviemate-card/90 backdrop-blur-md transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {/* Sidebar header */}
-        <div className="flex h-20 items-center justify-center border-b border-gray-800">
-          <Link 
-            to="/admin" 
-            className="flex items-center gap-2 text-xl font-bold text-white"
+
+  const menuItems = [
+    { path: '/admin', label: 'Dashboard', icon: <Home className="mr-2 h-4 w-4" /> },
+    { path: '/admin/content', label: 'Content', icon: <Film className="mr-2 h-4 w-4" /> },
+    { path: '/admin/live-tv', label: 'Live TV', icon: <Radio className="mr-2 h-4 w-4" /> },
+    { path: '/admin/cloudstream', label: 'CloudStream', icon: <Cloud className="mr-2 h-4 w-4" /> },
+    { path: '/admin/settings', label: 'Settings', icon: <Settings className="mr-2 h-4 w-4" /> },
+  ];
+
+  const renderMenuItems = () => (
+    <ul className="space-y-2">
+      {menuItems.map((item) => (
+        <li key={item.path}>
+          <Link
+            to={item.path}
+            className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium ${
+              location.pathname === item.path
+                ? 'bg-moviemate-primary text-white'
+                : 'hover:bg-moviemate-card/50 text-gray-300 hover:text-white'
+            }`}
+            onClick={() => isMobile && setIsOpen(false)}
           >
-            <Film className="h-6 w-6 text-moviemate-primary" />
-            <span>{settings.siteName} Admin</span>
+            {item.icon}
+            {item.label}
           </Link>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const sidebar = (
+    <div className="flex h-full flex-col justify-between p-4">
+      <div>
+        <div className="mb-6 flex items-center justify-between">
+          <Link to="/admin" className="flex items-center">
+            <span className="text-xl font-bold text-white">Admin Panel</span>
+          </Link>
+          {isMobile && (
+            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-        
-        <ScrollArea className="h-[calc(100vh-5rem)]">
-          <div className="p-4">
-            <nav className="space-y-1">
-              {menuItems.map((item) => (
-                <Link key={item.path} to={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start",
-                      location.pathname === item.path
-                        ? "bg-moviemate-primary/20 text-moviemate-primary"
-                        : "text-gray-400 hover:bg-moviemate-background hover:text-white"
-                    )}
-                  >
-                    {item.icon}
-                    <span className="ml-3">{item.label}</span>
-                    {location.pathname === item.path && (
-                      <ChevronRight className="ml-auto h-4 w-4" />
-                    )}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
-            
-            <Separator className="my-4 bg-gray-800" />
-            
+        {renderMenuItems()}
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-400">Dark Mode</span>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {theme === 'light' ? <MoonStar className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </Button>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full border-gray-700"
+          onClick={handleLogout}
+        >
+          Logout
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[240px_1fr]">
+      {isMobile ? (
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start text-gray-400 hover:bg-red-900/20 hover:text-red-400"
-              onClick={handleLogout}
+              size="icon"
+              className="fixed left-4 top-4 z-50 md:hidden"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="ml-3">Logout</span>
+              <Menu className="h-5 w-5 text-white" />
             </Button>
-          </div>
-        </ScrollArea>
-      </div>
-      
-      {/* Main content */}
-      <div className="flex-1 overflow-auto">
-        {children}
-      </div>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[240px] border-r border-gray-700 bg-moviemate-background p-0">
+            {sidebar}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <div className="hidden border-r border-gray-700 bg-moviemate-background md:block">
+          {sidebar}
+        </div>
+      )}
+      <main className="bg-moviemate-background">{children}</main>
     </div>
   );
 };

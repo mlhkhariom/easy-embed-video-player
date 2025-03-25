@@ -2,12 +2,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent } from '../services/cloudstream';
+import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent, fetchAllSources, subscribeToCloudStreamUpdates, syncSourcesToSupabase } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
-import { Search, Filter, Cloud, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, Cloud, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from '../components/ui/use-toast';
@@ -24,6 +23,9 @@ const CloudStream = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [combinedResults, setCombinedResults] = useState<CloudStreamContent[]>([]);
+  const [availableSources, setAvailableSources] = useState<CloudStreamSource[]>([]);
+  const [groupedSources, setGroupedSources] = useState<Record<string, CloudStreamSource[]>>({});
+  const [categories, setCategories] = useState<string[]>([]);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -31,16 +33,70 @@ const CloudStream = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Group sources by category
-  const groupedSources: Record<string, CloudStreamSource[]> = CLOUDSTREAM_SOURCES.reduce((acc, source) => {
-    const category = source.categories?.[0] || 'other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(source);
-    return acc;
-  }, {} as Record<string, CloudStreamSource[]>);
+  // Fetch sources from Supabase
+  const { 
+    data: sourcesData, 
+    isLoading: isLoadingSources, 
+    error: sourcesError,
+    refetch: refetchSources 
+  } = useQuery({
+    queryKey: ['cloudstream-sources'],
+    queryFn: fetchAllSources,
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  });
 
-  // Categories for tab navigation
-  const categories = Object.keys(groupedSources).sort();
+  // Effect to sync sources on first load
+  useEffect(() => {
+    const syncSources = async () => {
+      const result = await syncSourcesToSupabase();
+      if (result) {
+        refetchSources();
+      }
+    };
+    
+    syncSources();
+  }, []);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToCloudStreamUpdates(() => {
+      refetchSources();
+      refetch();
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Process sources when they are loaded
+  useEffect(() => {
+    if (sourcesData) {
+      setAvailableSources(sourcesData);
+      
+      // Group sources by category
+      const grouped: Record<string, CloudStreamSource[]> = {};
+      
+      sourcesData.forEach(source => {
+        const sourceCategories = source.categories || [];
+        
+        if (sourceCategories.length === 0) {
+          const category = 'uncategorized';
+          if (!grouped[category]) grouped[category] = [];
+          grouped[category].push(source);
+          return;
+        }
+        
+        sourceCategories.forEach(category => {
+          if (!grouped[category]) grouped[category] = [];
+          grouped[category].push(source);
+        });
+      });
+      
+      setGroupedSources(grouped);
+      setCategories(Object.keys(grouped).sort());
+    }
+  }, [sourcesData]);
 
   // Search content query
   const { data, isLoading, error, refetch, isFetching } = useQuery({
@@ -119,8 +175,18 @@ const CloudStream = () => {
 
   // Handle content click to navigate to details
   const handleContentClick = (content: CloudStreamContent) => {
-    const [_, sourceId, contentId] = content.url.split('/').filter(Boolean);
-    navigate(`/cloudstream/${sourceId}/${contentId}`);
+    navigate(`/cloudstream/${content.source}/${content.external_id || content.id.split('-').pop()}`);
+  };
+
+  // Force refresh data
+  const handleRefresh = async () => {
+    await syncSourcesToSupabase();
+    await refetchSources();
+    await refetch();
+    toast({
+      title: "Data Refreshed",
+      description: "CloudStream data has been refreshed",
+    });
   };
 
   // Render loading state
@@ -284,10 +350,18 @@ const CloudStream = () => {
                 >
                   <Filter className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRefresh}
+                  disabled={isLoadingSources}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingSources ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
             </div>
             
-            {showFilters && (
+            {showFilters && categories.length > 0 && (
               <CloudStreamFilterSection
                 selectedSources={selectedSources}
                 toggleSource={toggleSource}
@@ -295,14 +369,14 @@ const CloudStream = () => {
                 clearFilters={clearFilters}
                 categories={categories}
                 groupedSources={groupedSources}
-                isLoading={isLoading}
+                isLoading={isLoading || isLoadingSources}
               />
             )}
           </form>
         </div>
         
-        {isLoading && page === 1 ? renderLoadingState() 
-          : error ? renderErrorState() 
+        {(isLoading && page === 1) || isLoadingSources ? renderLoadingState() 
+          : error || sourcesError ? renderErrorState() 
           : combinedResults.length > 0 ? renderContent() 
           : renderEmptyState()
         }

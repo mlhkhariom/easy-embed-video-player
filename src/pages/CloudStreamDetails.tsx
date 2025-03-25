@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Star, Clock, Calendar, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getCloudStreamContentDetails, CloudStreamContent } from '../services/cloudstream';
+import { getCloudStreamContentDetails, CloudStreamContent, subscribeToCloudStreamUpdates } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -44,6 +44,15 @@ const CloudStreamDetails = () => {
     };
     
     fetchDetails();
+    
+    // Set up real-time subscription
+    const unsubscribe = subscribeToCloudStreamUpdates(() => {
+      fetchDetails();
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   }, [sourceId, contentId]);
   
   const handlePlayClick = () => {
