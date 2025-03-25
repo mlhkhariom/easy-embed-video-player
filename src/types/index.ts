@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface AdminUser {
@@ -40,11 +41,20 @@ export interface M3UData {
   channels: Channel[];
 }
 
+// Updated to match the IPTV service interface
 export interface Channel {
   id: string;
   name: string;
-  url: string;
+  country?: string;
+  subdivision?: string;
+  city?: string;
+  broadcast_area?: string[];
+  languages?: string[];
+  categories?: string[];
+  is_nsfw?: boolean;
+  website?: string;
   logo?: string;
+  url?: string; // Made optional to accommodate both types
   category?: string;
   language?: string;
 }

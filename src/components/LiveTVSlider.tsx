@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tv, PlayCircle } from 'lucide-react';
-import { Channel } from '../types';
 import { Button } from '@/components/ui/button';
 import {
   Carousel,
@@ -12,9 +11,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { fetchIndianChannels } from '../services/iptv';
+import { Channel as IPTVChannel } from '../services/iptv';
 
 const LiveTVSlider = () => {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<IPTVChannel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
