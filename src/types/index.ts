@@ -147,6 +147,8 @@ export interface TvShow {
   type?: string;
   imdb_id?: string;
   show_type?: 'web_series' | 'tv_serial'; // New field to distinguish between types
+  original_language?: string; // Added this property
+  languages?: string[]; // Added this property
   networks?: {
     id: number;
     name: string;

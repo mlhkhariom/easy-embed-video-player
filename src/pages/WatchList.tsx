@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, ListPlus, Archive, ListX, SearchX, Trash2 } from 'lucide-react';
+import { Plus, ListPlus, Film, Tv, Archive, ListX, SearchX, Trash2 } from 'lucide-react';
 import { Movie, TvShow } from '../types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
