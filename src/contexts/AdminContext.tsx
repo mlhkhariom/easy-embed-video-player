@@ -53,19 +53,19 @@ const DEFAULT_ADMIN: AdminUser = {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [settings, setSettings] = useState<AdminSettings>(
-    JSON.parse(localStorage.getItem('adminSettings') || JSON.stringify(defaultSettings))
+    () => JSON.parse(localStorage.getItem('adminSettings') || JSON.stringify(defaultSettings))
   );
   const [liveTVCategories, setLiveTVCategories] = useState<LiveTVCategory[]>(
-    JSON.parse(localStorage.getItem('liveTVCategories') || '[]')
+    () => JSON.parse(localStorage.getItem('liveTVCategories') || '[]')
   );
   const [featuredChannels, setFeaturedChannels] = useState<string[]>(
-    JSON.parse(localStorage.getItem('featuredChannels') || '[]')
+    () => JSON.parse(localStorage.getItem('featuredChannels') || '[]')
   );
   const [m3uSources, setM3USources] = useState<M3USource[]>(
-    JSON.parse(localStorage.getItem('m3uSources') || '[]')
+    () => JSON.parse(localStorage.getItem('m3uSources') || '[]')
   );
 
   // Check if the user is already authenticated
