@@ -54,46 +54,94 @@ const DEFAULT_ADMIN: AdminUser = {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
+  // Fix for the useState null error - use lazy initialization
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [settings, setSettings] = useState<AdminSettings>(
-    () => JSON.parse(localStorage.getItem('adminSettings') || JSON.stringify(defaultSettings))
-  );
-  const [liveTVCategories, setLiveTVCategories] = useState<LiveTVCategory[]>(
-    () => JSON.parse(localStorage.getItem('liveTVCategories') || '[]')
-  );
-  const [featuredChannels, setFeaturedChannels] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem('featuredChannels') || '[]')
-  );
-  const [m3uSources, setM3USources] = useState<M3USource[]>(
-    () => JSON.parse(localStorage.getItem('m3uSources') || '[]')
-  );
+  const [settings, setSettings] = useState<AdminSettings>(() => {
+    try {
+      const storedSettings = localStorage.getItem('adminSettings');
+      return storedSettings ? JSON.parse(storedSettings) : defaultSettings;
+    } catch (error) {
+      console.error('Error loading admin settings from localStorage:', error);
+      return defaultSettings;
+    }
+  });
+  
+  const [liveTVCategories, setLiveTVCategories] = useState<LiveTVCategory[]>(() => {
+    try {
+      const storedCategories = localStorage.getItem('liveTVCategories');
+      return storedCategories ? JSON.parse(storedCategories) : [];
+    } catch (error) {
+      console.error('Error loading live TV categories from localStorage:', error);
+      return [];
+    }
+  });
+  
+  const [featuredChannels, setFeaturedChannels] = useState<string[]>(() => {
+    try {
+      const storedChannels = localStorage.getItem('featuredChannels');
+      return storedChannels ? JSON.parse(storedChannels) : [];
+    } catch (error) {
+      console.error('Error loading featured channels from localStorage:', error);
+      return [];
+    }
+  });
+  
+  const [m3uSources, setM3USources] = useState<M3USource[]>(() => {
+    try {
+      const storedSources = localStorage.getItem('m3uSources');
+      return storedSources ? JSON.parse(storedSources) : [];
+    } catch (error) {
+      console.error('Error loading M3U sources from localStorage:', error);
+      return [];
+    }
+  });
 
   // Check if the user is already authenticated
   useEffect(() => {
-    const adminAuth = localStorage.getItem('adminAuth');
-    if (adminAuth) {
-      setIsAuthenticated(true);
+    try {
+      const adminAuth = localStorage.getItem('adminAuth');
+      if (adminAuth) {
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error('Error checking authentication status:', error);
     }
   }, []);
 
   // Save settings to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    try {
+      localStorage.setItem('adminSettings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Error saving admin settings to localStorage:', error);
+    }
   }, [settings]);
 
   // Save Live TV categories to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('liveTVCategories', JSON.stringify(liveTVCategories));
+    try {
+      localStorage.setItem('liveTVCategories', JSON.stringify(liveTVCategories));
+    } catch (error) {
+      console.error('Error saving live TV categories to localStorage:', error);
+    }
   }, [liveTVCategories]);
 
   // Save featured channels to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('featuredChannels', JSON.stringify(featuredChannels));
+    try {
+      localStorage.setItem('featuredChannels', JSON.stringify(featuredChannels));
+    } catch (error) {
+      console.error('Error saving featured channels to localStorage:', error);
+    }
   }, [featuredChannels]);
 
   // Save M3U sources to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('m3uSources', JSON.stringify(m3uSources));
+    try {
+      localStorage.setItem('m3uSources', JSON.stringify(m3uSources));
+    } catch (error) {
+      console.error('Error saving M3U sources to localStorage:', error);
+    }
   }, [m3uSources]);
 
   const login = (email: string, password: string): boolean => {

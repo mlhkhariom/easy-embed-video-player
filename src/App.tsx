@@ -20,6 +20,7 @@ import Movies from "./pages/Movies";
 import WebSeries from "./pages/WebSeries";
 import TvSerials from "./pages/TvSerials";
 import History from "./pages/History";
+import WatchList from "./pages/WatchList";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -30,6 +31,7 @@ import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import ErrorHandler from "./components/ErrorHandler";
 
 // Customize QueryClient with error handling
 const queryClient = new QueryClient({
@@ -62,6 +64,7 @@ const App = () => (
                 <Route path="/search" element={<Search />} />
                 <Route path="/explore" element={<Explore />} />
                 <Route path="/history" element={<History />} />
+                <Route path="/watchlist" element={<WatchList />} />
                 <Route path="/genres" element={<Genres />} />
                 <Route path="/genre/:type/:id" element={<GenreContent />} />
                 <Route path="/trending" element={<Trending />} />
