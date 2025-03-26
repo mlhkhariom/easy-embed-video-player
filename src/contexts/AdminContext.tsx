@@ -16,6 +16,8 @@ interface AdminContextType {
   updateM3USources: (sources: M3USource[]) => void;
   cloudstreamRepos: CloudStreamRepo[];
   updateCloudstreamRepos: (repos: CloudStreamRepo[]) => void;
+  cloudstreamPlugins: CloudStreamPlugin[];
+  updateCloudstreamPlugins: (plugins: CloudStreamPlugin[]) => void;
 }
 
 export interface M3USource {
@@ -35,6 +37,18 @@ export interface CloudStreamRepo {
   isEnabled: boolean;
   lastSynced?: string;
   pluginCount?: number;
+}
+
+export interface CloudStreamPlugin {
+  id: string;
+  name: string;
+  url: string;
+  version?: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  repository?: string;
+  isEnabled: boolean;
 }
 
 const defaultSettings: AdminSettings = {
@@ -119,6 +133,16 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   });
 
+  const [cloudstreamPlugins, setCloudstreamPlugins] = useState<CloudStreamPlugin[]>(() => {
+    try {
+      const storedPlugins = localStorage.getItem('cloudstreamPlugins');
+      return storedPlugins ? JSON.parse(storedPlugins) : [];
+    } catch (error) {
+      console.error('Error loading CloudStream plugins from localStorage:', error);
+      return [];
+    }
+  });
+
   // Check if the user is already authenticated
   useEffect(() => {
     try {
@@ -175,6 +199,15 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error saving CloudStream repositories to localStorage:', error);
     }
   }, [cloudstreamRepos]);
+  
+  // Save CloudStream plugins to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('cloudstreamPlugins', JSON.stringify(cloudstreamPlugins));
+    } catch (error) {
+      console.error('Error saving CloudStream plugins to localStorage:', error);
+    }
+  }, [cloudstreamPlugins]);
 
   const login = (email: string, password: string): boolean => {
     if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
@@ -209,6 +242,10 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   const updateCloudstreamRepos = (repos: CloudStreamRepo[]) => {
     setCloudstreamRepos(repos);
   };
+  
+  const updateCloudstreamPlugins = (plugins: CloudStreamPlugin[]) => {
+    setCloudstreamPlugins(plugins);
+  };
 
   return (
     <AdminContext.Provider
@@ -226,6 +263,8 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         updateM3USources,
         cloudstreamRepos,
         updateCloudstreamRepos,
+        cloudstreamPlugins,
+        updateCloudstreamPlugins,
       }}
     >
       {children}

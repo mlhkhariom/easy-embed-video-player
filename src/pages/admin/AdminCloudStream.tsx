@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload, Globe, Tag, Monitor } from 'lucide-react';
+import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload, Globe, Tag, Monitor, DownloadCloud, Sparkles } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { CLOUDSTREAM_SOURCES, CloudStreamSource, INDIAN_LANGUAGES, syncContent, syncSourcesToSupabase } from '@/services/cloudstream';
+import { CLOUDSTREAM_SOURCES, CloudStreamSource, INDIAN_LANGUAGES, syncContent, syncSourcesToSupabase, addRepository, addPlugin, fetchAllRepositories, fetchAllPlugins, parseCloudStreamRepo } from '@/services/cloudstream';
 import { supabase } from '@/integrations/supabase/client';
 import CloudStreamPluginManager from '@/components/cloudstream/CloudStreamPluginManager';
+import { useAdmin } from '@/contexts/AdminContext';
+import { Textarea } from '@/components/ui/textarea';
 
 const AdminCloudStream = () => {
   const [activeTab, setActiveTab] = useState('sources');
   const [isAddingSource, setIsAddingSource] = useState(false);
+  const [isAddingRepo, setIsAddingRepo] = useState(false);
+  const [isAddingPlugin, setIsAddingPlugin] = useState(false);
   const [editingSource, setEditingSource] = useState<CloudStreamSource | null>(null);
   const [newSource, setNewSource] = useState<Partial<CloudStreamSource>>({
     name: '',
@@ -29,6 +33,21 @@ const AdminCloudStream = () => {
     is_enabled: true,
     language: 'hi'
   });
+  const [newRepository, setNewRepository] = useState({
+    name: '',
+    url: '',
+    description: '',
+    author: ''
+  });
+  const [newPlugin, setNewPlugin] = useState({
+    name: '',
+    url: '',
+    repository: '',
+    description: '',
+    language: 'hi',
+    categories: [] as string[],
+    version: '1.0.0'
+  });
   const [contentStats, setContentStats] = useState({
     total: 0,
     movies: 0,
@@ -37,6 +56,7 @@ const AdminCloudStream = () => {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { cloudstreamRepos, updateCloudstreamRepos, cloudstreamPlugins, updateCloudstreamPlugins } = useAdmin();
   
   // Fetch cloud stream sources
   const { data: sources = [], isLoading: isLoadingSources, refetch: refetchSources } = useQuery({
@@ -51,6 +71,31 @@ const AdminCloudStream = () => {
       return data as CloudStreamSource[];
     }
   });
+  
+  // Fetch repositories
+  const { data: repositories = [], isLoading: isLoadingRepos, refetch: refetchRepos } = useQuery({
+    queryKey: ['admin-cloudstream-repositories'],
+    queryFn: fetchAllRepositories
+  });
+  
+  // Fetch plugins
+  const { data: plugins = [], isLoading: isLoadingPlugins, refetch: refetchPlugins } = useQuery({
+    queryKey: ['admin-cloudstream-plugins'],
+    queryFn: fetchAllPlugins
+  });
+  
+  // Update context state when data is loaded
+  useEffect(() => {
+    if (repositories.length > 0) {
+      updateCloudstreamRepos(repositories);
+    }
+  }, [repositories, updateCloudstreamRepos]);
+  
+  useEffect(() => {
+    if (plugins.length > 0) {
+      updateCloudstreamPlugins(plugins);
+    }
+  }, [plugins, updateCloudstreamPlugins]);
   
   // Get content stats
   useEffect(() => {
@@ -217,6 +262,102 @@ const AdminCloudStream = () => {
     }
   });
   
+  // Mutation to add a repository
+  const addRepositoryMutation = useMutation({
+    mutationFn: async (repo: typeof newRepository) => {
+      const result = await addRepository(repo);
+      if (!result) throw new Error('Failed to add repository');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-cloudstream-repositories'] });
+      refetchRepos();
+      setIsAddingRepo(false);
+      setNewRepository({
+        name: '',
+        url: '',
+        description: '',
+        author: ''
+      });
+      toast({
+        title: "Repository Added",
+        description: "CloudStream repository has been added successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to add repository: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Mutation to add a plugin
+  const addPluginMutation = useMutation({
+    mutationFn: async (plugin: typeof newPlugin) => {
+      const result = await addPlugin(plugin);
+      if (!result) throw new Error('Failed to add plugin');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-cloudstream-plugins'] });
+      refetchPlugins();
+      setIsAddingPlugin(false);
+      setNewPlugin({
+        name: '',
+        url: '',
+        repository: '',
+        description: '',
+        language: 'hi',
+        categories: [],
+        version: '1.0.0'
+      });
+      toast({
+        title: "Plugin Added",
+        description: "CloudStream plugin has been added successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to add plugin: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Mutation to parse a repository and import all content
+  const parseRepositoryMutation = useMutation({
+    mutationFn: async (repoUrl: string) => {
+      const result = await parseCloudStreamRepo(repoUrl);
+      
+      // First add all sources from the repo
+      if (result.sources.length > 0) {
+        await syncSourcesToSupabase();
+      }
+      
+      return result;
+    },
+    onSuccess: (result) => {
+      refetchSources();
+      refetchRepos();
+      refetchPlugins();
+      
+      toast({
+        title: "Repository Parsed",
+        description: `Found ${result.sources.length} sources and ${result.plugins.length} plugins`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to parse repository: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+  
   // Mutation for syncing content
   const syncContentMutation = useMutation({
     mutationFn: async () => {
@@ -299,6 +440,34 @@ const AdminCloudStream = () => {
     updateSourceMutation.mutate(newSource);
   };
   
+  // Handle save repository
+  const handleSaveRepository = () => {
+    if (!newRepository.name || !newRepository.url) {
+      toast({
+        title: "Validation Error",
+        description: "Name and URL are required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addRepositoryMutation.mutate(newRepository);
+  };
+  
+  // Handle save plugin
+  const handleSavePlugin = () => {
+    if (!newPlugin.name || !newPlugin.url) {
+      toast({
+        title: "Validation Error",
+        description: "Name and URL are required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addPluginMutation.mutate(newPlugin);
+  };
+  
   // Handle cancel edit/add
   const handleCancelSource = () => {
     setIsAddingSource(false);
@@ -311,6 +480,45 @@ const AdminCloudStream = () => {
       is_enabled: true,
       language: 'hi'
     });
+  };
+  
+  // Handle cancel repository
+  const handleCancelRepository = () => {
+    setIsAddingRepo(false);
+    setNewRepository({
+      name: '',
+      url: '',
+      description: '',
+      author: ''
+    });
+  };
+  
+  // Handle cancel plugin
+  const handleCancelPlugin = () => {
+    setIsAddingPlugin(false);
+    setNewPlugin({
+      name: '',
+      url: '',
+      repository: '',
+      description: '',
+      language: 'hi',
+      categories: [],
+      version: '1.0.0'
+    });
+  };
+  
+  // Handle smart import repository
+  const handleSmartImport = () => {
+    if (!newRepository.url) {
+      toast({
+        title: "Validation Error",
+        description: "Repository URL is required for smart import",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    parseRepositoryMutation.mutate(newRepository.url);
   };
   
   // Get language name from code
@@ -413,7 +621,7 @@ const AdminCloudStream = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 grid w-full grid-cols-3">
             <TabsTrigger value="sources">Sources</TabsTrigger>
-            <TabsTrigger value="plugins">Plugins & Extensions</TabsTrigger>
+            <TabsTrigger value="repos">Repositories</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
           </TabsList>
           
@@ -505,8 +713,162 @@ const AdminCloudStream = () => {
             )}
           </TabsContent>
           
-          <TabsContent value="plugins">
-            <CloudStreamPluginManager />
+          <TabsContent value="repos">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">CloudStream Repositories</h2>
+                <Button 
+                  onClick={() => setIsAddingRepo(true)} 
+                  className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Repository
+                </Button>
+              </div>
+              
+              {isLoadingRepos ? (
+                <div className="flex justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {repositories.length === 0 ? (
+                    <Card className="bg-moviemate-card/60 backdrop-blur-sm col-span-full">
+                      <CardHeader>
+                        <CardTitle>No Repositories Available</CardTitle>
+                        <CardDescription>
+                          Add CloudStream repositories to access more content sources and plugins.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardFooter>
+                        <Button 
+                          onClick={() => setIsAddingRepo(true)} 
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Repository
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ) : (
+                    repositories.map(repo => (
+                      <Card key={repo.id} className="bg-moviemate-card/60 backdrop-blur-sm">
+                        <CardHeader>
+                          <div className="flex justify-between">
+                            <CardTitle>{repo.name}</CardTitle>
+                            <Badge variant={repo.is_enabled ? "default" : "outline"}>
+                              {repo.is_enabled ? "Active" : "Disabled"}
+                            </Badge>
+                          </div>
+                          <CardDescription>{repo.description || 'CloudStream repository'}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <Globe className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span className="break-all">{repo.url}</span>
+                            </div>
+                            {repo.author && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Author: {repo.author}</span>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-between">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => parseRepositoryMutation.mutate(repo.url)}
+                          >
+                            <DownloadCloud className="h-4 w-4 mr-2" />
+                            Import Sources
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+              
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">Plugins</h2>
+                
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-muted-foreground">
+                    Manage CloudStream plugins to extend functionality
+                  </p>
+                  <Button 
+                    onClick={() => setIsAddingPlugin(true)}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Plugin
+                  </Button>
+                </div>
+                
+                {isLoadingPlugins ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="overflow-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left p-2">Name</th>
+                          <th className="text-left p-2">Repository</th>
+                          <th className="text-left p-2">Language</th>
+                          <th className="text-left p-2">Version</th>
+                          <th className="text-left p-2">Status</th>
+                          <th className="text-right p-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plugins.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center p-4 text-muted-foreground">
+                              No plugins available
+                            </td>
+                          </tr>
+                        ) : (
+                          plugins.map(plugin => (
+                            <tr key={plugin.id} className="border-b border-border/30">
+                              <td className="p-2">{plugin.name}</td>
+                              <td className="p-2">{plugin.repository || '-'}</td>
+                              <td className="p-2">
+                                {plugin.language ? getLanguageName(plugin.language) : '-'}
+                              </td>
+                              <td className="p-2">{plugin.version || '1.0.0'}</td>
+                              <td className="p-2">
+                                <Badge variant={plugin.is_enabled ? "default" : "outline"}>
+                                  {plugin.is_enabled ? "Active" : "Disabled"}
+                                </Badge>
+                              </td>
+                              <td className="p-2 text-right">
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
           
           <TabsContent value="content">
@@ -519,7 +881,7 @@ const AdminCloudStream = () => {
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
-                  <div className="flex gap-4 mt-4">
+                  <div className="flex flex-wrap gap-4 mt-4">
                     <Button 
                       className="gap-2"
                       onClick={() => syncContentMutation.mutate()}
@@ -617,7 +979,12 @@ const AdminCloudStream = () => {
                       <SelectItem value="CSX">CSX</SelectItem>
                       <SelectItem value="PHISHER">PHISHER</SelectItem>
                       <SelectItem value="KEKIK">KEKIK</SelectItem>
+                      <SelectItem value="RECLOUDSTREAM">RECLOUDSTREAM</SelectItem>
+                      <SelectItem value="HEXATED">HEXATED</SelectItem>
                       <SelectItem value="CUSTOM">CUSTOM</SelectItem>
+                      {repositories.map(repo => (
+                        <SelectItem key={repo.id} value={repo.name}>{repo.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -719,6 +1086,230 @@ const AdminCloudStream = () => {
                     <Check className="mr-2 h-4 w-4" />
                     Save
                   </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Add Repository Dialog */}
+        <Dialog open={isAddingRepo} onOpenChange={setIsAddingRepo}>
+          <DialogContent className="bg-moviemate-card/80 backdrop-blur-md">
+            <DialogHeader>
+              <DialogTitle>Add CloudStream Repository</DialogTitle>
+              <DialogDescription>
+                Add a new repository to access Indian content sources and plugins
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="repo-name">Repository Name</Label>
+                <Input
+                  id="repo-name"
+                  value={newRepository.name}
+                  onChange={(e) => setNewRepository(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., ReCloudStream"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="repo-url">Repository URL</Label>
+                <Input
+                  id="repo-url"
+                  value={newRepository.url}
+                  onChange={(e) => setNewRepository(prev => ({ ...prev, url: e.target.value }))}
+                  placeholder="e.g., https://github.com/recloudstream/extensions"
+                />
+                <p className="text-xs text-muted-foreground">
+                  GitHub repository URL containing CloudStream extensions
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="repo-author">Author (optional)</Label>
+                <Input
+                  id="repo-author"
+                  value={newRepository.author}
+                  onChange={(e) => setNewRepository(prev => ({ ...prev, author: e.target.value }))}
+                  placeholder="Repository author"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="repo-description">Description (optional)</Label>
+                <Textarea
+                  id="repo-description"
+                  value={newRepository.description}
+                  onChange={(e) => setNewRepository(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description of the repository"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex items-center mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSmartImport}
+                  disabled={parseRepositoryMutation.isPending}
+                  className="flex items-center gap-2"
+                >
+                  {parseRepositoryMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Smart Import
+                </Button>
+                <p className="text-xs text-muted-foreground ml-2">
+                  Automatically parse repository structure and import sources
+                </p>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelRepository}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveRepository}
+                className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                disabled={addRepositoryMutation.isPending}
+              >
+                {addRepositoryMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Repository"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Add Plugin Dialog */}
+        <Dialog open={isAddingPlugin} onOpenChange={setIsAddingPlugin}>
+          <DialogContent className="bg-moviemate-card/80 backdrop-blur-md">
+            <DialogHeader>
+              <DialogTitle>Add CloudStream Plugin</DialogTitle>
+              <DialogDescription>
+                Add a new plugin to extend CloudStream functionality
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="plugin-name">Plugin Name</Label>
+                <Input
+                  id="plugin-name"
+                  value={newPlugin.name}
+                  onChange={(e) => setNewPlugin(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., HindiProvider"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="plugin-url">Plugin URL</Label>
+                <Input
+                  id="plugin-url"
+                  value={newPlugin.url}
+                  onChange={(e) => setNewPlugin(prev => ({ ...prev, url: e.target.value }))}
+                  placeholder="URL to the plugin .jar or source file"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="plugin-repo">Repository</Label>
+                <Select
+                  value={newPlugin.repository}
+                  onValueChange={(value) => setNewPlugin(prev => ({ ...prev, repository: value }))}
+                >
+                  <SelectTrigger id="plugin-repo">
+                    <SelectValue placeholder="Select repository" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {repositories.map(repo => (
+                      <SelectItem key={repo.id} value={repo.name}>{repo.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="plugin-version">Version</Label>
+                  <Input
+                    id="plugin-version"
+                    value={newPlugin.version}
+                    onChange={(e) => setNewPlugin(prev => ({ ...prev, version: e.target.value }))}
+                    placeholder="e.g., 1.0.0"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="plugin-language">Language</Label>
+                  <Select
+                    value={newPlugin.language}
+                    onValueChange={(value) => setNewPlugin(prev => ({ ...prev, language: value }))}
+                  >
+                    <SelectTrigger id="plugin-language">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_LANGUAGES.map(lang => (
+                        <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                      ))}
+                      <SelectItem value="">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="plugin-categories">Categories (comma-separated)</Label>
+                <Input
+                  id="plugin-categories"
+                  value={newPlugin.categories.join(', ')}
+                  onChange={(e) => setNewPlugin(prev => ({ 
+                    ...prev, 
+                    categories: e.target.value.split(',').map(c => c.trim()).filter(Boolean)
+                  }))}
+                  placeholder="indian, movies, series, etc."
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="plugin-description">Description (optional)</Label>
+                <Textarea
+                  id="plugin-description"
+                  value={newPlugin.description}
+                  onChange={(e) => setNewPlugin(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description of the plugin"
+                  rows={3}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelPlugin}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSavePlugin}
+                className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                disabled={addPluginMutation.isPending}
+              >
+                {addPluginMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Plugin"
                 )}
               </Button>
             </DialogFooter>

@@ -2,13 +2,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent, fetchAllSources, subscribeToCloudStreamUpdates, syncSourcesToSupabase } from '../services/cloudstream';
+import { CLOUDSTREAM_SOURCES, CloudStreamContent, CloudStreamSource, searchCloudStreamContent, fetchAllSources, subscribeToCloudStreamUpdates, syncSourcesToSupabase, INDIAN_LANGUAGES } from '../services/cloudstream';
 import Navbar from '../components/Navbar';
-import { Search, Filter, Cloud, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Filter, Cloud, Loader2, AlertCircle, RefreshCw, Globe } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '../components/ui/use-toast';
 import { useAdmin } from '../contexts/AdminContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,6 +21,7 @@ const CloudStream = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [combinedResults, setCombinedResults] = useState<CloudStreamContent[]>([]);
@@ -93,15 +95,31 @@ const CloudStream = () => {
         });
       });
       
+      // Make sure Indian content is at the top
+      const sortedCategories = Object.keys(grouped).sort((a, b) => {
+        if (a === 'indian') return -1;
+        if (b === 'indian') return 1;
+        return a.localeCompare(b);
+      });
+      
       setGroupedSources(grouped);
-      setCategories(Object.keys(grouped).sort());
+      setCategories(sortedCategories);
     }
   }, [sourcesData]);
 
   // Search content query
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['cloudstreamContent', searchQuery, selectedSources, page],
-    queryFn: () => searchCloudStreamContent(searchQuery, selectedSources.length ? selectedSources : undefined),
+    queryKey: ['cloudstreamContent', searchQuery, selectedSources, selectedLanguage, page],
+    queryFn: () => searchCloudStreamContent(
+      searchQuery, 
+      selectedSources.length ? selectedSources : undefined,
+      {
+        indianContent: true,
+        language: selectedLanguage || undefined,
+        page: page,
+        pageSize: 20
+      }
+    ),
     enabled: true,
     placeholderData: (prev) => prev,
   });
@@ -171,6 +189,7 @@ const CloudStream = () => {
   // Clear filters
   const clearFilters = () => {
     setSelectedSources([]);
+    setSelectedLanguage('');
   };
 
   // Handle content click to navigate to details
@@ -315,7 +334,7 @@ const CloudStream = () => {
       <main className="container mx-auto px-4 py-24">
         <h1 className="mb-8 text-3xl font-bold text-center text-white flex items-center justify-center gap-2">
           <Cloud className="h-8 w-8 text-moviemate-primary" />
-          CloudStream Content
+          Indian CloudStream Content
         </h1>
         
         <div className="mb-8">
@@ -325,7 +344,7 @@ const CloudStream = () => {
                 <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <Input
                   className="pl-8"
-                  placeholder="Search content..."
+                  placeholder="Search Indian content..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -361,16 +380,62 @@ const CloudStream = () => {
               </div>
             </div>
             
-            {showFilters && categories.length > 0 && (
-              <CloudStreamFilterSection
-                selectedSources={selectedSources}
-                toggleSource={toggleSource}
-                applyFilters={applyFilters}
-                clearFilters={clearFilters}
-                categories={categories}
-                groupedSources={groupedSources}
-                isLoading={isLoading || isLoadingSources}
-              />
+            {showFilters && (
+              <div className="bg-moviemate-card/40 backdrop-blur-sm rounded-lg p-4 space-y-4">
+                <div className="flex flex-wrap gap-4">
+                  {/* Indian Language Filter */}
+                  <div className="w-full sm:w-auto">
+                    <label className="block text-sm font-medium mb-1">Language</label>
+                    <Select
+                      value={selectedLanguage}
+                      onValueChange={setSelectedLanguage}
+                    >
+                      <SelectTrigger className="w-full sm:w-[180px] bg-background/30">
+                        <SelectValue placeholder="All Languages" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Languages</SelectItem>
+                        {INDIAN_LANGUAGES.map(lang => (
+                          <SelectItem key={lang.code} value={lang.code} className="flex items-center gap-2">
+                            <Globe className="h-3 w-3 inline" />
+                            {lang.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {categories.length > 0 && (
+                  <CloudStreamFilterSection
+                    selectedSources={selectedSources}
+                    toggleSource={toggleSource}
+                    applyFilters={applyFilters}
+                    clearFilters={clearFilters}
+                    categories={categories}
+                    groupedSources={groupedSources}
+                    isLoading={isLoading || isLoadingSources}
+                  />
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={clearFilters}
+                    size="sm"
+                  >
+                    Clear Filters
+                  </Button>
+                  <Button 
+                    onClick={applyFilters}
+                    size="sm"
+                    className="bg-moviemate-primary hover:bg-moviemate-primary/80"
+                    disabled={isLoading}
+                  >
+                    Apply Filters
+                  </Button>
+                </div>
+              </div>
             )}
           </form>
         </div>

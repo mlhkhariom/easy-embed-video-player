@@ -28,6 +28,25 @@ serve(async (req) => {
     if (action === 'syncSources' && Array.isArray(sources)) {
       console.log(`Syncing ${sources.length} sources to the database`)
       
+      // Create the table if it doesn't exist
+      await supabase.rpc('create_table_if_not_exists', {
+        table_name: 'cloudstream_sources',
+        definition: `
+          id uuid primary key default uuid_generate_v4(),
+          name text not null unique,
+          url text not null,
+          logo text,
+          language text,
+          categories text[],
+          repo text not null,
+          description text,
+          is_enabled boolean default true,
+          last_synced timestamp with time zone default now(),
+          created_at timestamp with time zone default now(),
+          metadata jsonb
+        `
+      }).catch(e => console.error('Error creating cloudstream_sources table:', e));
+      
       // Sync sources to the database
       for (const source of sources) {
         console.log(`Processing source: ${source.name}`)
@@ -42,7 +61,8 @@ serve(async (req) => {
             categories: source.categories || [],
             repo: source.repo,
             description: source.description || null,
-            is_enabled: true
+            is_enabled: true,
+            last_synced: new Date().toISOString()
           }, {
             onConflict: 'name',
             ignoreDuplicates: false
@@ -74,6 +94,22 @@ serve(async (req) => {
       }
       
       try {
+        // Create the table if it doesn't exist
+        await supabase.rpc('create_table_if_not_exists', {
+          table_name: 'cloudstream_repositories',
+          definition: `
+            id uuid primary key default uuid_generate_v4(),
+            name text not null unique,
+            url text not null,
+            description text,
+            author text,
+            is_enabled boolean default true,
+            last_synced timestamp with time zone default now(),
+            created_at timestamp with time zone default now(),
+            metadata jsonb
+          `
+        }).catch(e => console.error('Error creating cloudstream_repositories table:', e));
+        
         // First, try to fetch the repository metadata if it's a GitHub repo
         let repoMetadata = {}
         if (repo.url.includes('github.com')) {
@@ -99,7 +135,7 @@ serve(async (req) => {
           }
         }
         
-        // Insert the repository into a table (you'll need to create this)
+        // Insert the repository into a table
         const { error } = await supabase
           .from('cloudstream_repositories')
           .upsert({
@@ -117,6 +153,65 @@ serve(async (req) => {
           
         if (error) {
           throw error
+        }
+        
+        // Parse repository JSON file to get plugins if it's a CloudStream repository
+        if (repo.url.includes('github.com')) {
+          try {
+            // For CloudStream repositories, the plugins are defined in a json file
+            const repoJsonUrl = `${repo.url.replace('github.com', 'raw.githubusercontent.com')}/master/repo.json`
+            const response = await fetch(repoJsonUrl)
+            
+            if (response.ok) {
+              const repoData = await response.json()
+              
+              // Process plugins from the repository
+              if (repoData.plugins && Array.isArray(repoData.plugins)) {
+                // Create plugins table if it doesn't exist
+                await supabase.rpc('create_table_if_not_exists', {
+                  table_name: 'cloudstream_plugins',
+                  definition: `
+                    id uuid primary key default uuid_generate_v4(),
+                    name text not null,
+                    url text not null,
+                    version text,
+                    description text,
+                    author text,
+                    repository text references cloudstream_repositories(name),
+                    categories text[],
+                    language text,
+                    is_enabled boolean default true,
+                    installed_at timestamp with time zone default now(),
+                    created_at timestamp with time zone default now(),
+                    metadata jsonb
+                  `
+                }).catch(e => console.error('Error creating cloudstream_plugins table:', e));
+                
+                for (const plugin of repoData.plugins) {
+                  await supabase
+                    .from('cloudstream_plugins')
+                    .upsert({
+                      name: plugin.name,
+                      url: plugin.url,
+                      version: plugin.version || '1.0.0',
+                      description: plugin.description || null,
+                      author: plugin.author || repo.author || null,
+                      repository: repo.name,
+                      categories: plugin.categories || [],
+                      language: plugin.language || null,
+                      is_enabled: true,
+                      installed_at: new Date().toISOString()
+                    }, {
+                      onConflict: 'name',
+                      ignoreDuplicates: false
+                    })
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error processing repository plugins:', err)
+            // Continue even if we can't process plugins
+          }
         }
         
         return new Response(
@@ -145,7 +240,27 @@ serve(async (req) => {
       }
       
       try {
-        // Insert the plugin into a table (you'll need to create this)
+        // Create plugins table if it doesn't exist
+        await supabase.rpc('create_table_if_not_exists', {
+          table_name: 'cloudstream_plugins',
+          definition: `
+            id uuid primary key default uuid_generate_v4(),
+            name text not null,
+            url text not null,
+            version text,
+            description text,
+            author text,
+            repository text references cloudstream_repositories(name),
+            categories text[],
+            language text,
+            is_enabled boolean default true,
+            installed_at timestamp with time zone default now(),
+            created_at timestamp with time zone default now(),
+            metadata jsonb
+          `
+        }).catch(e => console.error('Error creating cloudstream_plugins table:', e));
+        
+        // Insert the plugin into a table
         const { error } = await supabase
           .from('cloudstream_plugins')
           .upsert({
@@ -157,7 +272,7 @@ serve(async (req) => {
             repository: plugin.repository || null,
             categories: plugin.categories || [],
             language: plugin.language || null,
-            is_installed: true,
+            is_enabled: true,
             installed_at: new Date().toISOString()
           }, {
             onConflict: 'name',
@@ -186,6 +301,27 @@ serve(async (req) => {
       console.log('Searching CloudStream content with filters:', filters)
       
       try {
+        // Create content table if it doesn't exist
+        await supabase.rpc('create_table_if_not_exists', {
+          table_name: 'cloudstream_content',
+          definition: `
+            id uuid primary key default uuid_generate_v4(),
+            title text not null,
+            type text not null,
+            year integer,
+            poster text,
+            backdrop text,
+            plot text,
+            rating numeric,
+            source_id uuid references cloudstream_sources(id),
+            external_id text,
+            url text,
+            created_at timestamp with time zone default now(),
+            updated_at timestamp with time zone default now(),
+            metadata jsonb
+          `
+        }).catch(e => console.error('Error creating cloudstream_content table:', e));
+        
         let query = supabase
           .from('cloudstream_content')
           .select('*, cloudstream_sources(*)')
@@ -246,6 +382,27 @@ serve(async (req) => {
       console.log('Syncing content')
       
       try {
+        // Create content table if it doesn't exist
+        await supabase.rpc('create_table_if_not_exists', {
+          table_name: 'cloudstream_content',
+          definition: `
+            id uuid primary key default uuid_generate_v4(),
+            title text not null,
+            type text not null,
+            year integer,
+            poster text,
+            backdrop text,
+            plot text,
+            rating numeric,
+            source_id uuid references cloudstream_sources(id),
+            external_id text,
+            url text,
+            created_at timestamp with time zone default now(),
+            updated_at timestamp with time zone default now(),
+            metadata jsonb
+          `
+        }).catch(e => console.error('Error creating cloudstream_content table:', e));
+        
         // Get all enabled sources
         const { data: sources, error: sourcesError } = await supabase
           .from('cloudstream_sources')
@@ -267,38 +424,87 @@ serve(async (req) => {
         let syncedCount = 0
         
         for (const source of sources) {
-          // Focus on Indian content
-          if (source.language && ['hi', 'ta', 'te', 'ml', 'kn', 'bn'].includes(source.language) || 
-              (source.categories && source.categories.includes('indian'))) {
-            
-            // Simulate adding random content for this source
-            const contentCount = Math.floor(Math.random() * 5) + 1  // 1-5 random content items
-            
-            for (let i = 0; i < contentCount; i++) {
-              const isMovie = Math.random() > 0.5
-              const contentItem = {
-                title: `${source.name} ${isMovie ? 'Movie' : 'Series'} ${i + 1}`,
-                type: isMovie ? 'movie' : 'series',
-                year: 2020 + Math.floor(Math.random() * 4),
-                poster: `https://picsum.photos/seed/${source.name}${i}/300/450`,
-                backdrop: `https://picsum.photos/seed/${source.name}${i}-bg/1280/720`,
-                plot: `This is a sample ${source.language || 'Indian'} content item from the ${source.name} source.`,
-                rating: Math.floor(Math.random() * 100) / 10,
-                source_id: source.id,
-                external_id: `${source.name.toLowerCase().replace(/\s+/g, '-')}-${i}`
-              }
-              
-              const { error: insertError } = await supabase
-                .from('cloudstream_content')
-                .upsert(contentItem, {
-                  onConflict: 'external_id',
-                  ignoreDuplicates: false
-                })
+          // Check if this is a real CloudStream source with a valid URL
+          if (source.url && (source.url.includes('github.com') || source.url.includes('raw.githubusercontent.com'))) {
+            try {
+              // Try to parse the source file to get content
+              const response = await fetch(source.url)
+              if (response.ok) {
+                // Parse the source code or API response
+                // This is a simplified example - in a real implementation, 
+                // you would need to properly parse each provider's format
+                const contentCount = Math.floor(Math.random() * 10) + 5  // 5-15 random content items
                 
-              if (insertError) {
-                console.error(`Error inserting content for ${source.name}:`, insertError)
-              } else {
-                syncedCount++
+                for (let i = 0; i < contentCount; i++) {
+                  const isMovie = Math.random() > 0.5
+                  const languages = ['hi', 'ta', 'te', 'ml', 'kn', 'bn']
+                  const contentLanguage = source.language || languages[Math.floor(Math.random() * languages.length)]
+                  
+                  const contentItem = {
+                    title: `${source.name} ${isMovie ? 'Movie' : 'Series'} ${i + 1} (${contentLanguage.toUpperCase()})`,
+                    type: isMovie ? 'movie' : 'series',
+                    year: 2021 + Math.floor(Math.random() * 3),
+                    poster: `https://picsum.photos/seed/${source.name}${i}/300/450`,
+                    backdrop: `https://picsum.photos/seed/${source.name}${i}-bg/1280/720`,
+                    plot: `This is a sample ${contentLanguage} content item from the ${source.name} source.`,
+                    rating: Math.floor(Math.random() * 100) / 10,
+                    source_id: source.id,
+                    external_id: `${source.name.toLowerCase().replace(/\s+/g, '-')}-${i}`,
+                    url: `/watch/${source.name.toLowerCase().replace(/\s+/g, '-')}/${i}`
+                  }
+                  
+                  const { error: insertError } = await supabase
+                    .from('cloudstream_content')
+                    .upsert(contentItem, {
+                      onConflict: 'external_id',
+                      ignoreDuplicates: false
+                    })
+                    
+                  if (insertError) {
+                    console.error(`Error inserting content for ${source.name}:`, insertError)
+                  } else {
+                    syncedCount++
+                  }
+                }
+              }
+            } catch (err) {
+              console.error(`Error processing source ${source.name}:`, err)
+            }
+          } else {
+            // For sources without valid URLs, add some mock content
+            // Focus on Indian content
+            if (source.language && ['hi', 'ta', 'te', 'ml', 'kn', 'bn'].includes(source.language) || 
+                (source.categories && source.categories.includes('indian'))) {
+              
+              // Simulate adding random content for this source
+              const contentCount = Math.floor(Math.random() * 5) + 1  // 1-5 random content items
+              
+              for (let i = 0; i < contentCount; i++) {
+                const isMovie = Math.random() > 0.5
+                const contentItem = {
+                  title: `${source.name} ${isMovie ? 'Movie' : 'Series'} ${i + 1}`,
+                  type: isMovie ? 'movie' : 'series',
+                  year: 2020 + Math.floor(Math.random() * 4),
+                  poster: `https://picsum.photos/seed/${source.name}${i}/300/450`,
+                  backdrop: `https://picsum.photos/seed/${source.name}${i}-bg/1280/720`,
+                  plot: `This is a sample ${source.language || 'Indian'} content item from the ${source.name} source.`,
+                  rating: Math.floor(Math.random() * 100) / 10,
+                  source_id: source.id,
+                  external_id: `${source.name.toLowerCase().replace(/\s+/g, '-')}-${i}`
+                }
+                
+                const { error: insertError } = await supabase
+                  .from('cloudstream_content')
+                  .upsert(contentItem, {
+                    onConflict: 'external_id',
+                    ignoreDuplicates: false
+                  })
+                  
+                if (insertError) {
+                  console.error(`Error inserting content for ${source.name}:`, insertError)
+                } else {
+                  syncedCount++
+                }
               }
             }
           }
@@ -315,6 +521,58 @@ serve(async (req) => {
         console.error('Error syncing content:', error)
         return new Response(
           JSON.stringify({ success: false, message: `Error syncing content: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+    
+    // Get CloudStream repos
+    else if (action === 'getRepositories') {
+      try {
+        const { data, error } = await supabase
+          .from('cloudstream_repositories')
+          .select('*')
+          .order('name');
+          
+        if (error) throw error;
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: data || [] 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } catch (error) {
+        console.error('Error fetching repositories:', error)
+        return new Response(
+          JSON.stringify({ success: false, message: `Error fetching repositories: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+    
+    // Get CloudStream plugins
+    else if (action === 'getPlugins') {
+      try {
+        const { data, error } = await supabase
+          .from('cloudstream_plugins')
+          .select('*, cloudstream_repositories(*)')
+          .order('name');
+          
+        if (error) throw error;
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: data || [] 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } catch (error) {
+        console.error('Error fetching plugins:', error)
+        return new Response(
+          JSON.stringify({ success: false, message: `Error fetching plugins: ${error.message}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

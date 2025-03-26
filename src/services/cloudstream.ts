@@ -43,6 +43,29 @@ export interface CloudStreamSearchFilters {
   pageSize?: number;
 }
 
+export interface CloudStreamPlugin {
+  id?: string;
+  name: string;
+  url: string;
+  version?: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  repository?: string;
+  author?: string;
+  is_enabled?: boolean;
+}
+
+export interface CloudStreamRepository {
+  id?: string;
+  name: string;
+  url: string;
+  description?: string;
+  author?: string;
+  is_enabled?: boolean;
+  plugins?: CloudStreamPlugin[];
+}
+
 // Base URLs for the CloudStream extension APIs
 const CS_REPOS = {
   CSX: {
@@ -59,37 +82,32 @@ const CS_REPOS = {
     name: 'Kekik',
     url: 'https://raw.githubusercontent.com/keyiflerolsun/Kekik-cloudstream/main',
     apiUrl: 'https://api.github.com/repos/keyiflerolsun/Kekik-cloudstream/contents'
+  },
+  HEXATED: {
+    name: 'Hexated',
+    url: 'https://raw.githubusercontent.com/hexated/cloudstream-extensions-hexated/builds',
+    apiUrl: 'https://api.github.com/repos/hexated/cloudstream-extensions-hexated/contents'
+  },
+  RECLOUDSTREAM: {
+    name: 'ReCloudStream',
+    url: 'https://raw.githubusercontent.com/recloudstream/extensions/builds',
+    apiUrl: 'https://api.github.com/repos/recloudstream/extensions/contents'
   }
 };
 
-// Available sources from the extensions
+// Available sources from the extensions - focusing on Indian content
 const CSX_SOURCES: CloudStreamSource[] = [
   { name: 'JioTV', url: `${CS_REPOS.CSX.url}/JioTV/src/main/kotlin/com/jeetv/JioTV.kt`, language: 'hi', categories: ['indian', 'live'], repo: 'CSX' },
-  { name: 'VivaMax', url: `${CS_REPOS.CSX.url}/VivaMax/src/main/kotlin/com/vivamax/VivaMax.kt`, categories: ['movies', 'series'], repo: 'CSX' },
-  { name: 'TurkcAnime', url: `${CS_REPOS.CSX.url}/TurkcAnime/src/main/kotlin/com/turkanime/TurkcAnime.kt`, language: 'tr', categories: ['anime'], repo: 'CSX' },
-  { name: 'Javmost', url: `${CS_REPOS.CSX.url}/Javmost/src/main/kotlin/com/javmost/Javmost.kt`, categories: ['adult'], repo: 'CSX' },
-  { name: 'AnimeSail', url: `${CS_REPOS.CSX.url}/AnimeSail/src/main/kotlin/com/animesail/AnimeSail.kt`, language: 'id', categories: ['anime'], repo: 'CSX' },
   { name: 'AnimeIndoProvider', url: `${CS_REPOS.CSX.url}/AnimeIndoProvider/src/main/kotlin/com/animeindo/AnimeIndoProvider.kt`, language: 'id', categories: ['anime'], repo: 'CSX' },
-  { name: 'DramaSee', url: `${CS_REPOS.CSX.url}/DramaSee/src/main/kotlin/com/dramasee/DramaSee.kt`, categories: ['series'], repo: 'CSX' },
-  { name: 'ExtremeTorrent', url: `${CS_REPOS.CSX.url}/ExtremeTorrent/src/main/kotlin/com/extremetorrent/ExtremeTorrent.kt`, categories: ['torrent'], repo: 'CSX' },
-  { name: 'FilmanProvider', url: `${CS_REPOS.CSX.url}/FilmanProvider/src/main/kotlin/com/filman/FilmanProvider.kt`, language: 'pl', categories: ['movies', 'series'], repo: 'CSX' },
 ];
 
 const PHISHER_SOURCES: CloudStreamSource[] = [
-  { name: 'Doomovies', url: `${CS_REPOS.PHISHER.url}/Doomovies/src/main/kotlin/com/phisher/Doomovies.kt`, categories: ['movies'], repo: 'PHISHER' },
-  { name: 'Filmxy', url: `${CS_REPOS.PHISHER.url}/Filmxy/src/main/kotlin/com/phisher/Filmxy.kt`, categories: ['movies'], repo: 'PHISHER' },
   { name: 'TinyTv', url: `${CS_REPOS.PHISHER.url}/TinyTv/src/main/kotlin/com/phisher/TinyTv.kt`, language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'PHISHER' },
-  { name: 'KitsuVIO', url: `${CS_REPOS.PHISHER.url}/KitsuVIO/src/main/kotlin/com/phisher/KitsuVIO.kt`, categories: ['anime'], repo: 'PHISHER' },
-  { name: 'Kawaiii', url: `${CS_REPOS.PHISHER.url}/Kawaiii/src/main/kotlin/com/phisher/Kawaiii.kt`, categories: ['anime'], repo: 'PHISHER' },
-  { name: 'Kisskh', url: `${CS_REPOS.PHISHER.url}/Kisskh/src/main/kotlin/com/phisher/Kisskh.kt`, categories: ['movies', 'series'], repo: 'PHISHER' },
-  { name: 'NineAnime', url: `${CS_REPOS.PHISHER.url}/NineAnime/src/main/kotlin/com/phisher/NineAnime.kt`, categories: ['anime'], repo: 'PHISHER' },
 ];
 
-const KEKIK_SOURCES: CloudStreamSource[] = [
-  { name: 'BicapsNet', url: `${CS_REPOS.KEKIK.url}/BicapsNet/src/main/kotlin/com/keyiflerolsun/BicapsNet.kt`, language: 'tr', categories: ['anime', 'movies', 'series'], repo: 'KEKIK' },
-  { name: 'Blutv', url: `${CS_REPOS.KEKIK.url}/Blutv/src/main/kotlin/com/keyiflerolsun/Blutv.kt`, language: 'tr', categories: ['movies', 'series'], repo: 'KEKIK' },
-  { name: 'DiziPal', url: `${CS_REPOS.KEKIK.url}/DiziPal/src/main/kotlin/com/keyiflerolsun/DiziPal.kt`, language: 'tr', categories: ['series'], repo: 'KEKIK' },
-  { name: 'HdFilmCehennemi', url: `${CS_REPOS.KEKIK.url}/HdFilmCehennemi/src/main/kotlin/com/keyiflerolsun/HdFilmCehennemi.kt`, language: 'tr', categories: ['movies'], repo: 'KEKIK' },
+const RECLOUDSTREAM_SOURCES: CloudStreamSource[] = [
+  { name: 'HindiLover', url: `${CS_REPOS.RECLOUDSTREAM.url}/HindiLover.cs`, language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'RECLOUDSTREAM', description: 'Hindi movies and series provider' },
+  { name: 'MultiProviders', url: `${CS_REPOS.RECLOUDSTREAM.url}/MultiProviders.cs`, categories: ['movies', 'series', 'anime'], repo: 'RECLOUDSTREAM', description: 'Multiprovider for various streaming sites' },
 ];
 
 // Indian sources specifically
@@ -104,7 +122,7 @@ const INDIAN_SOURCES: CloudStreamSource[] = [
 ];
 
 // Combined sources with Indian sources first for priority
-export const CLOUDSTREAM_SOURCES = [...INDIAN_SOURCES, ...CSX_SOURCES, ...PHISHER_SOURCES, ...KEKIK_SOURCES]
+export const CLOUDSTREAM_SOURCES = [...INDIAN_SOURCES, ...CSX_SOURCES, ...PHISHER_SOURCES, ...RECLOUDSTREAM_SOURCES]
   .filter(source => source.language === 'hi' || (source.categories && source.categories.includes('indian')) || source.repo === 'INDIAN')
   .sort((a, b) => {
     // Sort by Indian content first
@@ -171,6 +189,56 @@ export const fetchAllSources = async (): Promise<CloudStreamSource[]> => {
   } catch (error) {
     console.error('Error fetching CloudStream sources:', error);
     return CLOUDSTREAM_SOURCES; // Fallback to static list if API fails
+  }
+};
+
+// Get all repositories
+export const fetchAllRepositories = async (): Promise<CloudStreamRepository[]> => {
+  try {
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getRepositories'
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      return result.data || [];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching CloudStream repositories:', error);
+    return [];
+  }
+};
+
+// Get all plugins
+export const fetchAllPlugins = async (): Promise<CloudStreamPlugin[]> => {
+  try {
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getPlugins'
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      return result.data || [];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching CloudStream plugins:', error);
+    return [];
   }
 };
 
@@ -451,9 +519,140 @@ export const subscribeToCloudStreamUpdates = (callback: () => void) => {
         callback();
       }
     )
+    .on('postgres_changes', 
+      {
+        event: '*', 
+        schema: 'public',
+        table: 'cloudstream_plugins'
+      }, 
+      () => {
+        callback();
+      }
+    )
+    .on('postgres_changes', 
+      {
+        event: '*', 
+        schema: 'public',
+        table: 'cloudstream_repositories'
+      }, 
+      () => {
+        callback();
+      }
+    )
     .subscribe();
 
   return () => {
     supabase.removeChannel(channel);
   };
+};
+
+// Parse CloudStream GitHub repository
+export const parseCloudStreamRepo = async (repoUrl: string): Promise<{
+  sources: CloudStreamSource[];
+  plugins: CloudStreamPlugin[];
+}> => {
+  try {
+    // For GitHub repos
+    if (repoUrl.includes('github.com')) {
+      const apiUrl = repoUrl.replace('github.com', 'api.github.com/repos') + '/contents';
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch repository content: ${response.statusText}`);
+      }
+      
+      const contents = await response.json();
+      
+      // Look for repo.json file that CloudStream repos typically use
+      const repoJsonFile = contents.find((item: any) => item.name === 'repo.json');
+      
+      if (repoJsonFile) {
+        const rawUrl = repoJsonFile.download_url;
+        const repoJsonResponse = await fetch(rawUrl);
+        
+        if (repoJsonResponse.ok) {
+          const repoData = await repoJsonResponse.json();
+          
+          const plugins: CloudStreamPlugin[] = [];
+          const sources: CloudStreamSource[] = [];
+          
+          // Process plugins from repo.json
+          if (repoData.plugins && Array.isArray(repoData.plugins)) {
+            repoData.plugins.forEach((plugin: any) => {
+              plugins.push({
+                name: plugin.name,
+                url: plugin.url,
+                version: plugin.version || '1.0.0',
+                description: plugin.description || null,
+                language: plugin.language || null,
+                categories: plugin.categories || [],
+                repository: repoUrl
+              });
+              
+              // Each plugin potentially contains sources
+              if (plugin.sources && Array.isArray(plugin.sources)) {
+                plugin.sources.forEach((source: any) => {
+                  sources.push({
+                    name: source.name,
+                    url: source.url,
+                    language: source.language || plugin.language,
+                    categories: source.categories || plugin.categories,
+                    repo: repoUrl.split('/').pop() || 'Unknown'
+                  });
+                });
+              }
+            });
+          }
+          
+          return { sources, plugins };
+        }
+      }
+      
+      // If no repo.json found, try to scan for Kotlin files that might be providers
+      const sources: CloudStreamSource[] = [];
+      const plugins: CloudStreamPlugin[] = [];
+      
+      // Find directories that might be plugins
+      const dirs = contents.filter((item: any) => item.type === 'dir');
+      
+      for (const dir of dirs) {
+        // Assuming each directory is a plugin
+        // Look for plugin metadata (you might need to download additional files)
+        const dirUrl = dir.url;
+        const dirResponse = await fetch(dirUrl);
+        
+        if (dirResponse.ok) {
+          const dirContents = await dirResponse.json();
+          
+          // Look for Kotlin files that could be providers
+          const kotlinFiles = dirContents.filter((item: any) => 
+            item.name.endsWith('.kt') && item.name.includes('Provider'));
+          
+          // Add each provider as a source
+          for (const ktFile of kotlinFiles) {
+            sources.push({
+              name: dir.name,
+              url: ktFile.download_url,
+              repo: repoUrl.split('/').pop() || 'Unknown'
+            });
+          }
+          
+          // Add the directory as a plugin
+          plugins.push({
+            name: dir.name,
+            url: dir.html_url,
+            repository: repoUrl
+          });
+        }
+      }
+      
+      return { sources, plugins };
+    }
+    
+    // For non-GitHub repos
+    return { sources: [], plugins: [] };
+  } catch (error) {
+    console.error('Error parsing CloudStream repository:', error);
+    return { sources: [], plugins: [] };
+  }
 };
