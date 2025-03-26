@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { getPopularTvShows, getTopRatedTvShows } from '../services/tmdb';
+import { getPopularTvShows, getTopRatedTvShows, getIndianTVShows } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { AlertCircle, Filter, Search } from 'lucide-react';
@@ -20,6 +20,7 @@ const WebSeries = () => {
   const [filteredShows, setFilteredShows] = useState<TvShow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [languageFilter, setLanguageFilter] = useState('all');
   const { toast } = useToast();
   
   // Only get web series (not TV serials)
@@ -40,58 +41,112 @@ const WebSeries = () => {
     });
   };
 
+  // Query for Indian TV shows (web series & serials mixed)
+  const { data: indianShows, error: indianShowsError } = useQuery({
+    queryKey: ['indian-tv'],
+    queryFn: getIndianTVShows,
+  });
+
+  // Fetch popular shows as a fallback
   const { data: popularShows, error: popularError } = useQuery({
     queryKey: ['popular-tv'],
     queryFn: getPopularTvShows,
+    enabled: !indianShows || indianShows.results.length === 0,
   });
 
+  // Fetch top rated shows as another option
   const { data: topRatedShows, error: topRatedError } = useQuery({
     queryKey: ['top-rated-tv'],
     queryFn: getTopRatedTvShows,
+    enabled: !indianShows || indianShows.results.length === 0,
   });
 
+  // Available languages in the shows
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+
   useEffect(() => {
-    if (popularShows && topRatedShows) {
-      const webSeriesPopular = filterWebSeries(popularShows.results);
-      const webSeriesTopRated = filterWebSeries(topRatedShows.results);
+    if (indianShows?.results) {
+      // Extract and deduplicate all available languages
+      const languages = new Set<string>();
       
-      let combinedShows: TvShow[] = [];
+      indianShows.results.forEach(show => {
+        if (show.original_language) {
+          languages.add(show.original_language);
+        }
+        
+        if (show.languages?.length) {
+          show.languages.forEach(lang => languages.add(lang));
+        }
+      });
       
-      if (selectedFilter === 'popular') {
-        combinedShows = webSeriesPopular;
-      } else if (selectedFilter === 'top_rated') {
-        combinedShows = webSeriesTopRated;
-      } else {
-        // Combine both lists and remove duplicates
-        const allShows = [...webSeriesPopular, ...webSeriesTopRated];
+      setAvailableLanguages(Array.from(languages));
+    }
+  }, [indianShows]);
+
+  useEffect(() => {
+    if (indianShows || (popularShows && topRatedShows)) {
+      let allShows: TvShow[] = [];
+      
+      // Prioritize Indian shows if available
+      if (indianShows?.results && indianShows.results.length > 0) {
+        allShows = indianShows.results;
+      } else if (popularShows?.results && topRatedShows?.results) {
+        // Fallback to combining popular and top rated
+        const webSeriesPopular = filterWebSeries(popularShows.results);
+        const webSeriesTopRated = filterWebSeries(topRatedShows.results);
+        
+        // Combine and remove duplicates
+        const combinedShows = [...webSeriesPopular, ...webSeriesTopRated];
         const uniqueIds = new Set();
-        combinedShows = allShows.filter(show => {
-          if (uniqueIds.has(show.id)) {
-            return false;
-          }
+        allShows = combinedShows.filter(show => {
+          if (uniqueIds.has(show.id)) return false;
           uniqueIds.add(show.id);
           return true;
         });
       }
       
+      // Filter web series only
+      let webSeriesOnly = allShows.filter(show => {
+        if (show.show_type === 'web_series') return true;
+        
+        // If show_type not explicitly set, use criteria
+        return (!show.number_of_seasons || show.number_of_seasons < 5) && 
+              show.vote_average >= 6.5;
+      });
+      
+      // Apply selected filter
+      if (selectedFilter === 'popular') {
+        webSeriesOnly.sort((a, b) => b.popularity - a.popularity);
+      } else if (selectedFilter === 'top_rated') {
+        webSeriesOnly.sort((a, b) => b.vote_average - a.vote_average);
+      }
+      
+      // Apply language filter
+      if (languageFilter !== 'all') {
+        webSeriesOnly = webSeriesOnly.filter(show => 
+          show.original_language === languageFilter || 
+          show.languages?.includes(languageFilter)
+        );
+      }
+      
       // Filter by search query if present
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        combinedShows = combinedShows.filter(show => 
+        webSeriesOnly = webSeriesOnly.filter(show => 
           show.name?.toLowerCase().includes(query) || 
           show.overview?.toLowerCase().includes(query)
         );
       }
       
-      setFilteredShows(combinedShows);
+      setFilteredShows(webSeriesOnly);
       setIsLoading(false);
     }
-  }, [popularShows, topRatedShows, selectedFilter, searchQuery]);
+  }, [indianShows, popularShows, topRatedShows, selectedFilter, languageFilter, searchQuery]);
 
-  const hasError = popularError || topRatedError;
+  const hasError = indianShowsError || popularError || topRatedError;
   
   if (hasError) {
-    const error = popularError || topRatedError;
+    const error = indianShowsError || popularError || topRatedError;
     const errorMessage = handleAPIError(error);
     
     toast({
@@ -103,6 +158,24 @@ const WebSeries = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+  };
+
+  // Language name mapping
+  const getLanguageName = (code: string): string => {
+    const languageMap: Record<string, string> = {
+      'hi': 'Hindi',
+      'ta': 'Tamil',
+      'te': 'Telugu',
+      'ml': 'Malayalam',
+      'bn': 'Bengali',
+      'mr': 'Marathi',
+      'kn': 'Kannada',
+      'gu': 'Gujarati',
+      'pa': 'Punjabi',
+      'en': 'English'
+    };
+    
+    return languageMap[code] || code.toUpperCase();
   };
 
   return (
@@ -140,6 +213,22 @@ const WebSeries = () => {
                 <SelectItem value="top_rated">Top Rated</SelectItem>
               </SelectContent>
             </Select>
+            
+            {availableLanguages.length > 0 && (
+              <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                <SelectTrigger className="w-[150px] bg-moviemate-card/50">
+                  <SelectValue placeholder="Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Languages</SelectItem>
+                  {availableLanguages.map(lang => (
+                    <SelectItem key={lang} value={lang}>
+                      {getLanguageName(lang)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
         
@@ -179,6 +268,7 @@ const WebSeries = () => {
               className="mt-4"
               onClick={() => {
                 setSelectedFilter('all');
+                setLanguageFilter('all');
                 setSearchQuery('');
               }}
             >

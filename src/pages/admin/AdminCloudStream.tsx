@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw } from 'lucide-react';
+import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { CLOUDSTREAM_SOURCES, CloudStreamSource, syncSourcesToSupabase } from '@/services/cloudstream';
 import { supabase } from '@/integrations/supabase/client';
+import CloudStreamPluginManager from '@/components/cloudstream/CloudStreamPluginManager';
 
 const AdminCloudStream = () => {
   const [activeTab, setActiveTab] = useState('sources');
@@ -252,12 +253,24 @@ const AdminCloudStream = () => {
               <Plus className="mr-2 h-4 w-4" />
               Add Source
             </Button>
+
+            <a 
+              href="https://github.com/recloudstream/cloudstream" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline">
+                <HelpCircle className="mr-2 h-4 w-4" />
+                CloudStream Docs
+              </Button>
+            </a>
           </div>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 grid w-full grid-cols-2">
+          <TabsList className="mb-4 grid w-full grid-cols-3">
             <TabsTrigger value="sources">Sources</TabsTrigger>
+            <TabsTrigger value="plugins">Plugins & Extensions</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
           </TabsList>
           
@@ -339,6 +352,10 @@ const AdminCloudStream = () => {
             )}
           </TabsContent>
           
+          <TabsContent value="plugins">
+            <CloudStreamPluginManager />
+          </TabsContent>
+          
           <TabsContent value="content">
             <Card className="bg-moviemate-card/60 backdrop-blur-sm">
               <CardHeader>
@@ -348,7 +365,19 @@ const AdminCloudStream = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
+                <div className="mb-4">
+                  <div className="flex gap-4 mt-4">
+                    <Button className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Sync Content
+                    </Button>
+                    <Button variant="outline" className="gap-2">
+                      <Upload className="h-4 w-4" />
+                      Import Content
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
                   This section is coming soon. Content management will allow you to edit, delete, or manually add CloudStream content.
                 </p>
               </CardContent>
@@ -426,7 +455,7 @@ const AdminCloudStream = () => {
                     id="language"
                     value={newSource.language || ''}
                     onChange={(e) => setNewSource(prev => ({ ...prev, language: e.target.value }))}
-                    placeholder="en, hi, tr, etc."
+                    placeholder="en, hi, ta, te, ml, etc."
                   />
                 </div>
               </div>
