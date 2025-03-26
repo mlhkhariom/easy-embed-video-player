@@ -129,8 +129,8 @@ const LiveTVSlider = () => {
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-3">
                   <h3 className="truncate text-sm font-medium text-white">{channel.name}</h3>
-                  {channel.language && (
-                    <span className="text-xs text-gray-300">{channel.language}</span>
+                  {channel.languages && channel.languages.length > 0 && (
+                    <span className="text-xs text-gray-300">{channel.languages.join(', ')}</span>
                   )}
                 </div>
                 <Link

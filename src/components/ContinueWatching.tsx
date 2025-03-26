@@ -128,7 +128,11 @@ const ContinueWatching = () => {
                     </Button>
                     
                     <div className="absolute bottom-0 left-0 right-0">
-                      <Progress value={item.progress} className="h-1 rounded-none bg-gray-800" indicatorClassName="bg-moviemate-primary" />
+                      <Progress 
+                        value={item.progress} 
+                        className="h-1 rounded-none bg-gray-800" 
+                        indicatorClassName="bg-moviemate-primary" 
+                      />
                     </div>
                   </div>
                   
