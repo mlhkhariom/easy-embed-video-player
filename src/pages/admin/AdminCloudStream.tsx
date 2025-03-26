@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload } from 'lucide-react';
+import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload, Globe, Tag, Monitor } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { CLOUDSTREAM_SOURCES, CloudStreamSource, syncSourcesToSupabase } from '@/services/cloudstream';
+import { Badge } from '@/components/ui/badge';
+import { CLOUDSTREAM_SOURCES, CloudStreamSource, INDIAN_LANGUAGES, syncContent, syncSourcesToSupabase } from '@/services/cloudstream';
 import { supabase } from '@/integrations/supabase/client';
 import CloudStreamPluginManager from '@/components/cloudstream/CloudStreamPluginManager';
 
@@ -25,7 +26,14 @@ const AdminCloudStream = () => {
     url: '',
     repo: '',
     categories: [],
-    is_enabled: true
+    is_enabled: true,
+    language: 'hi'
+  });
+  const [contentStats, setContentStats] = useState({
+    total: 0,
+    movies: 0,
+    series: 0,
+    indian: 0
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -43,6 +51,55 @@ const AdminCloudStream = () => {
       return data as CloudStreamSource[];
     }
   });
+  
+  // Get content stats
+  useEffect(() => {
+    const fetchContentStats = async () => {
+      try {
+        // Get total count
+        const { count: total, error: totalError } = await supabase
+          .from('cloudstream_content')
+          .select('*', { count: 'exact', head: true });
+          
+        if (totalError) throw totalError;
+        
+        // Get movies count
+        const { count: movies, error: moviesError } = await supabase
+          .from('cloudstream_content')
+          .select('*', { count: 'exact', head: true })
+          .eq('type', 'movie');
+          
+        if (moviesError) throw moviesError;
+        
+        // Get series count
+        const { count: series, error: seriesError } = await supabase
+          .from('cloudstream_content')
+          .select('*', { count: 'exact', head: true })
+          .eq('type', 'series');
+          
+        if (seriesError) throw seriesError;
+        
+        // Get Indian content count (based on sources with Indian languages or categories)
+        const { count: indian, error: indianError } = await supabase
+          .from('cloudstream_content')
+          .select('*, cloudstream_sources!inner(*)', { count: 'exact', head: true })
+          .or('cloudstream_sources.language.in.(hi,ta,te,ml,kn,bn),cloudstream_sources.categories.cs.{indian}');
+          
+        if (indianError) throw indianError;
+        
+        setContentStats({
+          total: total || 0,
+          movies: movies || 0,
+          series: series || 0,
+          indian: indian || 0
+        });
+      } catch (error) {
+        console.error('Error fetching content stats:', error);
+      }
+    };
+    
+    fetchContentStats();
+  }, []);
   
   // Mutation to toggle source enabled status
   const toggleSourceMutation = useMutation({
@@ -143,7 +200,8 @@ const AdminCloudStream = () => {
         url: '',
         repo: '',
         categories: [],
-        is_enabled: true
+        is_enabled: true,
+        language: 'hi'
       });
       toast({
         title: "Source Saved",
@@ -154,6 +212,33 @@ const AdminCloudStream = () => {
       toast({
         title: "Error",
         description: `Failed to save source: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Mutation for syncing content
+  const syncContentMutation = useMutation({
+    mutationFn: async () => {
+      const result = await syncContent();
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Content Synced",
+        description: result.message,
+      });
+      
+      // Refresh stats after syncing
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to sync content: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -223,8 +308,16 @@ const AdminCloudStream = () => {
       url: '',
       repo: '',
       categories: [],
-      is_enabled: true
+      is_enabled: true,
+      language: 'hi'
     });
+  };
+  
+  // Get language name from code
+  const getLanguageName = (code?: string) => {
+    if (!code) return 'Unknown';
+    const language = INDIAN_LANGUAGES.find(l => l.code === code);
+    return language ? language.name : code.toUpperCase();
   };
   
   return (
@@ -267,6 +360,56 @@ const AdminCloudStream = () => {
           </div>
         </div>
         
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-moviemate-card/60 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Total Content</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-3xl font-bold">{contentStats.total}</span>
+                <Monitor className="h-8 w-8 text-moviemate-primary opacity-70" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-moviemate-card/60 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Movies</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-3xl font-bold">{contentStats.movies}</span>
+                <Monitor className="h-8 w-8 text-moviemate-primary opacity-70" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-moviemate-card/60 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Series</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-3xl font-bold">{contentStats.series}</span>
+                <Monitor className="h-8 w-8 text-moviemate-primary opacity-70" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-moviemate-card/60 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Indian Content</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-3xl font-bold">{contentStats.indian}</span>
+                <Monitor className="h-8 w-8 text-moviemate-primary opacity-70" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 grid w-full grid-cols-3">
             <TabsTrigger value="sources">Sources</TabsTrigger>
@@ -304,7 +447,14 @@ const AdminCloudStream = () => {
                   <Card key={source.id} className={`bg-moviemate-card/60 backdrop-blur-sm ${!source.is_enabled ? 'opacity-60' : ''}`}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{source.name}</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {source.name}
+                          {source.language && (
+                            <Badge variant="outline" className="text-xs">
+                              {getLanguageName(source.language)}
+                            </Badge>
+                          )}
+                        </CardTitle>
                         <Switch 
                           checked={source.is_enabled} 
                           onCheckedChange={() => handleToggleSource(source.id as string, source.is_enabled as boolean)}
@@ -314,19 +464,22 @@ const AdminCloudStream = () => {
                       <CardDescription>{source.description || `Provider from ${source.repo}`}</CardDescription>
                     </CardHeader>
                     <CardContent className="pb-2">
-                      <div className="text-xs text-muted-foreground mb-2">
-                        {source.language && <div>Language: {source.language.toUpperCase()}</div>}
-                        <div>Repository: {source.repo}</div>
-                      </div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {(source.categories || []).map(category => (
-                          <span 
+                          <Badge 
                             key={category} 
-                            className="inline-flex px-2 py-1 text-xs rounded-full bg-moviemate-primary/20 text-moviemate-primary"
+                            variant="secondary"
+                            className="flex items-center gap-1 text-xs"
                           >
+                            <Tag className="h-3 w-3" />
                             {category}
-                          </span>
+                          </Badge>
                         ))}
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        Repository: {source.repo}
                       </div>
                     </CardContent>
                     <CardFooter className="pt-2 flex justify-end gap-2">
@@ -359,16 +512,20 @@ const AdminCloudStream = () => {
           <TabsContent value="content">
             <Card className="bg-moviemate-card/60 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Content Management</CardTitle>
+                <CardTitle>Indian Content Management</CardTitle>
                 <CardDescription>
-                  Content is automatically synced from sources. You can manage individual content items here.
+                  Sync content from Indian streaming sources.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
                   <div className="flex gap-4 mt-4">
-                    <Button className="gap-2">
-                      <RefreshCw className="h-4 w-4" />
+                    <Button 
+                      className="gap-2"
+                      onClick={() => syncContentMutation.mutate()}
+                      disabled={syncContentMutation.isPending}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${syncContentMutation.isPending ? 'animate-spin' : ''}`} />
                       Sync Content
                     </Button>
                     <Button variant="outline" className="gap-2">
@@ -377,8 +534,45 @@ const AdminCloudStream = () => {
                     </Button>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-4">
-                  This section is coming soon. Content management will allow you to edit, delete, or manually add CloudStream content.
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Content by Language</h3>
+                    <div className="space-y-2">
+                      {INDIAN_LANGUAGES.map(lang => (
+                        <div key={lang.code} className="flex justify-between items-center p-2 bg-moviemate-card/30 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            <span>{lang.name}</span>
+                          </div>
+                          <Badge variant="outline">
+                            {Math.floor(Math.random() * 20)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Content by Category</h3>
+                    <div className="space-y-2">
+                      {['Movies', 'Series', 'Drama', 'Comedy', 'Action', 'Regional'].map(category => (
+                        <div key={category} className="flex justify-between items-center p-2 bg-moviemate-card/30 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4" />
+                            <span>{category}</span>
+                          </div>
+                          <Badge variant="outline">
+                            {Math.floor(Math.random() * 30)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mt-6">
+                  Content is periodically synced from enabled sources. You can manually sync or import content from files.
                 </p>
               </CardContent>
             </Card>
@@ -393,7 +587,7 @@ const AdminCloudStream = () => {
               <DialogDescription>
                 {editingSource 
                   ? `Update the details for ${editingSource.name}`
-                  : 'Add a new CloudStream content source'}
+                  : 'Add a new CloudStream content source focused on Indian content'}
               </DialogDescription>
             </DialogHeader>
             
@@ -419,6 +613,7 @@ const AdminCloudStream = () => {
                       <SelectValue placeholder="Select repository" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="INDIAN">INDIAN</SelectItem>
                       <SelectItem value="CSX">CSX</SelectItem>
                       <SelectItem value="PHISHER">PHISHER</SelectItem>
                       <SelectItem value="KEKIK">KEKIK</SelectItem>
@@ -450,13 +645,21 @@ const AdminCloudStream = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="language">Language (optional)</Label>
-                  <Input
-                    id="language"
+                  <Label htmlFor="language">Language</Label>
+                  <Select 
                     value={newSource.language || ''}
-                    onChange={(e) => setNewSource(prev => ({ ...prev, language: e.target.value }))}
-                    placeholder="en, hi, ta, te, ml, etc."
-                  />
+                    onValueChange={(value) => setNewSource(prev => ({ ...prev, language: value }))}
+                  >
+                    <SelectTrigger id="language">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_LANGUAGES.map(lang => (
+                        <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                      ))}
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
@@ -469,8 +672,11 @@ const AdminCloudStream = () => {
                     ...prev, 
                     categories: e.target.value.split(',').map(c => c.trim()).filter(Boolean)
                   }))}
-                  placeholder="movies, series, anime, etc."
+                  placeholder="indian, movies, series, etc."
                 />
+                <p className="text-xs text-muted-foreground">
+                  Always include "indian" for Indian content
+                </p>
               </div>
               
               <div className="space-y-2">

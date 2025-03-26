@@ -34,6 +34,15 @@ export interface CloudStreamSearchResponse {
   hasMore: boolean;
 }
 
+export interface CloudStreamSearchFilters {
+  language?: string;
+  category?: string;
+  indianContent?: boolean;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 // Base URLs for the CloudStream extension APIs
 const CS_REPOS = {
   CSX: {
@@ -83,8 +92,45 @@ const KEKIK_SOURCES: CloudStreamSource[] = [
   { name: 'HdFilmCehennemi', url: `${CS_REPOS.KEKIK.url}/HdFilmCehennemi/src/main/kotlin/com/keyiflerolsun/HdFilmCehennemi.kt`, language: 'tr', categories: ['movies'], repo: 'KEKIK' },
 ];
 
-// Combined sources
-export const CLOUDSTREAM_SOURCES = [...CSX_SOURCES, ...PHISHER_SOURCES, ...KEKIK_SOURCES].sort((a, b) => a.name.localeCompare(b.name));
+// Indian sources specifically
+const INDIAN_SOURCES: CloudStreamSource[] = [
+  { name: 'Hotstar', url: 'https://example.com/hotstar', language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'INDIAN', description: 'Disney+ Hotstar content provider' },
+  { name: 'SonyLIV', url: 'https://example.com/sonyliv', language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'INDIAN', description: 'SonyLIV content provider' },
+  { name: 'Zee5', url: 'https://example.com/zee5', language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'INDIAN', description: 'Zee5 content provider' },
+  { name: 'MXPlayer', url: 'https://example.com/mxplayer', language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'INDIAN', description: 'MX Player content provider' },
+  { name: 'Voot', url: 'https://example.com/voot', language: 'hi', categories: ['indian', 'movies', 'series'], repo: 'INDIAN', description: 'Voot content provider' },
+  { name: 'AltBalaji', url: 'https://example.com/altbalaji', language: 'hi', categories: ['indian', 'series'], repo: 'INDIAN', description: 'AltBalaji content provider' },
+  { name: 'ErosNow', url: 'https://example.com/erosnow', language: 'hi', categories: ['indian', 'movies'], repo: 'INDIAN', description: 'Eros Now content provider' },
+];
+
+// Combined sources with Indian sources first for priority
+export const CLOUDSTREAM_SOURCES = [...INDIAN_SOURCES, ...CSX_SOURCES, ...PHISHER_SOURCES, ...KEKIK_SOURCES]
+  .filter(source => source.language === 'hi' || (source.categories && source.categories.includes('indian')) || source.repo === 'INDIAN')
+  .sort((a, b) => {
+    // Sort by Indian content first
+    const aIsIndian = a.language === 'hi' || (a.categories && a.categories.includes('indian')) || a.repo === 'INDIAN';
+    const bIsIndian = b.language === 'hi' || (b.categories && b.categories.includes('indian')) || b.repo === 'INDIAN';
+    
+    if (aIsIndian && !bIsIndian) return -1;
+    if (!aIsIndian && bIsIndian) return 1;
+    
+    // Then sort alphabetically
+    return a.name.localeCompare(b.name);
+  });
+
+// Get all available Indian languages
+export const INDIAN_LANGUAGES = [
+  { code: 'hi', name: 'Hindi' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'ml', name: 'Malayalam' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'bn', name: 'Bengali' },
+  { code: 'mr', name: 'Marathi' },
+  { code: 'gu', name: 'Gujarati' },
+  { code: 'pa', name: 'Punjabi' },
+  { code: 'or', name: 'Odia' },
+];
 
 // Sync predefined sources to Supabase
 export const syncSourcesToSupabase = async (): Promise<boolean> => {
@@ -128,37 +174,122 @@ export const fetchAllSources = async (): Promise<CloudStreamSource[]> => {
   }
 };
 
+// Add a new repository
+export const addRepository = async (repo: {
+  name: string;
+  url: string;
+  description?: string;
+  author?: string;
+}): Promise<boolean> => {
+  try {
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'addRepository',
+        repo
+      }),
+    });
+    
+    const result = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Error adding repository:', error);
+    return false;
+  }
+};
+
+// Add a new plugin
+export const addPlugin = async (plugin: {
+  name: string;
+  url: string;
+  version?: string;
+  description?: string;
+  author?: string;
+  repository?: string;
+  categories?: string[];
+  language?: string;
+}): Promise<boolean> => {
+  try {
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'addPlugin',
+        plugin
+      }),
+    });
+    
+    const result = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Error adding plugin:', error);
+    return false;
+  }
+};
+
+// Sync content from all enabled sources
+export const syncContent = async (): Promise<{success: boolean; message: string}> => {
+  try {
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'syncContent'
+      }),
+    });
+    
+    const result = await response.json();
+    return {
+      success: result.success,
+      message: result.message || 'Content sync completed'
+    };
+  } catch (error) {
+    console.error('Error syncing content:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+};
+
 // Search content with Supabase and real-time data
 export const searchCloudStreamContent = async (
   query: string,
-  sourceIds: string[] = []
+  sourceIds: string[] = [],
+  filters: CloudStreamSearchFilters = { indianContent: true }
 ): Promise<CloudStreamSearchResponse> => {
   try {
     // First, try to get real content from Supabase
-    let supabaseQuery = supabase
-      .from('cloudstream_content')
-      .select('*, cloudstream_sources(name)')
-      .order('title');
+    const apiFilters = {
+      ...filters,
+      query,
+      page: 1,
+      pageSize: 20
+    };
     
-    // Add search filter if query is provided
-    if (query && query.trim() !== '') {
-      supabaseQuery = supabaseQuery.ilike('title', `%${query}%`);
-    }
+    const response = await fetch(`${window.location.origin}/api/sync-cloudstream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'searchContent',
+        filters: apiFilters
+      }),
+    });
     
-    // Add source filter if sourceIds are provided
-    if (sourceIds.length > 0) {
-      supabaseQuery = supabaseQuery.in('cloudstream_sources.name', sourceIds);
-    }
+    const result = await response.json();
     
-    const { data, error } = await supabaseQuery;
-    
-    if (error) {
-      throw error;
-    }
-    
-    // If we got data from Supabase, format and return it
-    if (data && data.length > 0) {
-      const results: CloudStreamContent[] = data.map(item => ({
+    if (result.success && result.data && result.data.length > 0) {
+      // Format the results
+      const results: CloudStreamContent[] = result.data.map((item: any) => ({
         id: item.id,
         title: item.title,
         year: item.year,
@@ -167,26 +298,30 @@ export const searchCloudStreamContent = async (
         plot: item.plot,
         rating: item.rating,
         type: item.type as 'movie' | 'series',
-        url: `/cloudstream/${item.cloudstream_sources.name}/${item.external_id}`,
-        source: item.cloudstream_sources.name
+        url: `/cloudstream/${item.cloudstream_sources?.name}/${item.external_id}`,
+        source: item.cloudstream_sources?.name || 'Unknown'
       }));
       
       return {
         results,
-        hasMore: false // We don't support pagination for real data yet
+        hasMore: results.length < (result.total || 0)
       };
     }
     
-    // If no data in Supabase yet, fall back to mock data
+    // If no data in Supabase yet, fall back to mock data with Indian focus
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // Generate mock results
     const results: CloudStreamContent[] = [];
     
-    // Filter sources if specified
+    // Filter sources to prioritize Indian content
     const sources = sourceIds.length > 0 
       ? CLOUDSTREAM_SOURCES.filter(s => sourceIds.includes(s.name))
-      : CLOUDSTREAM_SOURCES;
+      : CLOUDSTREAM_SOURCES.filter(s => 
+          s.language === 'hi' || 
+          (s.categories && s.categories.includes('indian')) ||
+          ['INDIAN'].includes(s.repo)
+        );
     
     // Generate 0-5 mock results per source based on the query
     sources.forEach(source => {
@@ -195,18 +330,22 @@ export const searchCloudStreamContent = async (
       for (let i = 0; i < resultCount; i++) {
         if (query.length > 0 && Math.random() > 0.7) continue; // Skip some results for non-empty queries
         
+        const languages = ['hi', 'ta', 'te', 'ml', 'kn', 'bn'];
+        const language = source.language || languages[Math.floor(Math.random() * languages.length)];
+        const languageName = INDIAN_LANGUAGES.find(l => l.code === language)?.name || language;
+        
         results.push({
           id: `${source.name}-${Date.now()}-${i}`,
           title: query.length > 0 
-            ? `${query} ${i + 1} (${source.name})` 
-            : `Sample ${source.name} Content ${i + 1}`,
+            ? `${query} ${i + 1} (${languageName})` 
+            : `Indian ${source.name} ${i + 1} (${languageName})`,
           year: 2020 + Math.floor(Math.random() * 4),
           poster: `https://picsum.photos/seed/${source.name}${i}/300/450`,
           backdrop: `https://picsum.photos/seed/${source.name}${i}-bg/1280/720`,
-          plot: `This is a sample content item from the ${source.name} source.`,
+          plot: `This is a sample ${languageName} content item from the ${source.name} source.`,
           rating: Math.floor(Math.random() * 100) / 10,
           type: Math.random() > 0.5 ? 'movie' : 'series',
-          url: `#/cloudstream/${source.name}/${i}`,
+          url: `/cloudstream/${source.name}/${i}`,
           source: source.name
         });
       }
@@ -264,17 +403,21 @@ export const getCloudStreamContentDetails = async (
     const source = CLOUDSTREAM_SOURCES.find(s => s.name === sourceId);
     if (!source) return null;
     
-    // Mock content details as fallback
+    // Mock content details as fallback with Indian focus
+    const languages = ['hi', 'ta', 'te', 'ml', 'kn', 'bn'];
+    const language = source.language || languages[Math.floor(Math.random() * languages.length)];
+    const languageName = INDIAN_LANGUAGES.find(l => l.code === language)?.name || language;
+    
     return {
       id: contentId,
-      title: `${sourceId} Content ${contentId}`,
+      title: `${sourceId} ${languageName} Content ${contentId}`,
       year: 2022,
       poster: `https://picsum.photos/seed/${sourceId}${contentId}/300/450`,
       backdrop: `https://picsum.photos/seed/${sourceId}${contentId}-bg/1280/720`,
-      plot: `This is a detailed description for content from ${sourceId}.`,
+      plot: `This is a detailed description for ${languageName} content from ${sourceId}.`,
       rating: 8.5,
       type: Math.random() > 0.5 ? 'movie' : 'series',
-      url: `#/cloudstream/${sourceId}/${contentId}`,
+      url: `/cloudstream/${sourceId}/${contentId}`,
       source: sourceId,
       external_id: contentId
     };

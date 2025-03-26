@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { PlusCircle, FileCode, Github, Download, CloudOff, RefreshCw, Trash2, Clock, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PlusCircle, FileCode, Github, Download, CloudOff, RefreshCw, Trash2, Clock, CheckCircle, Tag, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { 
   Dialog, 
   DialogContent, 
@@ -18,6 +19,9 @@ import {
   DialogFooter,
   DialogTrigger
 } from '@/components/ui/dialog';
+import { INDIAN_LANGUAGES, addPlugin, addRepository, syncContent } from '@/services/cloudstream';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CloudStreamPlugin {
   id: string;
@@ -43,112 +47,187 @@ interface CloudStreamRepository {
   lastSynced?: string;
 }
 
-const DEMO_PLUGINS: CloudStreamPlugin[] = [
-  {
-    id: 'plugin1',
-    name: 'Hotstar Plugin',
-    description: 'Access Hotstar content including sports, movies and TV shows',
-    version: '1.2.0',
-    author: 'CSIndian',
-    repository: 'Indian Plugins',
-    language: 'hi',
-    categories: ['movies', 'tv', 'sports'],
-    lastUpdated: '2023-12-15',
-    status: 'installed'
-  },
-  {
-    id: 'plugin2',
-    name: 'SonyLIV',
-    description: 'Access SonyLIV content with regional language support',
-    version: '0.9.5',
-    author: 'StreamIndia',
-    repository: 'Indian Plugins',
-    language: 'hi',
-    categories: ['movies', 'tv'],
-    lastUpdated: '2023-11-20',
-    status: 'update-available'
-  },
-  {
-    id: 'plugin3',
-    name: 'Zee5',
-    description: 'Stream content from Zee5',
-    version: '1.0.0',
-    author: 'DesiStream',
-    repository: 'Indian Plugins',
-    language: 'hi',
-    categories: ['movies', 'tv'],
-    lastUpdated: '2024-01-10',
-    status: 'installed'
-  },
-  {
-    id: 'plugin4',
-    name: 'MXPlayer',
-    description: 'Access MX Player Originals and other content',
-    version: '0.8.1',
-    author: 'RegionalStreams',
-    repository: 'Regional Content',
-    language: 'multi',
-    categories: ['movies', 'tv'],
-    lastUpdated: '2023-10-05',
-    status: 'available'
-  },
-  {
-    id: 'plugin5',
-    name: 'Voot',
-    description: 'Stream Voot content with premium access',
-    version: '1.1.0',
-    author: 'StreamIndia',
-    repository: 'Indian Plugins',
-    language: 'hi',
-    categories: ['movies', 'tv', 'kids'],
-    lastUpdated: '2024-02-01',
-    status: 'available'
-  }
-];
-
-const DEMO_REPOS: CloudStreamRepository[] = [
-  {
-    id: 'repo1',
-    name: 'Indian Plugins',
-    url: 'https://github.com/user/cloudstream-indian-plugins',
-    description: 'Collection of plugins for Indian streaming services',
-    author: 'IndiaStreamTeam',
-    pluginCount: 15,
-    isEnabled: true,
-    lastSynced: '2024-03-01'
-  },
-  {
-    id: 'repo2',
-    name: 'Regional Content',
-    url: 'https://github.com/user/regional-plugins',
-    description: 'Plugins for regional language content across India',
-    author: 'RegionalDevs',
-    pluginCount: 8,
-    isEnabled: true,
-    lastSynced: '2024-02-15'
-  },
-  {
-    id: 'repo3',
-    name: 'CloudStream Core',
-    url: 'https://github.com/recloudstream/cloudstream-extensions',
-    description: 'Official CloudStream extensions repository',
-    author: 'CloudStream Team',
-    pluginCount: 25,
-    isEnabled: false,
-    lastSynced: '2024-01-20'
-  }
-];
-
 const CloudStreamPluginManager = () => {
   const [activeTab, setActiveTab] = useState('plugins');
-  const [plugins, setPlugins] = useState<CloudStreamPlugin[]>(DEMO_PLUGINS);
-  const [repositories, setRepositories] = useState<CloudStreamRepository[]>(DEMO_REPOS);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingRepo, setIsAddingRepo] = useState(false);
-  const [newRepo, setNewRepo] = useState({ name: '', url: '', description: '' });
+  const [newRepo, setNewRepo] = useState({ name: '', url: '', description: '', author: '' });
   const [isImportingPlugin, setIsImportingPlugin] = useState(false);
   const [pluginUrl, setPluginUrl] = useState('');
+  const [newPlugin, setNewPlugin] = useState({ 
+    name: '', 
+    url: '', 
+    version: '1.0.0', 
+    description: '', 
+    author: '', 
+    repository: '', 
+    categories: [] as string[],
+    language: 'hi'
+  });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch plugins
+  const { data: plugins = [] } = useQuery({
+    queryKey: ['cloudstream-plugins'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cloudstream_plugins')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        
+        // Convert to the expected format
+        return (data || []).map((plugin: any) => ({
+          id: plugin.id,
+          name: plugin.name,
+          description: plugin.description || `Plugin for ${plugin.name}`,
+          version: plugin.version || '1.0.0',
+          author: plugin.author || 'Unknown',
+          repository: plugin.repository || 'Custom',
+          language: plugin.language,
+          categories: plugin.categories || [],
+          lastUpdated: plugin.installed_at || new Date().toISOString(),
+          status: plugin.is_installed ? 'installed' : 'available'
+        })) as CloudStreamPlugin[];
+      } catch (error) {
+        console.error('Error fetching plugins:', error);
+        return [];
+      }
+    }
+  });
+
+  // Fetch repositories
+  const { data: repositories = [] } = useQuery({
+    queryKey: ['cloudstream-repositories'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cloudstream_repositories')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        
+        // Convert to the expected format
+        return (data || []).map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          url: repo.url,
+          description: repo.description || `Repository for ${repo.name}`,
+          author: repo.author || 'Unknown',
+          pluginCount: 0, // This would need to be calculated
+          isEnabled: repo.is_enabled,
+          lastSynced: repo.last_synced
+        })) as CloudStreamRepository[];
+      } catch (error) {
+        console.error('Error fetching repositories:', error);
+        return [];
+      }
+    }
+  });
+
+  // Mutation for toggling repository enabled status
+  const toggleRepoMutation = useMutation({
+    mutationFn: async (repo: CloudStreamRepository) => {
+      const { error } = await supabase
+        .from('cloudstream_repositories')
+        .update({ is_enabled: !repo.isEnabled })
+        .eq('id', repo.id);
+      
+      if (error) throw error;
+      return { ...repo, isEnabled: !repo.isEnabled };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-repositories'] });
+      toast({
+        title: "Repository Updated",
+        description: "Repository status has been updated",
+      });
+    }
+  });
+
+  // Mutation for installing/uninstalling plugins
+  const updatePluginMutation = useMutation({
+    mutationFn: async ({ id, install }: { id: string; install: boolean }) => {
+      const { error } = await supabase
+        .from('cloudstream_plugins')
+        .update({ is_installed: install })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
+      toast({
+        title: "Plugin Updated",
+        description: "Plugin status has been updated",
+      });
+    }
+  });
+
+  // Mutation for adding a new plugin
+  const addPluginMutation = useMutation({
+    mutationFn: async (plugin: typeof newPlugin) => {
+      const success = await addPlugin(plugin);
+      if (!success) throw new Error("Failed to add plugin");
+      return plugin;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
+      setIsImportingPlugin(false);
+      setPluginUrl('');
+      setNewPlugin({ 
+        name: '', 
+        url: '', 
+        version: '1.0.0', 
+        description: '', 
+        author: '', 
+        repository: '', 
+        categories: [],
+        language: 'hi'
+      });
+      toast({
+        title: "Plugin Added",
+        description: "New plugin has been added successfully",
+      });
+    }
+  });
+
+  // Mutation for adding a new repository
+  const addRepoMutation = useMutation({
+    mutationFn: async (repo: typeof newRepo) => {
+      const success = await addRepository(repo);
+      if (!success) throw new Error("Failed to add repository");
+      return repo;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-repositories'] });
+      setIsAddingRepo(false);
+      setNewRepo({ name: '', url: '', description: '', author: '' });
+      toast({
+        title: "Repository Added",
+        description: "New repository has been added successfully",
+      });
+    }
+  });
+
+  // Mutation for syncing content
+  const syncContentMutation = useMutation({
+    mutationFn: async () => {
+      const result = await syncContent();
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Content Synced",
+        description: result.message,
+      });
+    }
+  });
 
   // Filter plugins by search query
   const filteredPlugins = plugins.filter(plugin => 
@@ -164,52 +243,14 @@ const CloudStreamPluginManager = () => {
     (repo.author && repo.author.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Install or update plugin
-  const handleInstallPlugin = (pluginId: string) => {
-    setPlugins(prevPlugins => 
-      prevPlugins.map(plugin => 
-        plugin.id === pluginId 
-          ? { ...plugin, status: 'installed' } 
-          : plugin
-      )
-    );
-    
-    toast({
-      title: "Plugin Installed",
-      description: "The plugin has been successfully installed",
-    });
+  // Handle toggle repository enabled state
+  const handleToggleRepo = (repo: CloudStreamRepository) => {
+    toggleRepoMutation.mutate(repo);
   };
 
-  // Uninstall plugin
-  const handleUninstallPlugin = (pluginId: string) => {
-    setPlugins(prevPlugins => 
-      prevPlugins.map(plugin => 
-        plugin.id === pluginId 
-          ? { ...plugin, status: 'available' } 
-          : plugin
-      )
-    );
-    
-    toast({
-      title: "Plugin Uninstalled",
-      description: "The plugin has been removed from your system",
-    });
-  };
-
-  // Toggle repository enabled state
-  const handleToggleRepo = (repoId: string) => {
-    setRepositories(prevRepos => 
-      prevRepos.map(repo => 
-        repo.id === repoId 
-          ? { ...repo, isEnabled: !repo.isEnabled } 
-          : repo
-      )
-    );
-    
-    toast({
-      title: "Repository Updated",
-      description: "Repository status has been updated",
-    });
+  // Handle install/uninstall plugin
+  const handleUpdatePlugin = (id: string, install: boolean) => {
+    updatePluginMutation.mutate({ id, install });
   };
 
   // Add new repository
@@ -223,28 +264,25 @@ const CloudStreamPluginManager = () => {
       return;
     }
     
-    const newRepoObj: CloudStreamRepository = {
-      id: `repo${repositories.length + 1}`,
-      name: newRepo.name,
-      url: newRepo.url,
-      description: newRepo.description,
-      pluginCount: 0,
-      isEnabled: true,
-      lastSynced: new Date().toISOString().split('T')[0]
-    };
-    
-    setRepositories(prev => [...prev, newRepoObj]);
-    setNewRepo({ name: '', url: '', description: '' });
-    setIsAddingRepo(false);
-    
-    toast({
-      title: "Repository Added",
-      description: "New repository has been added and synced",
-    });
+    addRepoMutation.mutate(newRepo);
   };
 
   // Import plugin from URL
   const handleImportPlugin = () => {
+    if (!newPlugin.name || !newPlugin.url) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide both name and URL for the plugin",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addPluginMutation.mutate(newPlugin);
+  };
+
+  // Handle simple plugin import from URL
+  const handleSimplePluginImport = () => {
     if (!pluginUrl) {
       toast({
         title: "Validation Error",
@@ -254,49 +292,28 @@ const CloudStreamPluginManager = () => {
       return;
     }
     
-    // Mock plugin import
-    const newPlugin: CloudStreamPlugin = {
-      id: `plugin${plugins.length + 1}`,
-      name: `Imported Plugin ${plugins.length + 1}`,
-      description: 'Custom imported plugin',
+    // Extract name from URL
+    const urlParts = pluginUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1].split('.')[0];
+    const name = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+    
+    const plugin = {
+      name,
+      url: pluginUrl,
       version: '1.0.0',
-      author: 'Custom',
-      repository: 'Custom Imports',
-      lastUpdated: new Date().toISOString().split('T')[0],
-      status: 'installed'
+      description: `Plugin for ${name}`,
+      author: 'Unknown',
+      repository: 'Custom Import',
+      categories: ['indian'],
+      language: 'hi'
     };
     
-    setPlugins(prev => [...prev, newPlugin]);
-    setPluginUrl('');
-    setIsImportingPlugin(false);
-    
-    toast({
-      title: "Plugin Imported",
-      description: "Custom plugin has been imported and installed",
-    });
+    addPluginMutation.mutate(plugin);
   };
 
   // Sync all repositories
   const handleSyncAll = () => {
-    toast({
-      title: "Syncing Repositories",
-      description: "Updating all repositories and checking for new plugins",
-    });
-    
-    // Mock sync process
-    setTimeout(() => {
-      setRepositories(prev => 
-        prev.map(repo => ({
-          ...repo,
-          lastSynced: new Date().toISOString().split('T')[0]
-        }))
-      );
-      
-      toast({
-        title: "Sync Complete",
-        description: "All repositories have been updated",
-      });
-    }, 1500);
+    syncContentMutation.mutate();
   };
 
   return (
@@ -304,7 +321,7 @@ const CloudStreamPluginManager = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-white">CloudStream Plugin Manager</h2>
-          <p className="text-gray-400">Manage extensions and repositories for CloudStream</p>
+          <p className="text-gray-400">Manage extensions and repositories for CloudStream with focus on Indian content</p>
         </div>
         
         <div className="flex flex-wrap gap-2">
@@ -319,25 +336,133 @@ const CloudStreamPluginManager = () => {
               <DialogHeader>
                 <DialogTitle>Import Plugin</DialogTitle>
                 <DialogDescription>
-                  Import a CloudStream plugin by providing its URL
+                  Import a CloudStream plugin with details
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="plugin-name">Plugin Name</Label>
+                    <Input
+                      id="plugin-name"
+                      placeholder="Hotstar"
+                      value={newPlugin.name}
+                      onChange={(e) => setNewPlugin({...newPlugin, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plugin-version">Version</Label>
+                    <Input
+                      id="plugin-version"
+                      placeholder="1.0.0"
+                      value={newPlugin.version}
+                      onChange={(e) => setNewPlugin({...newPlugin, version: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="plugin-url">Plugin URL</Label>
                   <Input
                     id="plugin-url"
                     placeholder="https://github.com/user/repo/plugin.zip"
-                    value={pluginUrl}
-                    onChange={(e) => setPluginUrl(e.target.value)}
+                    value={newPlugin.url}
+                    onChange={(e) => setNewPlugin({...newPlugin, url: e.target.value})}
                   />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="plugin-description">Description</Label>
+                  <Input
+                    id="plugin-description"
+                    placeholder="Indian streaming service"
+                    value={newPlugin.description}
+                    onChange={(e) => setNewPlugin({...newPlugin, description: e.target.value})}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="plugin-author">Author</Label>
+                    <Input
+                      id="plugin-author"
+                      placeholder="Developer name"
+                      value={newPlugin.author}
+                      onChange={(e) => setNewPlugin({...newPlugin, author: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plugin-repo">Repository</Label>
+                    <Input
+                      id="plugin-repo"
+                      placeholder="Repository name"
+                      value={newPlugin.repository}
+                      onChange={(e) => setNewPlugin({...newPlugin, repository: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="plugin-categories">Categories (comma-separated)</Label>
+                  <Input
+                    id="plugin-categories"
+                    placeholder="indian, movies, series"
+                    value={newPlugin.categories.join(', ')}
+                    onChange={(e) => setNewPlugin({
+                      ...newPlugin, 
+                      categories: e.target.value.split(',').map(c => c.trim()).filter(Boolean)
+                    })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="plugin-language">Language</Label>
+                  <select
+                    id="plugin-language"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={newPlugin.language}
+                    onChange={(e) => setNewPlugin({...newPlugin, language: e.target.value})}
+                  >
+                    {INDIAN_LANGUAGES.map(lang => (
+                      <option key={lang.code} value={lang.code}>{lang.name}</option>
+                    ))}
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                
+                <Separator className="my-2" />
+                
+                <div className="space-y-2">
+                  <Label>Quick Import</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Paste plugin URL directly"
+                      value={pluginUrl}
+                      onChange={(e) => setPluginUrl(e.target.value)}
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={handleSimplePluginImport}
+                      disabled={!pluginUrl}
+                    >
+                      Import
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Just paste a plugin URL for quick import with auto-generated details.
+                  </p>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsImportingPlugin(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleImportPlugin}>Import</Button>
+                <Button 
+                  onClick={handleImportPlugin}
+                  disabled={!newPlugin.name || !newPlugin.url}
+                >
+                  Add Plugin
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -353,7 +478,7 @@ const CloudStreamPluginManager = () => {
               <DialogHeader>
                 <DialogTitle>Add Repository</DialogTitle>
                 <DialogDescription>
-                  Add a new CloudStream repository to find more plugins
+                  Add a new CloudStream repository to find more Indian content plugins
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -363,7 +488,7 @@ const CloudStreamPluginManager = () => {
                     id="repo-name"
                     placeholder="Indian Plugins"
                     value={newRepo.name}
-                    onChange={(e) => setNewRepo(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setNewRepo({...newRepo, name: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -372,7 +497,7 @@ const CloudStreamPluginManager = () => {
                     id="repo-url"
                     placeholder="https://github.com/user/cloudstream-extensions"
                     value={newRepo.url}
-                    onChange={(e) => setNewRepo(prev => ({ ...prev, url: e.target.value }))}
+                    onChange={(e) => setNewRepo({...newRepo, url: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -381,7 +506,16 @@ const CloudStreamPluginManager = () => {
                     id="repo-description"
                     placeholder="Collection of Indian streaming service plugins"
                     value={newRepo.description}
-                    onChange={(e) => setNewRepo(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setNewRepo({...newRepo, description: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="repo-author">Author (Optional)</Label>
+                  <Input
+                    id="repo-author"
+                    placeholder="Repository maintainer"
+                    value={newRepo.author}
+                    onChange={(e) => setNewRepo({...newRepo, author: e.target.value})}
                   />
                 </div>
               </div>
@@ -389,14 +523,23 @@ const CloudStreamPluginManager = () => {
                 <Button variant="outline" onClick={() => setIsAddingRepo(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddRepository}>Add Repository</Button>
+                <Button 
+                  onClick={handleAddRepository}
+                  disabled={!newRepo.name || !newRepo.url}
+                >
+                  Add Repository
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           
-          <Button onClick={handleSyncAll} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Sync All
+          <Button 
+            onClick={handleSyncAll} 
+            className="gap-2"
+            disabled={syncContentMutation.isPending}
+          >
+            <RefreshCw className={`h-4 w-4 ${syncContentMutation.isPending ? 'animate-spin' : ''}`} />
+            Sync Content
           </Button>
         </div>
       </div>
@@ -469,20 +612,28 @@ const CloudStreamPluginManager = () => {
                       <div>Version: {plugin.version}</div>
                       <div>Author: {plugin.author}</div>
                       <div>Repository: {plugin.repository}</div>
-                      <div>Updated: {plugin.lastUpdated}</div>
+                      <div>Updated: {new Date(plugin.lastUpdated).toLocaleDateString()}</div>
                     </div>
-                    {plugin.categories && plugin.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {plugin.categories.map(category => (
-                          <span 
-                            key={category} 
-                            className="text-xs px-2 py-1 rounded-full bg-moviemate-primary/20 text-moviemate-primary"
-                          >
-                            {category}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {plugin.language && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          {INDIAN_LANGUAGES.find(l => l.code === plugin.language)?.name || plugin.language}
+                        </Badge>
+                      )}
+                      
+                      {plugin.categories && plugin.categories.length > 0 && plugin.categories.map(category => (
+                        <Badge 
+                          key={category} 
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          <Tag className="h-3 w-3" />
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
                   </CardContent>
                   <CardFooter>
                     {plugin.status === 'installed' ? (
@@ -490,7 +641,7 @@ const CloudStreamPluginManager = () => {
                         variant="destructive" 
                         size="sm" 
                         className="w-full gap-2"
-                        onClick={() => handleUninstallPlugin(plugin.id)}
+                        onClick={() => handleUpdatePlugin(plugin.id, false)}
                       >
                         <Trash2 className="h-4 w-4" />
                         Uninstall
@@ -500,7 +651,7 @@ const CloudStreamPluginManager = () => {
                         variant="default" 
                         size="sm" 
                         className="w-full gap-2"
-                        onClick={() => handleInstallPlugin(plugin.id)}
+                        onClick={() => handleUpdatePlugin(plugin.id, true)}
                       >
                         <Download className="h-4 w-4" />
                         Update
@@ -510,7 +661,7 @@ const CloudStreamPluginManager = () => {
                         variant="default" 
                         size="sm" 
                         className="w-full gap-2" 
-                        onClick={() => handleInstallPlugin(plugin.id)}
+                        onClick={() => handleUpdatePlugin(plugin.id, true)}
                       >
                         <Download className="h-4 w-4" />
                         Install
@@ -529,7 +680,7 @@ const CloudStreamPluginManager = () => {
               <CardHeader>
                 <CardTitle>No Repositories Found</CardTitle>
                 <CardDescription>
-                  Add a new repository to find plugins
+                  Add a new repository to find Indian content plugins
                 </CardDescription>
               </CardHeader>
               <CardFooter className="flex justify-center">
@@ -560,7 +711,7 @@ const CloudStreamPluginManager = () => {
                       </div>
                       <Switch
                         checked={repo.isEnabled}
-                        onCheckedChange={() => handleToggleRepo(repo.id)}
+                        onCheckedChange={() => handleToggleRepo(repo)}
                       />
                     </div>
                   </CardHeader>
@@ -568,11 +719,11 @@ const CloudStreamPluginManager = () => {
                     <div className="text-xs text-muted-foreground space-y-1">
                       <div>URL: {repo.url}</div>
                       {repo.author && <div>Author: {repo.author}</div>}
-                      <div>Plugins: {repo.pluginCount}</div>
+                      <div>Plugins: {repo.pluginCount || 0}</div>
                       {repo.lastSynced && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          Last synced: {repo.lastSynced}
+                          Last synced: {new Date(repo.lastSynced).toLocaleDateString()}
                         </div>
                       )}
                     </div>
@@ -581,7 +732,7 @@ const CloudStreamPluginManager = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => handleToggleRepo(repo.id)}
+                      onClick={() => handleToggleRepo(repo)}
                     >
                       {repo.isEnabled ? (
                         <>
@@ -598,29 +749,10 @@ const CloudStreamPluginManager = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        toast({
-                          title: "Syncing Repository",
-                          description: `Updating ${repo.name}...`,
-                        });
-                        
-                        setTimeout(() => {
-                          setRepositories(prev => 
-                            prev.map(r => 
-                              r.id === repo.id 
-                                ? { ...r, lastSynced: new Date().toISOString().split('T')[0] } 
-                                : r
-                            )
-                          );
-                          
-                          toast({
-                            title: "Sync Complete",
-                            description: `${repo.name} has been updated`,
-                          });
-                        }, 1000);
-                      }}
+                      onClick={() => syncContentMutation.mutate()}
+                      disabled={syncContentMutation.isPending}
                     >
-                      <RefreshCw className="mr-2 h-4 w-4" />
+                      <RefreshCw className={`mr-2 h-4 w-4 ${syncContentMutation.isPending ? 'animate-spin' : ''}`} />
                       Sync
                     </Button>
                   </CardFooter>

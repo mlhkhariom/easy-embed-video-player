@@ -14,6 +14,8 @@ interface AdminContextType {
   updateFeaturedChannels: (channels: string[]) => void;
   m3uSources: M3USource[];
   updateM3USources: (sources: M3USource[]) => void;
+  cloudstreamRepos: CloudStreamRepo[];
+  updateCloudstreamRepos: (repos: CloudStreamRepo[]) => void;
 }
 
 export interface M3USource {
@@ -22,6 +24,17 @@ export interface M3USource {
   url: string;
   isEnabled: boolean;
   lastSynced?: string;
+}
+
+export interface CloudStreamRepo {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  author?: string;
+  isEnabled: boolean;
+  lastSynced?: string;
+  pluginCount?: number;
 }
 
 const defaultSettings: AdminSettings = {
@@ -95,6 +108,16 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
       return [];
     }
   });
+  
+  const [cloudstreamRepos, setCloudstreamRepos] = useState<CloudStreamRepo[]>(() => {
+    try {
+      const storedRepos = localStorage.getItem('cloudstreamRepos');
+      return storedRepos ? JSON.parse(storedRepos) : [];
+    } catch (error) {
+      console.error('Error loading CloudStream repositories from localStorage:', error);
+      return [];
+    }
+  });
 
   // Check if the user is already authenticated
   useEffect(() => {
@@ -143,6 +166,15 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error saving M3U sources to localStorage:', error);
     }
   }, [m3uSources]);
+  
+  // Save CloudStream repos to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('cloudstreamRepos', JSON.stringify(cloudstreamRepos));
+    } catch (error) {
+      console.error('Error saving CloudStream repositories to localStorage:', error);
+    }
+  }, [cloudstreamRepos]);
 
   const login = (email: string, password: string): boolean => {
     if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
@@ -173,6 +205,10 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
   const updateM3USources = (sources: M3USource[]) => {
     setM3USources(sources);
   };
+  
+  const updateCloudstreamRepos = (repos: CloudStreamRepo[]) => {
+    setCloudstreamRepos(repos);
+  };
 
   return (
     <AdminContext.Provider
@@ -188,6 +224,8 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         updateFeaturedChannels,
         m3uSources,
         updateM3USources,
+        cloudstreamRepos,
+        updateCloudstreamRepos,
       }}
     >
       {children}

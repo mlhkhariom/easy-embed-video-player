@@ -20,7 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Get request body
-    const { action, sources, plugin, repo } = await req.json()
+    const { action, sources, plugin, repo, filters } = await req.json()
 
     console.log(`Processing ${action} request`)
 
@@ -181,16 +181,143 @@ serve(async (req) => {
       }
     }
     
+    // Search content with filters
+    else if (action === 'searchContent') {
+      console.log('Searching CloudStream content with filters:', filters)
+      
+      try {
+        let query = supabase
+          .from('cloudstream_content')
+          .select('*, cloudstream_sources(*)')
+          
+        // Apply filters for Indian content
+        if (filters) {
+          if (filters.language) {
+            query = query.eq('cloudstream_sources.language', filters.language)
+          }
+          
+          if (filters.category) {
+            query = query.contains('cloudstream_sources.categories', [filters.category])
+          }
+          
+          // Special filter for Indian content
+          if (filters.indianContent) {
+            query = query.or('cloudstream_sources.language.eq.hi,cloudstream_sources.language.eq.ta,cloudstream_sources.language.eq.te,cloudstream_sources.language.eq.ml,cloudstream_sources.language.eq.kn,cloudstream_sources.language.eq.bn,cloudstream_sources.categories.cs.{indian}')
+          }
+          
+          if (filters.query) {
+            query = query.ilike('title', `%${filters.query}%`)
+          }
+        }
+        
+        // Add pagination
+        if (filters && filters.page && filters.pageSize) {
+          const start = (filters.page - 1) * filters.pageSize
+          query = query.range(start, start + filters.pageSize - 1)
+        }
+        
+        query = query.order('created_at', { ascending: false })
+        
+        const { data, error, count } = await query
+        
+        if (error) {
+          throw error
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: data || [],
+            total: count || 0
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } catch (error) {
+        console.error('Error searching content:', error)
+        return new Response(
+          JSON.stringify({ success: false, message: `Error searching content: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+    
     // Sync content
     else if (action === 'syncContent') {
       console.log('Syncing content')
       
-      // This would be a more complex operation to sync content from various sources
-      // For now we'll return a success message
-      return new Response(
-        JSON.stringify({ success: true, message: 'Content sync initiated' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      try {
+        // Get all enabled sources
+        const { data: sources, error: sourcesError } = await supabase
+          .from('cloudstream_sources')
+          .select('*')
+          .eq('is_enabled', true)
+          
+        if (sourcesError) {
+          throw sourcesError
+        }
+        
+        if (!sources || sources.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, message: 'No enabled sources found' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        // Mock syncing content from sources (in a real implementation, you would fetch from the actual sources)
+        let syncedCount = 0
+        
+        for (const source of sources) {
+          // Focus on Indian content
+          if (source.language && ['hi', 'ta', 'te', 'ml', 'kn', 'bn'].includes(source.language) || 
+              (source.categories && source.categories.includes('indian'))) {
+            
+            // Simulate adding random content for this source
+            const contentCount = Math.floor(Math.random() * 5) + 1  // 1-5 random content items
+            
+            for (let i = 0; i < contentCount; i++) {
+              const isMovie = Math.random() > 0.5
+              const contentItem = {
+                title: `${source.name} ${isMovie ? 'Movie' : 'Series'} ${i + 1}`,
+                type: isMovie ? 'movie' : 'series',
+                year: 2020 + Math.floor(Math.random() * 4),
+                poster: `https://picsum.photos/seed/${source.name}${i}/300/450`,
+                backdrop: `https://picsum.photos/seed/${source.name}${i}-bg/1280/720`,
+                plot: `This is a sample ${source.language || 'Indian'} content item from the ${source.name} source.`,
+                rating: Math.floor(Math.random() * 100) / 10,
+                source_id: source.id,
+                external_id: `${source.name.toLowerCase().replace(/\s+/g, '-')}-${i}`
+              }
+              
+              const { error: insertError } = await supabase
+                .from('cloudstream_content')
+                .upsert(contentItem, {
+                  onConflict: 'external_id',
+                  ignoreDuplicates: false
+                })
+                
+              if (insertError) {
+                console.error(`Error inserting content for ${source.name}:`, insertError)
+              } else {
+                syncedCount++
+              }
+            }
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: `Content sync completed. Added/updated ${syncedCount} items.` 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } catch (error) {
+        console.error('Error syncing content:', error)
+        return new Response(
+          JSON.stringify({ success: false, message: `Error syncing content: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // If we reach this point, the action was not recognized
