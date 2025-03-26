@@ -5,7 +5,6 @@ import { TvShow } from '../types';
 import { getIndianTVShows } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import SearchBar from '../components/SearchBar';
 import { Tv, Filter, Search, Star, CalendarClock, LanguagesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +27,23 @@ const TvSerials = () => {
   
   const genre = searchParams.get('genre');
   
+  // Filter for TV serials only
+  const filterTvSerials = (shows: TvShow[]) => {
+    return shows.filter(show => {
+      // Explicit check for tv_serial type first
+      if (show.show_type === 'tv_serial') return true;
+      
+      // Criteria for TV serials if not explicitly marked:
+      // - Many episodes (>50)
+      // - Multiple seasons (>=5)
+      // - Typically daily broadcast format
+      return (
+        (show.number_of_episodes > 50 || show.number_of_seasons >= 5) &&
+        show.show_type !== 'web_series'
+      );
+    });
+  };
+  
   useEffect(() => {
     const fetchTvSerials = async () => {
       try {
@@ -36,16 +52,8 @@ const TvSerials = () => {
         // Always get Indian TV shows as we're focusing on Indian content
         const tvShowsRes = await getIndianTVShows();
         
-        // Better filtering for TV serials based on selected filter type
-        const serialsResults = tvShowsRes.results.filter(show => {
-          // Identify TV serials (many episodes, multiple seasons, or explicitly marked)
-          const isTvSerial = 
-            show.number_of_episodes > 100 || 
-            show.number_of_seasons >= 5 ||
-            show.show_type === 'tv_serial';
-          
-          return isTvSerial;
-        });
+        // Better filtering for TV serials
+        const serialsResults = filterTvSerials(tvShowsRes.results);
         
         if (serialsResults.length === 0) {
           // If no shows match our strict criteria, use broader criteria

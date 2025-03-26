@@ -25,13 +25,18 @@ const WebSeries = () => {
   // Only get web series (not TV serials)
   const filterWebSeries = (shows: TvShow[]) => {
     return shows.filter(show => {
-      // Criteria for web series:
-      // - Less than 100 episodes
+      // Explicit check for web series type first
+      if (show.show_type === 'web_series') return true;
+      
+      // Criteria for web series if not explicitly marked:
       // - Less than 5 seasons typically
       // - Higher production value (use vote_average as a proxy)
-      return (!show.number_of_seasons || show.number_of_seasons < 5) && 
-             (!show.number_of_episodes || show.number_of_episodes < 100) &&
-             show.show_type !== 'tv_serial';
+      // - Not a TV serial
+      return (
+        (!show.number_of_seasons || show.number_of_seasons < 5) && 
+        show.show_type !== 'tv_serial' &&
+        (show.vote_average >= 6.5)
+      );
     });
   };
 
@@ -107,8 +112,8 @@ const WebSeries = () => {
       <main className="container mx-auto px-4 py-8 pt-24">
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Web Series</h1>
-            <p className="text-gray-400">Discover premium web series from around the world</p>
+            <h1 className="text-3xl font-bold text-white">Indian Web Series</h1>
+            <p className="text-gray-400">Discover premium web series from across India</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-2">

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Film, Tv, Globe, Play, PlayCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { handleAPIError } from '../services/error-handler';
+import ErrorHandler from '../components/ErrorHandler';
 
 const Index = () => {
   const [indianMovies, setIndianMovies] = useState<Movie[]>([]);
@@ -25,12 +26,43 @@ const Index = () => {
   const [tvSerials, setTvSerials] = useState<TvShow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentFeatured, setCurrentFeatured] = useState<(Movie | TvShow) | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
+  
+  // Filter for web series vs TV serials
+  const filterWebSeries = (shows: TvShow[]) => {
+    return shows.filter(show => {
+      // Explicit check for web_series type first
+      if (show.show_type === 'web_series') return true;
+      
+      // Criteria for web series if not explicitly marked
+      return (
+        (!show.number_of_seasons || show.number_of_seasons < 5) && 
+        (!show.number_of_episodes || show.number_of_episodes < 50) &&
+        show.show_type !== 'tv_serial' &&
+        (show.vote_average >= 6.5)
+      );
+    });
+  };
+  
+  const filterTvSerials = (shows: TvShow[]) => {
+    return shows.filter(show => {
+      // Explicit check for tv_serial type first
+      if (show.show_type === 'tv_serial') return true;
+      
+      // Criteria for TV serials if not explicitly marked
+      return (
+        (show.number_of_episodes >= 50 || show.number_of_seasons >= 5) &&
+        show.show_type !== 'web_series'
+      );
+    });
+  };
   
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
         // Fetch Indian content only
         const [
@@ -45,20 +77,13 @@ const Index = () => {
         setIndianTvShows(indianTvShowsRes.results);
         
         // Separate Web Series and TV Serials
-        const webSeriesResults = indianTvShowsRes.results.filter(show => 
-          (show.number_of_episodes < 100 && show.number_of_seasons < 10) ||
-          show.show_type === 'web_series'
-        );
-        
-        const tvSerialsResults = indianTvShowsRes.results.filter(show => 
-          (show.number_of_episodes >= 100 || show.number_of_seasons >= 10) ||
-          show.show_type === 'tv_serial'
-        );
+        const webSeriesResults = filterWebSeries(indianTvShowsRes.results);
+        const tvSerialsResults = filterTvSerials(indianTvShowsRes.results);
         
         setWebSeries(webSeriesResults);
         setTvSerials(tvSerialsResults);
         
-        // Set a featured content from Indian movies or shows
+        // Set a featured content from Indian movies or web series
         const allTopIndian = [
           ...indianMoviesRes.results.slice(0, 3),
           ...webSeriesResults.slice(0, 3)
@@ -69,6 +94,7 @@ const Index = () => {
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError(error as Error);
         const errorMessage = handleAPIError(error);
         toast({
           title: "Error loading content",
@@ -104,6 +130,10 @@ const Index = () => {
       transition: { duration: 0.5, ease: "easeOut" }
     }
   };
+  
+  if (error) {
+    return <ErrorHandler error={error} />;
+  }
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-moviemate-background to-purple-900/20">

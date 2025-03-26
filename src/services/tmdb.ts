@@ -11,12 +11,25 @@ export const getImageUrl = (path: string | null, size: string = 'w500'): string 
   return `${IMAGE_BASE_URL}/${size}${path}`;
 };
 
-export const fetchApi = async <T>(endpoint: string): Promise<T> => {
+export const fetchApi = async <T>(endpoint: string, retryCount = 3): Promise<T> => {
   try {
     const url = `${BASE_URL}${endpoint}`;
-    const response = await safeFetch(url);
+    const response = await safeFetch(url, { 
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    if (!response.ok) {
+      throw new APIError(`TMDB API Error: ${response.status}`, response.status);
+    }
+    
     return await response.json();
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError' && retryCount > 0) {
+      console.log(`Request timed out, retrying... (${retryCount} attempts left)`);
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchApi(endpoint, retryCount - 1);
+    }
     throw handleAPIError(error);
   }
 };
@@ -106,15 +119,63 @@ export const searchMulti = (query: string, page: number = 1): Promise<MultiSearc
 
 // Get Indian content
 export const getIndianMovies = (): Promise<MovieResponse> => {
+  // Improved Indian movies query with more targeted parameters
   return fetchApi<MovieResponse>(
-    `/discover/movie?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
-  );
+    `/discover/movie?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc&with_watch_providers=&watch_region=IN`
+  ).then(response => {
+    // Post-process to add show_type for Indian movies
+    if (response?.results) {
+      response.results = response.results.map(movie => ({
+        ...movie,
+        show_type: 'movie'
+      }));
+    }
+    return response;
+  });
 };
 
 export const getIndianTVShows = (): Promise<TvResponse> => {
+  // Improved Indian TV shows query with more targeted parameters
   return fetchApi<TvResponse>(
     `/discover/tv?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
-  );
+  ).then(response => {
+    // Post-process to categorize shows as web series or TV serials based on attributes
+    if (response?.results) {
+      response.results = response.results.map(show => {
+        // Use existing show_type if defined, otherwise infer from attributes
+        if (!show.show_type) {
+          // Web series criteria: shorter runs, fewer episodes, higher ratings
+          if ((!show.number_of_seasons || show.number_of_seasons < 5) && 
+              (!show.number_of_episodes || show.number_of_episodes < 50) &&
+              show.vote_average >= 6.5) {
+            show.show_type = 'web_series';
+          } 
+          // TV serials: longer runs, more episodes
+          else if ((show.number_of_episodes > 50 || show.number_of_seasons >= 5)) {
+            show.show_type = 'tv_serial';
+          }
+          // Default for anything that doesn't match clear criteria
+          else {
+            // Use a default based on rating as a heuristic
+            show.show_type = show.vote_average >= 7.0 ? 'web_series' : 'tv_serial';
+          }
+        }
+        
+        // Set languages array if not already set
+        if (!show.languages) {
+          show.languages = ['hi'];
+        }
+        
+        // Set original_language if not already set
+        if (!show.original_language) {
+          show.original_language = 'hi';
+        }
+        
+        return show;
+      });
+    }
+    return response;
+  });
 };
 
 // Get external IDs (for IMDB ID)
