@@ -118,7 +118,7 @@ export interface CloudStreamContent {
   rating?: number;
   plot?: string;
   genres?: string[];
-  url: string;
+  url: string; // Making this required to match both versions
   external_id?: string;
   created_at: string;
   updated_at: string;

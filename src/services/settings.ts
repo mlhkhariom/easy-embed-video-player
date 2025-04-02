@@ -1,45 +1,49 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { AdminSettings } from '@/types';
 
 export interface Settings extends AdminSettings {}
 
-// Fetch settings
+// Default settings to use as fallback
+const defaultSettings: Settings = {
+  siteName: 'FreeCinema',
+  siteDescription: 'Watch movies and TV shows online for free',
+  primaryColor: '#9b87f5',
+  secondaryColor: '#7E69AB',
+  accentColor: '#6E59A5',
+  sidebarBackgroundColor: '#1a1f2c',
+  logoUrl: '',
+  enableLiveTV: true,
+  enableCloudStream: true,
+  enableAutoPlay: true,
+  enable3DEffects: true,
+  enableTrending: false,
+  tmdbApiKey: '43d89010b257341339737be36dfaac13',
+  customCSS: '',
+  featuredContent: {
+    movie: null,
+    tvShow: null,
+  },
+};
+
+// Fetch settings from localStorage
 export const fetchSettings = async (): Promise<Settings> => {
   try {
-    const { data, error } = await supabase
-      .from('settings')
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Error fetching settings:', error);
-      throw new Error('Failed to fetch settings');
-    }
-
-    return data as Settings;
+    const storedSettings = localStorage.getItem('adminSettings');
+    return storedSettings ? JSON.parse(storedSettings) : defaultSettings;
   } catch (error) {
     console.error('Error fetching settings:', error);
-    throw new Error('Failed to fetch settings');
+    return defaultSettings;
   }
 };
 
-// Update settings
+// Update settings in localStorage
 export const updateSettings = async (updates: Partial<Settings>): Promise<Settings> => {
   try {
-    const { data, error } = await supabase
-      .from('settings')
-      .update(updates)
-      .eq('id', 1) // Assuming there's only one settings record with id 1
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Error updating settings:', error);
-      throw new Error('Failed to update settings');
-    }
-
-    return data as Settings;
+    const currentSettings = await fetchSettings();
+    const updatedSettings = { ...currentSettings, ...updates };
+    
+    localStorage.setItem('adminSettings', JSON.stringify(updatedSettings));
+    return updatedSettings;
   } catch (error) {
     console.error('Error updating settings:', error);
     throw new Error('Failed to update settings');
