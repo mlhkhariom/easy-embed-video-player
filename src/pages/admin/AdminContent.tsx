@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -65,6 +64,46 @@ const AdminContent = () => {
     });
   };
   
+  const handleSelectMovie = (movie: Movie) => {
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      featuredContent: {
+        ...prevSettings.featuredContent,
+        movie: {
+          id: movie.id,
+          title: movie.title,
+          posterPath: movie.poster_path || '',
+          backdropPath: movie.backdrop_path || ''
+        }
+      },
+    }));
+  };
+
+  const handleSelectTvShow = (tvShow: TvShow) => {
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      featuredContent: {
+        ...prevSettings.featuredContent,
+        tvShow: {
+          id: tvShow.id,
+          name: tvShow.name,
+          posterPath: tvShow.poster_path || '',
+          backdropPath: tvShow.backdrop_path || ''
+        }
+      },
+    }));
+  };
+
+  const handleResetFeaturedContent = () => {
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      featuredContent: {
+        movie: null,
+        tvShow: null
+      },
+    }));
+  };
+
   const saveChanges = () => {
     updateSettings({
       featuredContent: {

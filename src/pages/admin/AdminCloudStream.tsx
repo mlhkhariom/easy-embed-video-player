@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Cloud, Edit, Trash2, Plus, Check, X, Loader2, RefreshCw, HelpCircle, Upload, Globe, Tag, Monitor, DownloadCloud, Sparkles } from 'lucide-react';
@@ -62,10 +61,9 @@ const AdminCloudStream = () => {
   const { data: sources = [], isLoading: isLoadingSources, refetch: refetchSources } = useQuery({
     queryKey: ['admin-cloudstream-sources'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cloudstream_sources')
-        .select('*')
-        .order('name');
+      const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+        body: { action: 'get_sources' }
+      });
         
       if (error) throw error;
       return data as CloudStreamSource[];
@@ -86,13 +84,13 @@ const AdminCloudStream = () => {
   
   // Update context state when data is loaded
   useEffect(() => {
-    if (repositories.length > 0) {
+    if (repositories && repositories.length > 0) {
       updateCloudstreamRepos(repositories);
     }
   }, [repositories, updateCloudstreamRepos]);
   
   useEffect(() => {
-    if (plugins.length > 0) {
+    if (plugins && plugins.length > 0) {
       updateCloudstreamPlugins(plugins);
     }
   }, [plugins, updateCloudstreamPlugins]);
@@ -465,7 +463,13 @@ const AdminCloudStream = () => {
       return;
     }
     
-    addPluginMutation.mutate(newPlugin);
+    // Add default author if not provided
+    const updatedPlugin = {
+      ...newPlugin,
+      author: newPlugin.author || 'Unknown'
+    };
+    
+    addPluginMutation.mutate(updatedPlugin);
   };
   
   // Handle cancel edit/add

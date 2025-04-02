@@ -28,22 +28,114 @@ serve(async (req) => {
     )
 
     // Get data from request
-    const { action } = await req.json()
+    const requestData = await req.json()
+    const { action, data } = requestData
 
-    let data, error
+    let responseData = null
+    let error = null
 
     // Handle different actions
     switch (action) {
       case 'get_plugins':
-        ({ data, error } = await supabaseClient
+        const pluginsResult = await supabaseClient
           .from('cloudstream_plugins')
-          .select('*'))
+          .select('*')
+        
+        responseData = pluginsResult.data
+        error = pluginsResult.error
         break
       
       case 'get_repositories':
-        ({ data, error } = await supabaseClient
+        const reposResult = await supabaseClient
           .from('cloudstream_repositories')
-          .select('*'))
+          .select('*')
+        
+        responseData = reposResult.data
+        error = reposResult.error
+        break
+      
+      case 'get_sources':
+        const sourcesResult = await supabaseClient
+          .from('cloudstream_sources')
+          .select('*')
+        
+        responseData = sourcesResult.data
+        error = sourcesResult.error
+        break
+      
+      case 'add_plugin':
+        const addPluginResult = await supabaseClient
+          .from('cloudstream_plugins')
+          .insert([data])
+        
+        responseData = { success: !addPluginResult.error }
+        error = addPluginResult.error
+        break
+      
+      case 'add_repository':
+        const addRepoResult = await supabaseClient
+          .from('cloudstream_repositories')
+          .insert([data])
+        
+        responseData = { success: !addRepoResult.error }
+        error = addRepoResult.error
+        break
+      
+      case 'sync_content':
+        // For now, we'll just update the last_synced timestamp
+        const timestamp = new Date().toISOString()
+        
+        // Update repositories
+        const syncResult = await supabaseClient
+          .from('cloudstream_repositories')
+          .update({ last_synced: timestamp })
+          .eq('is_enabled', true)
+        
+        responseData = { success: !syncResult.error }
+        error = syncResult.error
+        break
+      
+      case 'sync_sources':
+        // This would be a more complex operation in a real app
+        // For now, we'll just return success
+        responseData = { success: true }
+        break
+      
+      case 'search_content':
+        // Mock search functionality for now
+        const { query, sources, options } = requestData
+        console.log('Search query:', query)
+        console.log('Sources:', sources)
+        console.log('Options:', options)
+        
+        // In a real app, this would search the content table
+        responseData = { 
+          results: [], 
+          hasMore: false, 
+          totalResults: 0 
+        }
+        break
+      
+      case 'get_content_details':
+        // Mock content details for now
+        const { contentId, sourceId } = requestData
+        console.log('Content ID:', contentId)
+        console.log('Source ID:', sourceId)
+        
+        // In a real app, this would fetch from the content table
+        responseData = null
+        break
+      
+      case 'parse_repository':
+        // Mock repository parsing for now
+        const { repoUrl } = requestData
+        console.log('Repository URL:', repoUrl)
+        
+        // In a real app, this would fetch the repository and parse it
+        responseData = { 
+          plugins: [], 
+          sources: [] 
+        }
         break
       
       default:
@@ -59,7 +151,7 @@ serve(async (req) => {
     if (error) throw error
 
     return new Response(
-      JSON.stringify({ data }),
+      JSON.stringify({ data: responseData }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -75,3 +167,4 @@ serve(async (req) => {
     )
   }
 })
+

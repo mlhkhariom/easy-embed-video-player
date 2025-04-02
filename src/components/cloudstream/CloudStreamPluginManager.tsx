@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PlusCircle, FileCode, Github, Download, CloudOff, RefreshCw, Trash2, Clock, CheckCircle, Tag, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,30 +21,7 @@ import {
 import { INDIAN_LANGUAGES, addPlugin, addRepository, syncContent } from '@/services/cloudstream';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
-interface CloudStreamPlugin {
-  id: string;
-  name: string;
-  description: string;
-  version: string;
-  author: string;
-  repository: string;
-  language?: string;
-  categories?: string[];
-  lastUpdated: string;
-  status: 'installed' | 'available' | 'update-available';
-}
-
-interface CloudStreamRepository {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  author?: string;
-  pluginCount: number;
-  isEnabled: boolean;
-  lastSynced?: string;
-}
+import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
 
 const CloudStreamPluginManager = () => {
   const [activeTab, setActiveTab] = useState('plugins');
@@ -72,32 +48,11 @@ const CloudStreamPluginManager = () => {
     queryKey: ['cloudstream-plugins'],
     queryFn: async () => {
       try {
-        // Use rpc to fetch data instead of directly accessing the table
-        const { data, error } = await supabase
-          .rpc('get_cloudstream_plugins')
-          .select('*');
+        const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+          body: { action: 'get_plugins' }
+        });
         
-        if (error) {
-          // Fallback to direct query if RPC doesn't exist yet
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('cloudstream_plugins')
-            .select('*', { count: 'exact' });
-          
-          if (fallbackError) throw fallbackError;
-          
-          return (fallbackData || []).map((plugin: any) => ({
-            id: plugin.id,
-            name: plugin.name,
-            description: plugin.description || `Plugin for ${plugin.name}`,
-            version: plugin.version || '1.0.0',
-            author: plugin.author || 'Unknown',
-            repository: plugin.repository || 'Custom',
-            language: plugin.language,
-            categories: plugin.categories || [],
-            lastUpdated: plugin.installed_at || new Date().toISOString(),
-            status: plugin.is_installed ? 'installed' : 'available'
-          })) as CloudStreamPlugin[];
-        }
+        if (error) throw error;
         
         // Convert to the expected format
         return (data || []).map((plugin: any) => ({
@@ -124,30 +79,11 @@ const CloudStreamPluginManager = () => {
     queryKey: ['cloudstream-repositories'],
     queryFn: async () => {
       try {
-        // Use rpc to fetch data instead of directly accessing the table
-        const { data, error } = await supabase
-          .rpc('get_cloudstream_repositories')
-          .select('*');
+        const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+          body: { action: 'get_repositories' }
+        });
         
-        if (error) {
-          // Fallback to direct query if RPC doesn't exist yet
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('cloudstream_repositories')
-            .select('*', { count: 'exact' });
-          
-          if (fallbackError) throw fallbackError;
-          
-          return (fallbackData || []).map((repo: any) => ({
-            id: repo.id,
-            name: repo.name,
-            url: repo.url,
-            description: repo.description || `Repository for ${repo.name}`,
-            author: repo.author || 'Unknown',
-            pluginCount: repo.plugin_count || 0,
-            isEnabled: repo.is_enabled,
-            lastSynced: repo.last_synced
-          })) as CloudStreamRepository[];
-        }
+        if (error) throw error;
         
         // Convert to the expected format
         return (data || []).map((repo: any) => ({
@@ -159,7 +95,7 @@ const CloudStreamPluginManager = () => {
           pluginCount: repo.plugin_count || 0,
           isEnabled: repo.is_enabled,
           lastSynced: repo.last_synced
-        })) as CloudStreamRepository[];
+        })) as CloudStreamRepo[];
       } catch (error) {
         console.error('Error fetching repositories:', error);
         return [];
@@ -169,12 +105,14 @@ const CloudStreamPluginManager = () => {
 
   // Mutation for toggling repository enabled status
   const toggleRepoMutation = useMutation({
-    mutationFn: async (repo: CloudStreamRepository) => {
-      // Use generic query instead of typed one
-      const { error } = await supabase
-        .from('cloudstream_repositories')
-        .update({ is_enabled: !repo.isEnabled })
-        .eq('id', repo.id);
+    mutationFn: async (repo: CloudStreamRepo) => {
+      const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+        body: {
+          action: 'toggle_repository',
+          id: repo.id,
+          is_enabled: !repo.isEnabled
+        }
+      });
       
       if (error) throw error;
       return { ...repo, isEnabled: !repo.isEnabled };
@@ -191,11 +129,13 @@ const CloudStreamPluginManager = () => {
   // Mutation for installing/uninstalling plugins
   const updatePluginMutation = useMutation({
     mutationFn: async ({ id, install }: { id: string; install: boolean }) => {
-      // Use generic query instead of typed one
-      const { error } = await supabase
-        .from('cloudstream_plugins')
-        .update({ is_installed: install })
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+        body: {
+          action: 'update_plugin',
+          id,
+          is_installed: install
+        }
+      });
       
       if (error) throw error;
     },
@@ -210,7 +150,7 @@ const CloudStreamPluginManager = () => {
 
   // Mutation for adding a new plugin
   const addPluginMutation = useMutation({
-    mutationFn: async (plugin: typeof newPlugin) => {
+    mutationFn: async (plugin: typeof newPlugin & { author: string }) => {
       const success = await addPlugin(plugin);
       if (!success) throw new Error("Failed to add plugin");
       return plugin;
@@ -284,7 +224,7 @@ const CloudStreamPluginManager = () => {
   );
 
   // Handle toggle repository enabled state
-  const handleToggleRepo = (repo: CloudStreamRepository) => {
+  const handleToggleRepo = (repo: CloudStreamRepo) => {
     toggleRepoMutation.mutate(repo);
   };
 
@@ -318,7 +258,13 @@ const CloudStreamPluginManager = () => {
       return;
     }
     
-    addPluginMutation.mutate(newPlugin);
+    // Add a default author if missing
+    const pluginWithAuthor = {
+      ...newPlugin,
+      author: newPlugin.author || 'Unknown'
+    };
+    
+    addPluginMutation.mutate(pluginWithAuthor);
   };
 
   // Handle simple plugin import from URL

@@ -2,10 +2,41 @@
 import { supabase } from '@/integrations/supabase/client';
 import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
 
+// Type definitions
 export interface CloudStreamResponse {
   success: boolean;
   message: string;
   data?: any;
+}
+
+export interface CloudStreamContent {
+  id: string;
+  source_id: string;
+  source?: string;
+  title: string;
+  type: 'movie' | 'series';
+  year?: number;
+  poster?: string;
+  backdrop?: string;
+  rating?: number;
+  plot?: string;
+  genres?: string[];
+  url?: string;
+  external_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CloudStreamSource {
+  id?: string;
+  name: string;
+  url: string;
+  repo: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  logo?: string;
+  is_enabled?: boolean;
 }
 
 // Available Indian languages
@@ -20,6 +51,11 @@ export const INDIAN_LANGUAGES = [
   { code: 'gu', name: 'Gujarati' },
   { code: 'pa', name: 'Punjabi' },
   { code: 'ur', name: 'Urdu' },
+];
+
+// Pre-defined CloudStream sources for Indian content
+export const CLOUDSTREAM_SOURCES: CloudStreamSource[] = [
+  // We'll fetch these from the database
 ];
 
 // Add a new CloudStream plugin
@@ -48,13 +84,16 @@ export const addPlugin = async (plugin: {
       is_installed: false
     };
 
-    // Insert the plugin into the database
-    const { error } = await supabase
-      .from('cloudstream_plugins')
-      .insert([pluginData]);
+    // We need to use the Supabase function now since direct access has type issues
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'add_plugin',
+        data: pluginData
+      }
+    });
 
-    if (error) {
-      console.error('Error adding plugin:', error);
+    if (response.error) {
+      console.error('Error adding plugin:', response.error);
       return false;
     }
 
@@ -83,13 +122,16 @@ export const addRepository = async (repo: {
       plugin_count: 0
     };
 
-    // Insert the repository into the database
-    const { error } = await supabase
-      .from('cloudstream_repositories')
-      .insert([repoData]);
+    // We need to use the Supabase function now since direct access has type issues
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'add_repository',
+        data: repoData
+      }
+    });
 
-    if (error) {
-      console.error('Error adding repository:', error);
+    if (response.error) {
+      console.error('Error adding repository:', response.error);
       return false;
     }
 
@@ -103,17 +145,15 @@ export const addRepository = async (repo: {
 // Sync CloudStream content from repositories
 export const syncContent = async (): Promise<CloudStreamResponse> => {
   try {
-    // For now, we'll just update the last_synced timestamp
-    const timestamp = new Date().toISOString();
-    
-    // Update repositories
-    const { error: repoError } = await supabase
-      .from('cloudstream_repositories')
-      .update({ last_synced: timestamp })
-      .eq('is_enabled', true);
+    // For now, we'll use the Supabase function
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'sync_content'
+      }
+    });
 
-    if (repoError) {
-      console.error('Error syncing repositories:', repoError);
+    if (response.error) {
+      console.error('Error syncing content:', response.error);
       return {
         success: false,
         message: 'Failed to sync repositories'
@@ -133,11 +173,242 @@ export const syncContent = async (): Promise<CloudStreamResponse> => {
   }
 };
 
-// Additional utility functions can be added here
+// Fetch all CloudStream sources
+export const fetchAllSources = async (): Promise<CloudStreamSource[]> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+      body: { action: 'get_sources' }
+    });
+
+    if (error) {
+      console.error('Error fetching sources:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching sources:', error);
+    return [];
+  }
+};
+
+// Fetch all CloudStream repositories
+export const fetchAllRepositories = async (): Promise<CloudStreamRepo[]> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+      body: { action: 'get_repositories' }
+    });
+
+    if (error) {
+      console.error('Error fetching repositories:', error);
+      return [];
+    }
+
+    // Convert to CloudStreamRepo format
+    return (data || []).map((repo: any) => ({
+      id: repo.id,
+      name: repo.name,
+      url: repo.url,
+      description: repo.description,
+      author: repo.author,
+      isEnabled: repo.is_enabled,
+      lastSynced: repo.last_synced,
+      pluginCount: repo.plugin_count
+    }));
+  } catch (error) {
+    console.error('Error fetching repositories:', error);
+    return [];
+  }
+};
+
+// Fetch all CloudStream plugins
+export const fetchAllPlugins = async (): Promise<CloudStreamPlugin[]> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('cloudstream-utils', {
+      body: { action: 'get_plugins' }
+    });
+
+    if (error) {
+      console.error('Error fetching plugins:', error);
+      return [];
+    }
+
+    // Convert to CloudStreamPlugin format
+    return (data || []).map((plugin: any) => ({
+      id: plugin.id,
+      name: plugin.name,
+      url: plugin.url,
+      version: plugin.version,
+      description: plugin.description,
+      author: plugin.author,
+      repository: plugin.repository,
+      language: plugin.language,
+      categories: plugin.categories,
+      isEnabled: plugin.is_enabled,
+      isInstalled: plugin.is_installed
+    }));
+  } catch (error) {
+    console.error('Error fetching plugins:', error);
+    return [];
+  }
+};
+
+// Sync CloudStream sources from repositories to Supabase
+export const syncSourcesToSupabase = async (): Promise<boolean> => {
+  try {
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: { action: 'sync_sources' }
+    });
+
+    if (response.error) {
+      console.error('Error syncing sources:', response.error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error syncing sources:', error);
+    return false;
+  }
+};
+
+// Search CloudStream content
+export const searchCloudStreamContent = async (
+  query: string,
+  sources?: string[],
+  options?: {
+    indianContent?: boolean;
+    language?: string;
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<{
+  results: CloudStreamContent[];
+  hasMore: boolean;
+  totalResults: number;
+}> => {
+  try {
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'search_content',
+        query,
+        sources,
+        options
+      }
+    });
+
+    if (response.error) {
+      console.error('Error searching content:', response.error);
+      return { results: [], hasMore: false, totalResults: 0 };
+    }
+
+    return response.data || { results: [], hasMore: false, totalResults: 0 };
+  } catch (error) {
+    console.error('Error searching content:', error);
+    return { results: [], hasMore: false, totalResults: 0 };
+  }
+};
+
+// Get CloudStream content details
+export const getCloudStreamContentDetails = async (
+  contentId: string,
+  sourceId: string
+): Promise<CloudStreamContent | null> => {
+  try {
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'get_content_details',
+        contentId,
+        sourceId
+      }
+    });
+
+    if (response.error) {
+      console.error('Error getting content details:', response.error);
+      return null;
+    }
+
+    return response.data || null;
+  } catch (error) {
+    console.error('Error getting content details:', error);
+    return null;
+  }
+};
+
+// Parse CloudStream repository to get plugins and sources
+export const parseCloudStreamRepo = async (
+  repoUrl: string
+): Promise<{
+  plugins: any[];
+  sources: any[];
+}> => {
+  try {
+    const response = await supabase.functions.invoke('cloudstream-utils', {
+      body: {
+        action: 'parse_repository',
+        repoUrl
+      }
+    });
+
+    if (response.error) {
+      console.error('Error parsing repository:', response.error);
+      return { plugins: [], sources: [] };
+    }
+
+    return response.data || { plugins: [], sources: [] };
+  } catch (error) {
+    console.error('Error parsing repository:', error);
+    return { plugins: [], sources: [] };
+  }
+};
+
+// Subscribe to CloudStream updates
+export const subscribeToCloudStreamUpdates = (
+  callback: () => void
+): (() => void) => {
+  const channel = supabase
+    .channel('cloudstream-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'cloudstream_content' },
+      () => callback()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'cloudstream_sources' },
+      () => callback()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'cloudstream_plugins' },
+      () => callback()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'cloudstream_repositories' },
+      () => callback()
+    )
+    .subscribe();
+
+  // Return unsubscribe function
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
 
 export default {
+  INDIAN_LANGUAGES,
+  CLOUDSTREAM_SOURCES,
   addPlugin,
   addRepository,
   syncContent,
-  INDIAN_LANGUAGES
+  fetchAllSources,
+  fetchAllRepositories,
+  fetchAllPlugins,
+  syncSourcesToSupabase,
+  searchCloudStreamContent,
+  getCloudStreamContentDetails,
+  parseCloudStreamRepo,
+  subscribeToCloudStreamUpdates
 };
+
