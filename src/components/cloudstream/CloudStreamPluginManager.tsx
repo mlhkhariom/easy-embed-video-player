@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable } from '@/components/ui/data-table';
@@ -73,9 +72,8 @@ const CloudStreamPluginManager = () => {
   const [pluginsToInstall, setPluginsToInstall] = useState<CloudStreamPlugin[]>([]);
   const [installing, setInstalling] = useState<Record<string, boolean>>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const { isAdmin } = useAdmin();
+  const { isAuthenticated } = useAdmin();
 
-  // Form setup
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,7 +87,6 @@ const CloudStreamPluginManager = () => {
     },
   });
 
-  // Fetch repositories
   const { 
     data: repositories = [], 
     isLoading: isLoadingRepos,
@@ -99,7 +96,6 @@ const CloudStreamPluginManager = () => {
     queryFn: fetchAllRepositories
   });
 
-  // Fetch plugins
   const { 
     data: plugins = [], 
     isLoading: isLoadingPlugins,
@@ -109,7 +105,6 @@ const CloudStreamPluginManager = () => {
     queryFn: fetchAllPlugins
   });
 
-  // Mutation for adding a new plugin
   const addPluginMutation = useMutation({
     mutationFn: addPlugin,
     onSuccess: () => {
@@ -130,7 +125,6 @@ const CloudStreamPluginManager = () => {
     }
   });
 
-  // Mutation for adding a new repository
   const addRepoMutation = useMutation({
     mutationFn: (repoUrl: string) => {
       return parseCloudStreamRepo(repoUrl).then((data) => {
@@ -138,7 +132,6 @@ const CloudStreamPluginManager = () => {
           throw new Error('No plugins found in repository');
         }
 
-        // Add the repository
         const repoInfo = data.plugins[0];
         return addRepository({
           name: repoInfo.repository.split('/').pop() || 'Unknown Repo',
@@ -164,7 +157,6 @@ const CloudStreamPluginManager = () => {
     }
   });
 
-  // Mutation for syncing sources
   const syncSourcesMutation = useMutation({
     mutationFn: syncSourcesToSupabase,
     onSuccess: () => {
@@ -183,7 +175,6 @@ const CloudStreamPluginManager = () => {
     }
   });
 
-  // Parse repository and show installable plugins
   const parseRepoMutation = useMutation({
     mutationFn: (repoUrl: string) => parseCloudStreamRepo(repoUrl),
     onSuccess: (data) => {
@@ -196,7 +187,6 @@ const CloudStreamPluginManager = () => {
         return;
       }
 
-      // Set the plugins for installation
       setPluginsToInstall(data.plugins);
       toast({
         title: "Repository parsed successfully",
@@ -212,7 +202,6 @@ const CloudStreamPluginManager = () => {
     }
   });
 
-  // Install a plugin
   const installPluginMutation = useMutation({
     mutationFn: (plugin: CloudStreamPlugin) => {
       setInstalling(prev => ({ ...prev, [plugin.name]: true }));
@@ -245,7 +234,6 @@ const CloudStreamPluginManager = () => {
     }
   });
 
-  // Handle form submission
   const onSubmit = useCallback((values: z.infer<typeof formSchema>) => {
     addPluginMutation.mutate({
       name: values.name,
@@ -259,13 +247,11 @@ const CloudStreamPluginManager = () => {
     });
   }, [addPluginMutation]);
 
-  // Handle repository selection
   const handleRepositorySelect = useCallback((repoUrl: string) => {
     setSelectedRepo(repoUrl);
     parseRepoMutation.mutate(repoUrl);
   }, [parseRepoMutation]);
 
-  // Add a new repository
   const handleAddRepository = useCallback((repoUrl: string) => {
     if (!repoUrl) {
       toast({
@@ -278,40 +264,32 @@ const CloudStreamPluginManager = () => {
     addRepoMutation.mutate(repoUrl);
   }, [addRepoMutation, toast]);
 
-  // Filter plugins based on search term
   const filteredPlugins = plugins.filter(plugin => 
     plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (plugin.description && plugin.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (plugin.categories && plugin.categories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
-  // Download a plugin file
   const handleDownloadPlugin = async (plugin: CloudStreamPlugin) => {
     try {
-      // Show a toast notification that we're starting the download
       toast({
         title: "Downloading plugin",
         description: `Starting download of ${plugin.name}...`,
       });
 
-      // Fetch the plugin file
       const response = await fetch(plugin.url);
       if (!response.ok) {
         throw new Error(`Failed to download: ${response.statusText}`);
       }
 
-      // Get the blob from the response
       const blob = await response.blob();
-
-      // Create a download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${plugin.name}.cs3`; // Use the plugin name as the filename
+      a.download = `${plugin.name}.cs3`;
       document.body.appendChild(a);
       a.click();
       
-      // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
@@ -328,7 +306,6 @@ const CloudStreamPluginManager = () => {
     }
   };
 
-  // Define columns for the DataTable
   const columns = [
     {
       accessorKey: "name",
@@ -443,7 +420,7 @@ const CloudStreamPluginManager = () => {
               </TooltipProvider>
             )}
 
-            {isAdmin && (
+            {isAuthenticated && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -468,7 +445,6 @@ const CloudStreamPluginManager = () => {
     },
   ];
 
-  // Render loading state
   if (isLoadingPlugins || isLoadingRepos) {
     return (
       <div className="container mx-auto p-4 space-y-4">
@@ -488,7 +464,6 @@ const CloudStreamPluginManager = () => {
     );
   }
 
-  // Handle errors
   if (pluginsError || reposError) {
     return (
       <div className="container mx-auto p-4">
@@ -524,7 +499,7 @@ const CloudStreamPluginManager = () => {
             {showAdvanced ? "Hide Advanced" : "Show Advanced Options"}
           </Button>
           
-          {isAdmin && (
+          {isAuthenticated && (
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
               <DialogTrigger asChild>
                 <Button>
@@ -789,7 +764,6 @@ const CloudStreamPluginManager = () => {
         <DataTable 
           columns={columns} 
           data={filteredPlugins}
-          searchable={false}
         />
       </div>
     </div>
