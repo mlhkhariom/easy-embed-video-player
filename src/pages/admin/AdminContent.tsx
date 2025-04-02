@@ -35,7 +35,7 @@ const AdminContent = () => {
   const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    onSettled: (data) => {
+    onSuccess: (data) => {
       if (data) {
         setSiteName(data?.siteName || '');
         setEnableTrending(data?.enableTrending || false);

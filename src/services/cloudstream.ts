@@ -20,10 +20,10 @@ export interface CloudStreamContent {
   rating?: number;
   plot?: string;
   genres?: string[];
-  url?: string;
+  url: string;
   external_id?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CloudStreamSource {
