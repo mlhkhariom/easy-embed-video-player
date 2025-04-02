@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { AdminSettings, AdminUser, LiveTVCategory } from '../types';
 
@@ -49,12 +48,13 @@ export interface CloudStreamPlugin {
   categories?: string[];
   repository?: string;
   isEnabled: boolean;
+  isInstalled?: boolean;
 }
 
 const defaultSettings: AdminSettings = {
   siteName: 'FreeCinema',
   siteDescription: 'Watch movies and TV shows online for free',
-  primaryColor: '#9b87f5', // Default moviemate-primary color
+  primaryColor: '#9b87f5',
   secondaryColor: '#7E69AB',
   accentColor: '#6E59A5',
   sidebarBackgroundColor: '#1a1f2c',
@@ -71,7 +71,6 @@ const defaultSettings: AdminSettings = {
   },
 };
 
-// Default admin credentials
 const DEFAULT_ADMIN: AdminUser = {
   email: 'admin@redxerox.eu.org',
   password: 'Admin@123',
@@ -81,7 +80,6 @@ const DEFAULT_ADMIN: AdminUser = {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
-  // Fix for the useState null error - use lazy initialization
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [settings, setSettings] = useState<AdminSettings>(() => {
     try {
@@ -143,7 +141,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   });
 
-  // Check if the user is already authenticated
   useEffect(() => {
     try {
       const adminAuth = localStorage.getItem('adminAuth');
@@ -155,7 +152,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // Save settings to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('adminSettings', JSON.stringify(settings));
@@ -164,7 +160,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [settings]);
 
-  // Save Live TV categories to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('liveTVCategories', JSON.stringify(liveTVCategories));
@@ -173,7 +168,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [liveTVCategories]);
 
-  // Save featured channels to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('featuredChannels', JSON.stringify(featuredChannels));
@@ -182,7 +176,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [featuredChannels]);
 
-  // Save M3U sources to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('m3uSources', JSON.stringify(m3uSources));
@@ -191,7 +184,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [m3uSources]);
   
-  // Save CloudStream repos to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('cloudstreamRepos', JSON.stringify(cloudstreamRepos));
@@ -200,7 +192,6 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [cloudstreamRepos]);
   
-  // Save CloudStream plugins to localStorage when they change
   useEffect(() => {
     try {
       localStorage.setItem('cloudstreamPlugins', JSON.stringify(cloudstreamPlugins));

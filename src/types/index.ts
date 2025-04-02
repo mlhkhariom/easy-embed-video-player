@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface AdminUser {
@@ -11,9 +10,9 @@ export interface AdminSettings {
   siteName: string;
   siteDescription: string;
   primaryColor: string;
-  secondaryColor?: string;
-  accentColor?: string;
-  sidebarBackgroundColor?: string;
+  secondaryColor: string;
+  accentColor: string;
+  sidebarBackgroundColor: string;
   logoUrl: string;
   enableLiveTV: boolean;
   enableCloudStream: boolean;
@@ -22,8 +21,18 @@ export interface AdminSettings {
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
-    movie: number | null;
-    tvShow: number | null;
+    movie: null | {
+      id: number;
+      title: string;
+      posterPath: string;
+      backdropPath: string;
+    };
+    tvShow: null | {
+      id: number;
+      name: string;
+      posterPath: string;
+      backdropPath: string;
+    };
   };
 }
 
@@ -41,7 +50,6 @@ export interface M3UData {
   channels: Channel[];
 }
 
-// Updated to match the IPTV service interface
 export interface Channel {
   id: string;
   name: string;
@@ -54,21 +62,45 @@ export interface Channel {
   is_nsfw?: boolean;
   website?: string;
   logo?: string;
-  url?: string; // Made optional to accommodate both types
+  url?: string;
   category?: string;
   language?: string;
+}
+
+export interface CloudStreamPlugin {
+  id: string;
+  name: string;
+  url: string;
+  version?: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  repository?: string;
+  isEnabled: boolean;
+  isInstalled?: boolean;
+}
+
+export interface CloudStreamRepo {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  author?: string;
+  isEnabled: boolean;
+  lastSynced?: string;
+  pluginCount?: number;
 }
 
 export interface CloudStreamSource {
   id: string;
   name: string;
   url: string;
-  logo?: string;
-  language?: string;
-  categories: string[];
   repo: string;
   description?: string;
-  is_enabled: boolean;
+  language?: string;
+  categories?: string[];
+  logo?: string;
+  isEnabled?: boolean;
 }
 
 export interface CloudStreamContent {
@@ -87,7 +119,6 @@ export interface CloudStreamContent {
   updated_at: string;
 }
 
-// Movie types
 export interface Movie {
   id: number;
   title: string;
@@ -125,7 +156,6 @@ export interface MovieResponse {
   total_results: number;
 }
 
-// TV Show types
 export interface TvShow {
   id: number;
   name: string;
@@ -146,9 +176,9 @@ export interface TvShow {
   tagline?: string;
   type?: string;
   imdb_id?: string;
-  show_type?: 'web_series' | 'tv_serial'; // New field to distinguish between types
-  original_language?: string; // Added this property
-  languages?: string[]; // Added this property
+  show_type?: 'web_series' | 'tv_serial';
+  original_language?: string;
+  languages?: string[];
   networks?: {
     id: number;
     name: string;
@@ -172,7 +202,6 @@ export interface TvResponse {
   total_results: number;
 }
 
-// Season and Episode types
 export interface Season {
   id: number;
   name: string;
@@ -199,7 +228,6 @@ export interface Episode {
   guest_stars?: Cast[];
 }
 
-// Credits and other shared types
 export interface Credits {
   cast: Cast[];
   crew: Crew[];

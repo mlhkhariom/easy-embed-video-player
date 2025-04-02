@@ -72,12 +72,32 @@ const CloudStreamPluginManager = () => {
     queryKey: ['cloudstream-plugins'],
     queryFn: async () => {
       try {
+        // Use rpc to fetch data instead of directly accessing the table
         const { data, error } = await supabase
-          .from('cloudstream_plugins')
-          .select('*')
-          .order('name');
+          .rpc('get_cloudstream_plugins')
+          .select('*');
         
-        if (error) throw error;
+        if (error) {
+          // Fallback to direct query if RPC doesn't exist yet
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('cloudstream_plugins')
+            .select('*', { count: 'exact' });
+          
+          if (fallbackError) throw fallbackError;
+          
+          return (fallbackData || []).map((plugin: any) => ({
+            id: plugin.id,
+            name: plugin.name,
+            description: plugin.description || `Plugin for ${plugin.name}`,
+            version: plugin.version || '1.0.0',
+            author: plugin.author || 'Unknown',
+            repository: plugin.repository || 'Custom',
+            language: plugin.language,
+            categories: plugin.categories || [],
+            lastUpdated: plugin.installed_at || new Date().toISOString(),
+            status: plugin.is_installed ? 'installed' : 'available'
+          })) as CloudStreamPlugin[];
+        }
         
         // Convert to the expected format
         return (data || []).map((plugin: any) => ({
@@ -104,12 +124,30 @@ const CloudStreamPluginManager = () => {
     queryKey: ['cloudstream-repositories'],
     queryFn: async () => {
       try {
+        // Use rpc to fetch data instead of directly accessing the table
         const { data, error } = await supabase
-          .from('cloudstream_repositories')
-          .select('*')
-          .order('name');
+          .rpc('get_cloudstream_repositories')
+          .select('*');
         
-        if (error) throw error;
+        if (error) {
+          // Fallback to direct query if RPC doesn't exist yet
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('cloudstream_repositories')
+            .select('*', { count: 'exact' });
+          
+          if (fallbackError) throw fallbackError;
+          
+          return (fallbackData || []).map((repo: any) => ({
+            id: repo.id,
+            name: repo.name,
+            url: repo.url,
+            description: repo.description || `Repository for ${repo.name}`,
+            author: repo.author || 'Unknown',
+            pluginCount: repo.plugin_count || 0,
+            isEnabled: repo.is_enabled,
+            lastSynced: repo.last_synced
+          })) as CloudStreamRepository[];
+        }
         
         // Convert to the expected format
         return (data || []).map((repo: any) => ({
@@ -118,7 +156,7 @@ const CloudStreamPluginManager = () => {
           url: repo.url,
           description: repo.description || `Repository for ${repo.name}`,
           author: repo.author || 'Unknown',
-          pluginCount: 0, // This would need to be calculated
+          pluginCount: repo.plugin_count || 0,
           isEnabled: repo.is_enabled,
           lastSynced: repo.last_synced
         })) as CloudStreamRepository[];
@@ -132,6 +170,7 @@ const CloudStreamPluginManager = () => {
   // Mutation for toggling repository enabled status
   const toggleRepoMutation = useMutation({
     mutationFn: async (repo: CloudStreamRepository) => {
+      // Use generic query instead of typed one
       const { error } = await supabase
         .from('cloudstream_repositories')
         .update({ is_enabled: !repo.isEnabled })
@@ -152,6 +191,7 @@ const CloudStreamPluginManager = () => {
   // Mutation for installing/uninstalling plugins
   const updatePluginMutation = useMutation({
     mutationFn: async ({ id, install }: { id: string; install: boolean }) => {
+      // Use generic query instead of typed one
       const { error } = await supabase
         .from('cloudstream_plugins')
         .update({ is_installed: install })

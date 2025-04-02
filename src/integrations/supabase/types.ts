@@ -62,6 +62,84 @@ export type Database = {
           },
         ]
       }
+      cloudstream_plugins: {
+        Row: {
+          author: string | null
+          categories: string[] | null
+          description: string | null
+          id: string
+          installed_at: string | null
+          is_enabled: boolean | null
+          is_installed: boolean | null
+          language: string | null
+          name: string
+          repository: string | null
+          url: string
+          version: string | null
+        }
+        Insert: {
+          author?: string | null
+          categories?: string[] | null
+          description?: string | null
+          id?: string
+          installed_at?: string | null
+          is_enabled?: boolean | null
+          is_installed?: boolean | null
+          language?: string | null
+          name: string
+          repository?: string | null
+          url: string
+          version?: string | null
+        }
+        Update: {
+          author?: string | null
+          categories?: string[] | null
+          description?: string | null
+          id?: string
+          installed_at?: string | null
+          is_enabled?: boolean | null
+          is_installed?: boolean | null
+          language?: string | null
+          name?: string
+          repository?: string | null
+          url?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      cloudstream_repositories: {
+        Row: {
+          author: string | null
+          description: string | null
+          id: string
+          is_enabled: boolean | null
+          last_synced: string | null
+          name: string
+          plugin_count: number | null
+          url: string
+        }
+        Insert: {
+          author?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_synced?: string | null
+          name: string
+          plugin_count?: number | null
+          url: string
+        }
+        Update: {
+          author?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_synced?: string | null
+          name?: string
+          plugin_count?: number | null
+          url?: string
+        }
+        Relationships: []
+      }
       cloudstream_sources: {
         Row: {
           categories: string[] | null
