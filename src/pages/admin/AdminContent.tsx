@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -36,50 +35,52 @@ const AdminContent = () => {
   const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    onSuccess: (data) => {
-      setSiteName(data?.siteName || '');
-      setEnableTrending(data?.enableTrending || false);
-      setEnableCloudStream(data?.enableCloudStream || false);
-      updateAdminSettings(data);
-      
-      // Convert featured content to Movie/TvShow format if available
-      if (data?.featuredContent?.movie) {
-        const movieData = data.featuredContent.movie;
-        setFeaturedMovie({
-          id: movieData.id,
-          title: movieData.title,
-          poster_path: movieData.posterPath,
-          backdrop_path: movieData.backdropPath,
-          release_date: '',
-          overview: '',
-          vote_average: 0,
-          vote_count: 0,
-          popularity: 0,
-          adult: false
-        });
-      }
-      
-      if (data?.featuredContent?.tvShow) {
-        const tvData = data.featuredContent.tvShow;
-        setFeaturedTVShow({
-          id: tvData.id,
-          name: tvData.name,
-          poster_path: tvData.posterPath,
-          backdrop_path: tvData.backdropPath,
-          first_air_date: '',
-          overview: '',
-          vote_average: 0,
-          vote_count: 0,
-          popularity: 0,
-          number_of_seasons: 0,
-          number_of_episodes: 0
-        });
+    onSettled: (data) => {
+      if (data) {
+        setSiteName(data?.siteName || '');
+        setEnableTrending(data?.enableTrending || false);
+        setEnableCloudStream(data?.enableCloudStream || false);
+        updateAdminSettings(data);
+        
+        // Convert featured content to Movie/TvShow format if available
+        if (data?.featuredContent?.movie) {
+          const movieData = data.featuredContent.movie;
+          setFeaturedMovie({
+            id: movieData.id,
+            title: movieData.title,
+            poster_path: movieData.posterPath,
+            backdrop_path: movieData.backdropPath,
+            release_date: '',
+            overview: '',
+            vote_average: 0,
+            vote_count: 0,
+            popularity: 0,
+            adult: false
+          });
+        }
+        
+        if (data?.featuredContent?.tvShow) {
+          const tvData = data.featuredContent.tvShow;
+          setFeaturedTVShow({
+            id: tvData.id,
+            name: tvData.name,
+            poster_path: tvData.posterPath,
+            backdrop_path: tvData.backdropPath,
+            first_air_date: '',
+            overview: '',
+            vote_average: 0,
+            vote_count: 0,
+            popularity: 0,
+            number_of_seasons: 0,
+            number_of_episodes: 0
+          });
+        }
       }
     }
   });
 
   // Update settings mutation
-  const { mutate: updateSettingsMutation, isPending } = useMutation({
+  const { mutate: updateSettingsMutation, isPending: isUpdatingSettings } = useMutation({
     mutationFn: (updates: Partial<AdminSettings>) => updateSettings(updates),
     onSuccess: () => {
       toast({
@@ -102,8 +103,15 @@ const AdminContent = () => {
       try {
         const moviesResponse = await getTrendingMovies();
         const tvShowsResponse = await getTrendingTvShows();
-        setTrendingMovies(moviesResponse.results || []);
-        setTrendingTVShows(tvShowsResponse.results || []);
+        
+        // Check if response has results property and is an array
+        if (moviesResponse && Array.isArray(moviesResponse.results)) {
+          setTrendingMovies(moviesResponse.results);
+        }
+        
+        if (tvShowsResponse && Array.isArray(tvShowsResponse.results)) {
+          setTrendingTVShows(tvShowsResponse.results);
+        }
       } catch (error) {
         console.error("Error fetching trending content:", error);
         toast({
