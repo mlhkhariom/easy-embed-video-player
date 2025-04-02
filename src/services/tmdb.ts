@@ -1,4 +1,3 @@
-
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -119,11 +118,9 @@ export const searchMulti = (query: string, page: number = 1): Promise<MultiSearc
 
 // Get Indian content
 export const getIndianMovies = (): Promise<MovieResponse> => {
-  // Improved Indian movies query with more targeted parameters
   return fetchApi<MovieResponse>(
     `/discover/movie?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc&with_watch_providers=&watch_region=IN`
   ).then(response => {
-    // Post-process to add show_type for Indian movies
     if (response?.results) {
       response.results = response.results.map(movie => ({
         ...movie,
@@ -135,38 +132,29 @@ export const getIndianMovies = (): Promise<MovieResponse> => {
 };
 
 export const getIndianTVShows = (): Promise<TvResponse> => {
-  // Improved Indian TV shows query with more targeted parameters
   return fetchApi<TvResponse>(
     `/discover/tv?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
   ).then(response => {
-    // Post-process to categorize shows as web series or TV serials based on attributes
     if (response?.results) {
       response.results = response.results.map(show => {
-        // Use existing show_type if defined, otherwise infer from attributes
         if (!show.show_type) {
-          // Web series criteria: shorter runs, fewer episodes, higher ratings
           if ((!show.number_of_seasons || show.number_of_seasons < 5) && 
               (!show.number_of_episodes || show.number_of_episodes < 50) &&
               show.vote_average >= 6.5) {
             show.show_type = 'web_series';
           } 
-          // TV serials: longer runs, more episodes
           else if ((show.number_of_episodes > 50 || show.number_of_seasons >= 5)) {
             show.show_type = 'tv_serial';
           }
-          // Default for anything that doesn't match clear criteria
           else {
-            // Use a default based on rating as a heuristic
             show.show_type = show.vote_average >= 7.0 ? 'web_series' : 'tv_serial';
           }
         }
         
-        // Set languages array if not already set
         if (!show.languages) {
           show.languages = ['hi'];
         }
         
-        // Set original_language if not already set
         if (!show.original_language) {
           show.original_language = 'hi';
         }
@@ -239,11 +227,9 @@ export const fetchWithRetry = async <T>(
     if (retries <= 0) throw error;
     
     if (error instanceof APIError && error.status === 429) {
-      // Rate limit exceeded - wait longer before retrying
       await new Promise(resolve => setTimeout(resolve, 2000));
       return fetchWithRetry(endpoint, retries - 1);
     } else if (error instanceof APIError && (error.status === 500 || error.status === 503)) {
-      // Server error - wait and retry
       await new Promise(resolve => setTimeout(resolve, 1000));
       return fetchWithRetry(endpoint, retries - 1);
     }
@@ -252,7 +238,7 @@ export const fetchWithRetry = async <T>(
   }
 };
 
-// Add this new function to get web series specifically
+// Enhanced function to get web series specifically
 export const getWebSeries = async (page = 1): Promise<{
   page: number;
   results: TvShow[];
@@ -260,55 +246,64 @@ export const getWebSeries = async (page = 1): Promise<{
   total_results: number;
 }> => {
   try {
-    // Use a specialized search to find content that's more likely to be web series
-    const response = await fetch(
-      `${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi&sort_by=popularity.desc&vote_average.gte=6.5&with_type=4&page=${page}`
+    const response = await fetchApi<TvResponse>(
+      `/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi|en&sort_by=popularity.desc&vote_average.gte=7.0&with_type=4&page=${page}&with_runtime.lte=60&with_status=Ended|Canceled|Returning Series`
     );
     
-    if (!response.ok) {
-      throw new Error(`Error fetching web series: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Transform the data to include show_type for easier filtering
-    const enhancedResults = data.results.map((show: any) => ({
-      ...show,
-      show_type: identifyShowType(show),
-    }));
+    const webSeriesResults = response.results.filter(show => {
+      return isWebSeries(show);
+    });
     
     return {
-      ...data,
-      results: enhancedResults,
+      ...response,
+      results: webSeriesResults.map(show => ({
+        ...show,
+        show_type: 'web_series'
+      }))
     };
   } catch (error) {
     console.error('Error fetching web series:', error);
-    throw error;
+    throw handleAPIError(error);
   }
 };
 
-// Helper function to identify show type based on various attributes
-const identifyShowType = (show: any): 'web_series' | 'tv_serial' | 'unknown' => {
-  // Logic to determine if it's a web series or TV serial
-  if (
-    // Limited episodes/seasons is typical for web series
-    (show.number_of_seasons <= 3 || !show.number_of_seasons) &&
-    // Higher production value/rating is common for web series
-    show.vote_average >= 7.0 &&
-    // Web series are typically newer productions
-    show.first_air_date && parseInt(show.first_air_date.substring(0, 4)) >= 2015
-  ) {
-    return 'web_series';
-  }
+// Comprehensive helper function to identify web series with strong certainty
+export const isWebSeries = (show: TvShow): boolean => {
+  if (show.show_type === 'web_series') return true;
+  if (show.show_type === 'tv_serial') return false;
   
-  // Shows with many episodes/seasons are typically TV serials
-  if (
-    (show.number_of_seasons > 3 || show.number_of_episodes > 50) ||
-    // Older shows are more likely to be traditional TV serials
-    (show.first_air_date && parseInt(show.first_air_date.substring(0, 4)) < 2015)
-  ) {
-    return 'tv_serial';
-  }
+  const streamingPlatforms = [
+    'netflix', 'prime', 'amazon', 'hotstar', 'disney+', 'hulu', 
+    'hbo max', 'zee5', 'alt balaji', 'sony liv', 'voot', 'mx player'
+  ];
   
-  return 'unknown';
+  const isStreamingPlatformMentioned = streamingPlatforms.some(platform => 
+    (show.overview?.toLowerCase().includes(platform) || 
+    show.name?.toLowerCase().includes(platform))
+  );
+  
+  const hasOTTPlatform = show.networks?.some(network => 
+    streamingPlatforms.some(platform => 
+      network.name?.toLowerCase().includes(platform)
+    )
+  );
+  
+  const isLimitedSeries = 
+    (show.number_of_seasons <= 3 && show.number_of_seasons > 0) ||
+    (show.number_of_episodes > 0 && show.number_of_episodes < 50);
+    
+  const hasHighRating = show.vote_average >= 7.0;
+    
+  const isNewProduction = show.first_air_date && 
+    parseInt(show.first_air_date.substring(0, 4)) >= 2015;
+    
+  let score = 0;
+  
+  if (isStreamingPlatformMentioned) score += 3;
+  if (hasOTTPlatform) score += 3;
+  if (isLimitedSeries) score += 2;
+  if (hasHighRating) score += 1;
+  if (isNewProduction) score += 1;
+  
+  return score >= 3;
 };

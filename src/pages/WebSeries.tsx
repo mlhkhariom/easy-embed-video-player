@@ -2,24 +2,52 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TvShow } from '../types';
-import { getWebSeries } from '../services/tmdb';
+import { getWebSeries, isWebSeries } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { handleAPIError } from '../services/error-handler';
 import ErrorHandler from '../components/ErrorHandler';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Filter, FilterX } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger,
+  SheetFooter
+} from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+// Define filter options for web series
+interface FilterOptions {
+  rating: number | null;
+  yearFrom: number | null;
+  yearTo: number | null;
+  languages: string[];
+}
 
 const WebSeries = () => {
   const [webSeries, setWebSeries] = useState<TvShow[]>([]);
+  const [allWebSeries, setAllWebSeries] = useState<TvShow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    rating: null,
+    yearFrom: null,
+    yearTo: null,
+    languages: []
+  });
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -32,22 +60,14 @@ const WebSeries = () => {
         
         const data = await getWebSeries(currentPage);
         
-        // Filter to ensure only web series content is displayed
-        // Web series typically have limited seasons/episodes compared to TV serials
+        // Extra filtering to ensure only true web series are displayed
         const filteredData = data.results.filter(show => {
-          // Explicit check for web_series type first
-          if (show.show_type === 'web_series') return true;
-          
-          // Additional criteria to identify web series
-          return (
-            (!show.number_of_seasons || show.number_of_seasons < 5) && 
-            (!show.number_of_episodes || show.number_of_episodes < 50) &&
-            show.show_type !== 'tv_serial' &&
-            (show.vote_average >= 6.5) // Higher quality content is more likely to be a web series
-          );
+          // Use our enhanced isWebSeries function
+          return isWebSeries(show);
         });
         
         setWebSeries(filteredData);
+        setAllWebSeries(filteredData);
         setTotalPages(data.total_pages > 20 ? 20 : data.total_pages); // Limit to max 20 pages
       } catch (error) {
         console.error('Error fetching web series:', error);
@@ -66,11 +86,56 @@ const WebSeries = () => {
     fetchWebSeries();
   }, [currentPage, toast]);
   
+  // Apply local filters
+  useEffect(() => {
+    if (allWebSeries.length > 0) {
+      let filtered = [...allWebSeries];
+      
+      // Apply rating filter
+      if (filters.rating) {
+        filtered = filtered.filter(show => show.vote_average >= filters.rating!);
+      }
+      
+      // Apply year filters
+      if (filters.yearFrom || filters.yearTo) {
+        filtered = filtered.filter(show => {
+          if (!show.first_air_date) return false;
+          
+          const year = parseInt(show.first_air_date.substring(0, 4));
+          const matchesFrom = !filters.yearFrom || year >= filters.yearFrom;
+          const matchesTo = !filters.yearTo || year <= filters.yearTo;
+          
+          return matchesFrom && matchesTo;
+        });
+      }
+      
+      // Apply language filters
+      if (filters.languages.length > 0) {
+        filtered = filtered.filter(show => 
+          filters.languages.includes(show.original_language || '')
+        );
+      }
+      
+      setWebSeries(filtered);
+    }
+  }, [filters, allWebSeries]);
+  
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
       window.scrollTo(0, 0);
     }
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({
+      rating: null,
+      yearFrom: null,
+      yearTo: null,
+      languages: []
+    });
+    setWebSeries(allWebSeries);
   };
   
   // Generate pagination items
@@ -143,6 +208,23 @@ const WebSeries = () => {
     return items;
   };
   
+  // Language options
+  const languageOptions = [
+    { id: "hi", label: "Hindi" },
+    { id: "en", label: "English" },
+    { id: "ta", label: "Tamil" },
+    { id: "te", label: "Telugu" },
+    { id: "ml", label: "Malayalam" },
+    { id: "bn", label: "Bengali" },
+  ];
+  
+  // Rating options
+  const ratingOptions = [
+    { value: 8, label: "8+ Excellent" },
+    { value: 7, label: "7+ Good" },
+    { value: 6, label: "6+ Average" },
+  ];
+  
   if (error) {
     return (
       <div className="min-h-screen bg-background">
@@ -161,6 +243,87 @@ const WebSeries = () => {
       <main className="container mx-auto px-4 pt-24 pb-16">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-white">Web Series</h1>
+          
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filter</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[300px] sm:w-[400px]">
+              <SheetHeader>
+                <SheetTitle>Filter Web Series</SheetTitle>
+              </SheetHeader>
+              
+              <div className="py-4">
+                <Separator className="mb-4" />
+                
+                <div className="space-y-6">
+                  {/* Rating filter */}
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">Minimum Rating</h3>
+                    <div className="space-y-2">
+                      {ratingOptions.map((option) => (
+                        <div key={option.value} className="flex items-center gap-2">
+                          <Checkbox 
+                            id={`rating-${option.value}`}
+                            checked={filters.rating === option.value}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFilters(prev => ({ ...prev, rating: option.value }));
+                              } else if (filters.rating === option.value) {
+                                setFilters(prev => ({ ...prev, rating: null }));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`rating-${option.value}`}>{option.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Language filter */}
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">Language</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {languageOptions.map((lang) => (
+                        <div key={lang.id} className="flex items-center gap-2">
+                          <Checkbox 
+                            id={`lang-${lang.id}`}
+                            checked={filters.languages.includes(lang.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setFilters(prev => ({ 
+                                  ...prev, 
+                                  languages: [...prev.languages, lang.id] 
+                                }));
+                              } else {
+                                setFilters(prev => ({ 
+                                  ...prev, 
+                                  languages: prev.languages.filter(l => l !== lang.id)
+                                }));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`lang-${lang.id}`}>{lang.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <SheetFooter>
+                <Button variant="outline" onClick={resetFilters} className="gap-2">
+                  <FilterX className="h-4 w-4" />
+                  Reset Filters
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </div>
         
         {isLoading ? (
