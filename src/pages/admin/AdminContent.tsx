@@ -1,341 +1,368 @@
-import { useState } from 'react';
-import { useAdmin } from '../../contexts/AdminContext';
-import AdminLayout from '../../components/admin/AdminLayout';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Settings } from '@/types';
+import { Movie, TvShow } from '@/types';
+import { fetchSettings, updateSettings as updateSettingsAPI } from '@/services/settings';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Search, 
-  Save, 
-  Film, 
-  Tv, 
-  Star, 
-  Plus
-} from 'lucide-react';
-import { getImageUrl, searchMulti } from '../../services/tmdb';
-import { useQuery } from '@tanstack/react-query';
-import { Movie, TvShow } from '../../types';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { useAdmin } from '@/contexts/AdminContext';
+import { Search } from 'lucide-react';
+import { fetchTrendingMovies, fetchTrendingTVShows } from '@/services/tmdb';
+import MovieCard from '@/components/MovieCard';
 
 const AdminContent = () => {
-  const { settings, updateSettings } = useAdmin();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { settings, setSettings } = useAdmin();
+
+  // State variables
+  const [siteName, setSiteName] = useState(settings?.siteName || '');
+  const [enableTrending, setEnableTrending] = useState(settings?.enableTrending || false);
+  const [enableCloudStream, setEnableCloudStream] = useState(settings?.enableCloudStream || false);
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
+  const [trendingTVShows, setTrendingTVShows] = useState<TvShow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'movie' | 'tv'>('movie');
-  
-  // Track selected content
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(
-    settings.featuredContent.movie ? { id: settings.featuredContent.movie } as Movie : null
-  );
-  const [selectedTvShow, setSelectedTvShow] = useState<TvShow | null>(
-    settings.featuredContent.tvShow ? { id: settings.featuredContent.tvShow } as TvShow : null
-  );
-  
-  // Search for content
-  const { data: searchResults, isLoading } = useQuery({
-    queryKey: ['admin-search', searchType, searchQuery],
-    queryFn: () => searchMulti(searchQuery),
-    enabled: searchQuery.length > 2,
-  });
-  
-  // Filter results by content type
-  const filteredResults = searchResults?.results?.filter(item => {
-    if (searchType === 'movie') return 'title' in item;
-    if (searchType === 'tv') return 'name' in item;
-    return true;
-  });
-  
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
-  
-  const selectContent = (item: Movie | TvShow) => {
-    if ('title' in item) {
-      setSelectedMovie(item as Movie);
-    } else {
-      setSelectedTvShow(item as TvShow);
+  const [searchResultsMovies, setSearchResultsMovies] = useState<Movie[]>([]);
+  const [searchResultsTVShows, setSearchResultsTVShows] = useState<TvShow[]>([]);
+  const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(settings.featuredMovie);
+  const [featuredTVShow, setFeaturedTVShow] = useState<TvShow | null>(settings.featuredTVShow);
+
+  // Fetch settings
+  const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+    onSuccess: (data) => {
+      setSiteName(data?.siteName || '');
+      setEnableTrending(data?.enableTrending || false);
+      setEnableCloudStream(data?.enableCloudStream || false);
+      setSettings(data);
+      setFeaturedMovie(data?.featuredMovie || null);
+      setFeaturedTVShow(data?.featuredTVShow || null);
     }
-    
-    toast({
-      title: 'Content Selected',
-      description: `${('title' in item) ? item.title : item.name} has been selected`,
-    });
-  };
-  
-  const handleSelectMovie = (movie: Movie) => {
-    setSettings((prevSettings) => ({
-      ...prevSettings,
-      featuredContent: {
-        ...prevSettings.featuredContent,
-        movie: {
-          id: movie.id,
-          title: movie.title,
-          posterPath: movie.poster_path || '',
-          backdropPath: movie.backdrop_path || ''
-        }
-      },
-    }));
-  };
+  });
 
-  const handleSelectTvShow = (tvShow: TvShow) => {
-    setSettings((prevSettings) => ({
-      ...prevSettings,
-      featuredContent: {
-        ...prevSettings.featuredContent,
-        tvShow: {
-          id: tvShow.id,
-          name: tvShow.name,
-          posterPath: tvShow.poster_path || '',
-          backdropPath: tvShow.backdrop_path || ''
-        }
-      },
-    }));
-  };
+  // Update settings mutation
+  const { mutate: updateSettings, isLoading: isUpdatingSettings } = useMutation({
+    mutationFn: (updates: Partial<Settings>) => updateSettingsAPI(updates),
+    onSuccess: () => {
+      toast({
+        title: "Settings updated successfully.",
+      });
+      queryClient.invalidateQueries(['settings']);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update settings.",
+        description: error.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const handleResetFeaturedContent = () => {
-    setSettings((prevSettings) => ({
-      ...prevSettings,
-      featuredContent: {
-        movie: null,
-        tvShow: null
-      },
-    }));
-  };
-
-  const saveChanges = () => {
-    updateSettings({
-      featuredContent: {
-        movie: selectedMovie?.id || null,
-        tvShow: selectedTvShow?.id || null,
+  // Fetch trending content
+  useEffect(() => {
+    const fetchTrendingContent = async () => {
+      try {
+        const movies = await fetchTrendingMovies();
+        const tvShows = await fetchTrendingTVShows();
+        setTrendingMovies(movies);
+        setTrendingTVShows(tvShows);
+      } catch (error) {
+        console.error("Error fetching trending content:", error);
+        toast({
+          title: "Error fetching trending content",
+          description: "Failed to load trending movies and TV shows.",
+          variant: "destructive",
+        });
       }
-    });
-    
-    toast({
-      title: 'Settings Saved',
-      description: 'Featured content settings have been updated',
+    };
+
+    if (enableTrending) {
+      fetchTrendingContent();
+    } else {
+      setTrendingMovies([]);
+      setTrendingTVShows([]);
+    }
+  }, [enableTrending, toast]);
+
+  // Handle site name change
+  const handleSiteNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSiteName(e.target.value);
+  };
+
+  // Handle enable trending change
+  const handleEnableTrendingChange = (checked: boolean) => {
+    setEnableTrending(checked);
+  };
+
+  // Handle enable cloudstream change
+  const handleEnableCloudStreamChange = (checked: boolean) => {
+    setEnableCloudStream(checked);
+  };
+
+  // Handle save settings
+  const handleSaveSettings = () => {
+    updateSettings({
+      siteName: siteName,
+      enableTrending: enableTrending,
+      enableCloudStream: enableCloudStream
     });
   };
-  
+
+  // Handle search
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+
+    try {
+      // Basic search simulation (replace with actual API calls)
+      const movies = trendingMovies.filter(movie =>
+        movie.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      const tvShows = trendingTVShows.filter(show =>
+        show.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      setSearchResultsMovies(movies);
+      setSearchResultsTVShows(tvShows);
+    } catch (error) {
+      console.error("Error searching content:", error);
+      toast({
+        title: "Error searching content",
+        description: "Failed to perform search.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle feature movie
+  const handleFeatureMovie = (movie: any) => {
+    // Convert to proper Movie type with as unknown first
+    const movieData = {
+      id: movie.id,
+      title: movie.title,
+      poster_path: movie.posterPath,
+      backdrop_path: movie.backdropPath,
+      // Add other required Movie properties with default values
+      overview: '',
+      release_date: '',
+      vote_average: 0,
+      vote_count: 0,
+      genre_ids: []
+    } as Movie;
+    
+    updateSettings({
+      ...settings,
+      featuredMovie: movieData
+    });
+  };
+
+  // Handle feature TV show
+  const handleFeatureTVShow = (show: any) => {
+    // Convert to proper TvShow type with as unknown first
+    const showData = {
+      id: show.id,
+      name: show.name,
+      poster_path: show.posterPath,
+      backdrop_path: show.backdropPath,
+      // Add other required TvShow properties with default values
+      overview: '',
+      first_air_date: '',
+      vote_average: 0,
+      vote_count: 0,
+      genre_ids: []
+    } as TvShow;
+    
+    updateSettings({
+      ...settings,
+      featuredTVShow: showData
+    });
+  };
+
+  // Clear featured content
+  const clearFeaturedMovie = () => {
+    updateSettings({
+      ...settings,
+      featuredMovie: null
+    });
+  };
+
+  const clearFeaturedTVShow = () => {
+    updateSettings({
+      ...settings,
+      featuredTVShow: null
+    });
+  };
+
   return (
-    <AdminLayout>
-      <div className="p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Content Management</h1>
-          <Button 
-            onClick={saveChanges}
-            className="bg-moviemate-primary hover:bg-moviemate-primary/90"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
+    <div className="container mx-auto py-10">
+      <h1 className="text-3xl font-bold mb-6">Content Settings</h1>
+
+      {/* General Settings */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>General Settings</CardTitle>
+          <CardDescription>Manage general content settings for the website.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="siteName">Site Name</Label>
+            <Input
+              id="siteName"
+              value={siteName}
+              onChange={handleSiteNameChange}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="enableTrending">Enable Trending Content</Label>
+            <Switch
+              id="enableTrending"
+              checked={enableTrending}
+              onCheckedChange={handleEnableTrendingChange}
+            />
+          </div>
+           <div className="flex items-center justify-between">
+            <Label htmlFor="enableCloudStream">Enable CloudStream Content</Label>
+            <Switch
+              id="enableCloudStream"
+              checked={enableCloudStream}
+              onCheckedChange={handleEnableCloudStreamChange}
+            />
+          </div>
+          <Button onClick={handleSaveSettings} disabled={isUpdatingSettings}>
+            {isUpdatingSettings ? "Saving..." : "Save Settings"}
           </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-6">
-          <Card className="bg-moviemate-card/60 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white">Featured Content</CardTitle>
-              <CardDescription>
-                Select content to be featured on your homepage
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="movie" className="w-full" onValueChange={(value) => setSearchType(value as 'movie' | 'tv')}>
-                <TabsList className="mb-4 grid w-full grid-cols-2">
-                  <TabsTrigger value="movie">
-                    <Film className="mr-2 h-4 w-4" />
-                    Featured Movie
-                  </TabsTrigger>
-                  <TabsTrigger value="tv">
-                    <Tv className="mr-2 h-4 w-4" />
-                    Featured TV Show
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="movie" className="space-y-4">
-                  {selectedMovie ? (
-                    <div className="rounded-lg bg-moviemate-background p-4">
-                      <div className="flex flex-col items-center gap-4 sm:flex-row">
-                        <img 
-                          src={getImageUrl(selectedMovie.poster_path, 'w200')} 
-                          alt={selectedMovie.title || 'Movie poster'} 
-                          className="h-40 rounded-lg object-cover shadow-lg" 
-                        />
-                        <div>
-                          <h3 className="mb-2 text-xl font-bold text-white">{selectedMovie.title}</h3>
-                          {selectedMovie.release_date && (
-                            <p className="text-sm text-gray-400">
-                              Released: {new Date(selectedMovie.release_date).getFullYear()}
-                            </p>
-                          )}
-                          {selectedMovie.vote_average && (
-                            <div className="mt-2 flex items-center gap-1">
-                              <Star className="h-4 w-4 text-yellow-500" fill="currentColor" />
-                              <span className="text-white">{selectedMovie.vote_average.toFixed(1)}</span>
-                            </div>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-3"
-                            onClick={() => setSelectedMovie(null)}
-                          >
-                            Remove Selection
-                          </Button>
-                        </div>
+        </CardContent>
+      </Card>
+
+      <Separator className="my-8" />
+
+      {/* Featured Content */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Featured Content</CardTitle>
+          <CardDescription>Select featured movies and TV shows to showcase on the homepage.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSearch} className="flex items-center space-x-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <Input
+                type="search"
+                placeholder="Search for movies or TV shows..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button type="submit" disabled={isLoadingSettings}>Search</Button>
+          </form>
+
+          {searchQuery && (
+            <>
+              {/* Search Results - Movies */}
+              {searchResultsMovies.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Movie Results</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {searchResultsMovies.map((movie) => (
+                      <div key={movie.id} className="relative">
+                        <MovieCard item={movie} type="movie" />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => handleFeatureMovie(movie)}
+                        >
+                          Feature Movie
+                        </Button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 bg-moviemate-background p-4">
-                      <Film className="mb-2 h-8 w-8 text-gray-500" />
-                      <p className="text-gray-400">No featured movie selected</p>
-                      <p className="text-xs text-gray-500">Search for a movie below</p>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <Input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search for a movie..."
-                          className="pl-9"
-                        />
-                      </div>
-                      <Button type="submit">Search</Button>
-                    </form>
-                    
-                    {isLoading && (
-                      <div className="text-center">
-                        <p className="text-gray-400">Searching...</p>
-                      </div>
-                    )}
-                    
-                    {!isLoading && filteredResults && filteredResults.length > 0 && (
-                      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
-                        {filteredResults.map((item) => {
-                          const movie = item as Movie;
-                          return (
-                            <div 
-                              key={movie.id} 
-                              className="cursor-pointer rounded-lg bg-moviemate-background p-2 transition-transform hover:scale-105"
-                              onClick={() => selectContent(movie)}
-                            >
-                              <img 
-                                src={getImageUrl(movie.poster_path, 'w200')} 
-                                alt={movie.title} 
-                                className="mb-2 w-full rounded-lg object-cover" 
-                              />
-                              <h4 className="truncate text-sm font-medium text-white">{movie.title}</h4>
-                              {movie.release_date && (
-                                <p className="text-xs text-gray-500">{new Date(movie.release_date).getFullYear()}</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="tv" className="space-y-4">
-                  {selectedTvShow ? (
-                    <div className="rounded-lg bg-moviemate-background p-4">
-                      <div className="flex flex-col items-center gap-4 sm:flex-row">
-                        <img 
-                          src={getImageUrl(selectedTvShow.poster_path, 'w200')} 
-                          alt={selectedTvShow.name || 'TV Show poster'} 
-                          className="h-40 rounded-lg object-cover shadow-lg" 
-                        />
-                        <div>
-                          <h3 className="mb-2 text-xl font-bold text-white">{selectedTvShow.name}</h3>
-                          {selectedTvShow.first_air_date && (
-                            <p className="text-sm text-gray-400">
-                              First aired: {new Date(selectedTvShow.first_air_date).getFullYear()}
-                            </p>
-                          )}
-                          {selectedTvShow.vote_average && (
-                            <div className="mt-2 flex items-center gap-1">
-                              <Star className="h-4 w-4 text-yellow-500" fill="currentColor" />
-                              <span className="text-white">{selectedTvShow.vote_average.toFixed(1)}</span>
-                            </div>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-3"
-                            onClick={() => setSelectedTvShow(null)}
-                          >
-                            Remove Selection
-                          </Button>
-                        </div>
+                </div>
+              )}
+
+              {/* Search Results - TV Shows */}
+              {searchResultsTVShows.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">TV Show Results</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {searchResultsTVShows.map((show) => (
+                      <div key={show.id} className="relative">
+                        <MovieCard item={show} type="tv" />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => handleFeatureTVShow(show)}
+                        >
+                          Feature TV Show
+                        </Button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 bg-moviemate-background p-4">
-                      <Tv className="mb-2 h-8 w-8 text-gray-500" />
-                      <p className="text-gray-400">No featured TV show selected</p>
-                      <p className="text-xs text-gray-500">Search for a TV show below</p>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <Input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search for a TV show..."
-                          className="pl-9"
-                        />
-                      </div>
-                      <Button type="submit">Search</Button>
-                    </form>
-                    
-                    {isLoading && (
-                      <div className="text-center">
-                        <p className="text-gray-400">Searching...</p>
-                      </div>
-                    )}
-                    
-                    {!isLoading && filteredResults && filteredResults.length > 0 && (
-                      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
-                        {filteredResults.map((item) => {
-                          const tvShow = item as TvShow;
-                          return (
-                            <div 
-                              key={tvShow.id} 
-                              className="cursor-pointer rounded-lg bg-moviemate-background p-2 transition-transform hover:scale-105"
-                              onClick={() => selectContent(tvShow)}
-                            >
-                              <img 
-                                src={getImageUrl(tvShow.poster_path, 'w200')} 
-                                alt={tvShow.name} 
-                                className="mb-2 w-full rounded-lg object-cover" 
-                              />
-                              <h4 className="truncate text-sm font-medium text-white">{tvShow.name}</h4>
-                              {tvShow.first_air_date && (
-                                <p className="text-xs text-gray-500">{new Date(tvShow.first_air_date).getFullYear()}</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </AdminLayout>
+                </div>
+              )}
+
+              {/* No Results */}
+              {searchResultsMovies.length === 0 && searchResultsTVShows.length === 0 && (
+                <p>No results found for "{searchQuery}".</p>
+              )}
+            </>
+          )}
+
+          {/* Current Featured Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {featuredMovie && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Featured Movie</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative">
+                    <MovieCard item={featuredMovie} type="movie" />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute bottom-2 right-2"
+                      onClick={clearFeaturedMovie}
+                    >
+                      Clear Movie
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {featuredTVShow && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Featured TV Show</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative">
+                    <MovieCard item={featuredTVShow} type="tv" />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute bottom-2 right-2"
+                      onClick={clearFeaturedTVShow}
+                    >
+                      Clear TV Show
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

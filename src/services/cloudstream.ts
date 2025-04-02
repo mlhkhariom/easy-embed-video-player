@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
 
@@ -396,6 +395,8 @@ export const subscribeToCloudStreamUpdates = (
   };
 };
 
+// Note: We're keeping the default export for backward compatibility
+// but we'll primarily use named exports in new code
 export default {
   INDIAN_LANGUAGES,
   CLOUDSTREAM_SOURCES,
@@ -411,4 +412,3 @@ export default {
   parseCloudStreamRepo,
   subscribeToCloudStreamUpdates
 };
-
