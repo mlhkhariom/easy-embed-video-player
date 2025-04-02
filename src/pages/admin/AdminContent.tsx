@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
+import React, { useState, useEffect } from 'react';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSettings, updateSettings } from '@/services/settings';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -26,49 +26,60 @@ const AdminContent = () => {
   const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    onSuccess: (data: any) => {
-      if (data) {
-        setSiteName(data?.siteName || '');
-        setEnableTrending(data?.enableTrending || false);
-        setEnableCloudStream(data?.enableCloudStream || false);
-        updateAdminSettings(data);
-        
-        // Convert featured content to Movie/TvShow format if available
-        if (data?.featuredContent?.movie) {
-          const movieData = data.featuredContent.movie;
-          setFeaturedMovie({
-            id: movieData.id,
-            title: movieData.title,
-            poster_path: movieData.posterPath,
-            backdrop_path: movieData.backdropPath,
-            release_date: '',
-            overview: '',
-            vote_average: 0,
-            vote_count: 0,
-            popularity: 0,
-            adult: false
-          });
-        }
-        
-        if (data?.featuredContent?.tvShow) {
-          const tvData = data.featuredContent.tvShow;
-          setFeaturedTVShow({
-            id: tvData.id,
-            name: tvData.name,
-            poster_path: tvData.posterPath,
-            backdrop_path: tvData.backdropPath,
-            first_air_date: '',
-            overview: '',
-            vote_average: 0,
-            vote_count: 0,
-            popularity: 0,
-            number_of_seasons: 0,
-            number_of_episodes: 0
-          });
-        }
-      }
-    }
   });
+
+  // Effect to update form values when settings are fetched
+  useEffect(() => {
+    const fetchAndUpdateSettings = async () => {
+      try {
+        const data = await fetchSettings();
+        if (data) {
+          setSiteName(data?.siteName || '');
+          setEnableTrending(data?.enableTrending || false);
+          setEnableCloudStream(data?.enableCloudStream || false);
+          updateAdminSettings(data);
+          
+          // Convert featured content to Movie/TvShow format if available
+          if (data?.featuredContent?.movie) {
+            const movieData = data.featuredContent.movie;
+            setFeaturedMovie({
+              id: movieData.id,
+              title: movieData.title,
+              poster_path: movieData.posterPath,
+              backdrop_path: movieData.backdropPath,
+              release_date: '',
+              overview: '',
+              vote_average: 0,
+              vote_count: 0,
+              popularity: 0,
+              adult: false
+            });
+          }
+          
+          if (data?.featuredContent?.tvShow) {
+            const tvData = data.featuredContent.tvShow;
+            setFeaturedTVShow({
+              id: tvData.id,
+              name: tvData.name,
+              poster_path: tvData.posterPath,
+              backdrop_path: tvData.backdropPath,
+              first_air_date: '',
+              overview: '',
+              vote_average: 0,
+              vote_count: 0,
+              popularity: 0,
+              number_of_seasons: 0,
+              number_of_episodes: 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      }
+    };
+
+    fetchAndUpdateSettings();
+  }, [updateAdminSettings]);
 
   // Handle settings update
   const handleSubmit = async (e: React.FormEvent) => {
