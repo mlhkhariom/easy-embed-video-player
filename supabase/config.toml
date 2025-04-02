@@ -22,8 +22,6 @@ port = 54324
 
 [auth]
 enabled = true
-port = 9999
-uri = "http://localhost"
 
 [realtime]
 enabled = true
@@ -31,8 +29,6 @@ enabled = true
 [storage]
 enabled = true
 
-[edge_functions]
-enabled = true
-
+[functions]
 [functions.cloudstream-utils]
 verify_jwt = false
