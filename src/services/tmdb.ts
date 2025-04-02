@@ -267,14 +267,15 @@ export const getWebSeries = async (page = 1): Promise<{
   }
 };
 
-// Comprehensive helper function to identify web series with strong certainty
+// Comprehensive helper function to identify web series with stronger certainty
 export const isWebSeries = (show: TvShow): boolean => {
   if (show.show_type === 'web_series') return true;
   if (show.show_type === 'tv_serial') return false;
   
   const streamingPlatforms = [
     'netflix', 'prime', 'amazon', 'hotstar', 'disney+', 'hulu', 
-    'hbo max', 'zee5', 'alt balaji', 'sony liv', 'voot', 'mx player'
+    'hbo max', 'zee5', 'alt balaji', 'sony liv', 'voot', 'mx player',
+    'apple tv', 'peacock', 'paramount+', 'discovery+', 'crunchyroll'
   ];
   
   const isStreamingPlatformMentioned = streamingPlatforms.some(platform => 
@@ -289,21 +290,30 @@ export const isWebSeries = (show: TvShow): boolean => {
   );
   
   const isLimitedSeries = 
-    (show.number_of_seasons <= 3 && show.number_of_seasons > 0) ||
-    (show.number_of_episodes > 0 && show.number_of_episodes < 50);
+    (show.number_of_seasons <= 4 && show.number_of_seasons > 0) ||
+    (show.number_of_episodes > 0 && show.number_of_episodes < 60);
     
   const hasHighRating = show.vote_average >= 7.0;
     
   const isNewProduction = show.first_air_date && 
-    parseInt(show.first_air_date.substring(0, 4)) >= 2015;
-    
+    parseInt(show.first_air_date.substring(0, 4)) >= 2013;
+  
+  const webSeriesKeywords = ['web series', 'streaming', 'original series', 'limited series', 'anthology'];
+  const hasWebSeriesKeywords = show.keywords?.keywords?.some(keyword => 
+    webSeriesKeywords.includes(keyword.name.toLowerCase())
+  ) || false;
+  
   let score = 0;
   
   if (isStreamingPlatformMentioned) score += 3;
   if (hasOTTPlatform) score += 3;
   if (isLimitedSeries) score += 2;
   if (hasHighRating) score += 1;
-  if (isNewProduction) score += 1;
+  if (isNewProduction) score += 2;
+  if (hasWebSeriesKeywords) score += 3;
   
-  return score >= 3;
+  if (show.number_of_episodes > 100) score -= 3;
+  if (show.number_of_seasons > 7) score -= 3;
+  
+  return score >= 4;
 };
