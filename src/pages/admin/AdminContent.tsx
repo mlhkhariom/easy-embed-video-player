@@ -1,50 +1,286 @@
 
+import React, { useState } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSettings, updateSettings } from '@/services/settings';
+import { useAdmin } from '@/contexts/AdminContext';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Movie, TvShow } from '@/types';
+
+const AdminContent = () => {
+  const { updateSettings: updateAdminSettings } = useAdmin();
+  const { toast } = useToast();
+  
+  // State for form fields
+  const [siteName, setSiteName] = useState('');
+  const [enableTrending, setEnableTrending] = useState(false);
+  const [enableCloudStream, setEnableCloudStream] = useState(false);
+  const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(null);
+  const [featuredTVShow, setFeaturedTVShow] = useState<TvShow | null>(null);
+
   // Fetch settings
   const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: fetchSettings,
-    meta: {
-      onSuccess: (data: any) => {
-        if (data) {
-          setSiteName(data?.siteName || '');
-          setEnableTrending(data?.enableTrending || false);
-          setEnableCloudStream(data?.enableCloudStream || false);
-          updateAdminSettings(data);
-          
-          // Convert featured content to Movie/TvShow format if available
-          if (data?.featuredContent?.movie) {
-            const movieData = data.featuredContent.movie;
-            setFeaturedMovie({
-              id: movieData.id,
-              title: movieData.title,
-              poster_path: movieData.posterPath,
-              backdrop_path: movieData.backdropPath,
-              release_date: '',
-              overview: '',
-              vote_average: 0,
-              vote_count: 0,
-              popularity: 0,
-              adult: false
-            });
-          }
-          
-          if (data?.featuredContent?.tvShow) {
-            const tvData = data.featuredContent.tvShow;
-            setFeaturedTVShow({
-              id: tvData.id,
-              name: tvData.name,
-              poster_path: tvData.posterPath,
-              backdrop_path: tvData.backdropPath,
-              first_air_date: '',
-              overview: '',
-              vote_average: 0,
-              vote_count: 0,
-              popularity: 0,
-              number_of_seasons: 0,
-              number_of_episodes: 0
-            });
-          }
+    onSuccess: (data: any) => {
+      if (data) {
+        setSiteName(data?.siteName || '');
+        setEnableTrending(data?.enableTrending || false);
+        setEnableCloudStream(data?.enableCloudStream || false);
+        updateAdminSettings(data);
+        
+        // Convert featured content to Movie/TvShow format if available
+        if (data?.featuredContent?.movie) {
+          const movieData = data.featuredContent.movie;
+          setFeaturedMovie({
+            id: movieData.id,
+            title: movieData.title,
+            poster_path: movieData.posterPath,
+            backdrop_path: movieData.backdropPath,
+            release_date: '',
+            overview: '',
+            vote_average: 0,
+            vote_count: 0,
+            popularity: 0,
+            adult: false
+          });
+        }
+        
+        if (data?.featuredContent?.tvShow) {
+          const tvData = data.featuredContent.tvShow;
+          setFeaturedTVShow({
+            id: tvData.id,
+            name: tvData.name,
+            poster_path: tvData.posterPath,
+            backdrop_path: tvData.backdropPath,
+            first_air_date: '',
+            overview: '',
+            vote_average: 0,
+            vote_count: 0,
+            popularity: 0,
+            number_of_seasons: 0,
+            number_of_episodes: 0
+          });
         }
       }
     }
   });
+
+  // Handle settings update
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Prepare featured content data
+      const featuredContent = {
+        movie: featuredMovie ? {
+          id: featuredMovie.id,
+          title: featuredMovie.title,
+          posterPath: featuredMovie.poster_path,
+          backdropPath: featuredMovie.backdrop_path
+        } : null,
+        tvShow: featuredTVShow ? {
+          id: featuredTVShow.id,
+          name: featuredTVShow.name,
+          posterPath: featuredTVShow.poster_path,
+          backdropPath: featuredTVShow.backdrop_path
+        } : null
+      };
+
+      // Update settings
+      const updatedSettings = await updateSettings({
+        siteName,
+        enableTrending,
+        enableCloudStream,
+        featuredContent
+      });
+
+      // Update context
+      updateAdminSettings(updatedSettings);
+
+      toast({
+        title: "Settings updated",
+        description: "Content settings have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update settings.",
+        variant: "destructive",
+      });
+      console.error(error);
+    }
+  };
+
+  if (isLoadingSettings) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto p-4">
+          <h1 className="text-2xl font-bold mb-4">Content Settings</h1>
+          <p>Loading settings...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (errorSettings) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto p-4">
+          <h1 className="text-2xl font-bold mb-4">Content Settings</h1>
+          <p className="text-red-500">Error loading settings. Please try again.</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Content Settings</h1>
+        
+        <form onSubmit={handleSubmit}>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>General Content Settings</CardTitle>
+              <CardDescription>
+                Configure various content features on your site
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="siteName" className="text-sm font-medium">
+                    Site Name
+                  </label>
+                  <Input
+                    id="siteName"
+                    value={siteName}
+                    onChange={(e) => setSiteName(e.target.value)}
+                    placeholder="Enter site name"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label htmlFor="enableTrending" className="text-sm font-medium">
+                      Enable Trending
+                    </label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Show trending movies and shows on the homepage
+                    </p>
+                  </div>
+                  <Switch
+                    id="enableTrending"
+                    checked={enableTrending}
+                    onCheckedChange={setEnableTrending}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <label htmlFor="enableCloudStream" className="text-sm font-medium">
+                      Enable CloudStream
+                    </label>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Enable CloudStream integration for additional content
+                    </p>
+                  </div>
+                  <Switch
+                    id="enableCloudStream"
+                    checked={enableCloudStream}
+                    onCheckedChange={setEnableCloudStream}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit">
+                Save Settings
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Featured Movie</CardTitle>
+                <CardDescription>
+                  The movie that will be featured on the homepage
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {featuredMovie ? (
+                  <div className="space-y-4">
+                    <img 
+                      src={`https://image.tmdb.org/t/p/w400${featuredMovie.poster_path}`} 
+                      alt={featuredMovie.title}
+                      className="rounded-lg shadow-md max-w-full h-auto"
+                    />
+                    <div>
+                      <h3 className="font-bold">{featuredMovie.title}</h3>
+                      <p className="text-sm opacity-70">ID: {featuredMovie.id}</p>
+                    </div>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setFeaturedMovie(null)}
+                      type="button"
+                    >
+                      Remove Featured Movie
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 text-center">
+                    <p className="text-gray-500 dark:text-gray-400">No featured movie selected</p>
+                    <p className="mt-2 text-sm">Use the search function to set a featured movie</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Featured TV Show</CardTitle>
+                <CardDescription>
+                  The TV show that will be featured on the homepage
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {featuredTVShow ? (
+                  <div className="space-y-4">
+                    <img 
+                      src={`https://image.tmdb.org/t/p/w400${featuredTVShow.poster_path}`} 
+                      alt={featuredTVShow.name}
+                      className="rounded-lg shadow-md max-w-full h-auto"
+                    />
+                    <div>
+                      <h3 className="font-bold">{featuredTVShow.name}</h3>
+                      <p className="text-sm opacity-70">ID: {featuredTVShow.id}</p>
+                    </div>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setFeaturedTVShow(null)}
+                      type="button"
+                    >
+                      Remove Featured TV Show
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 text-center">
+                    <p className="text-gray-500 dark:text-gray-400">No featured TV show selected</p>
+                    <p className="mt-2 text-sm">Use the search function to set a featured TV show</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </form>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default AdminContent;
