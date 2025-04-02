@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -261,7 +262,7 @@ export const getWebSeries = async (page = 1): Promise<{
   try {
     // Use a specialized search to find content that's more likely to be web series
     const response = await fetch(
-      `${API_BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi&sort_by=popularity.desc&vote_average.gte=6.5&with_type=4&page=${page}`
+      `${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi&sort_by=popularity.desc&vote_average.gte=6.5&with_type=4&page=${page}`
     );
     
     if (!response.ok) {
