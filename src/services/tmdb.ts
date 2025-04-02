@@ -1,4 +1,3 @@
-
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -250,4 +249,65 @@ export const fetchWithRetry = async <T>(
     
     throw error;
   }
+};
+
+// Add this new function to get web series specifically
+export const getWebSeries = async (page = 1): Promise<{
+  page: number;
+  results: TvShow[];
+  total_pages: number;
+  total_results: number;
+}> => {
+  try {
+    // Use a specialized search to find content that's more likely to be web series
+    const response = await fetch(
+      `${API_BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi&sort_by=popularity.desc&vote_average.gte=6.5&with_type=4&page=${page}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching web series: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Transform the data to include show_type for easier filtering
+    const enhancedResults = data.results.map((show: any) => ({
+      ...show,
+      show_type: identifyShowType(show),
+    }));
+    
+    return {
+      ...data,
+      results: enhancedResults,
+    };
+  } catch (error) {
+    console.error('Error fetching web series:', error);
+    throw error;
+  }
+};
+
+// Helper function to identify show type based on various attributes
+const identifyShowType = (show: any): 'web_series' | 'tv_serial' | 'unknown' => {
+  // Logic to determine if it's a web series or TV serial
+  if (
+    // Limited episodes/seasons is typical for web series
+    (show.number_of_seasons <= 3 || !show.number_of_seasons) &&
+    // Higher production value/rating is common for web series
+    show.vote_average >= 7.0 &&
+    // Web series are typically newer productions
+    show.first_air_date && parseInt(show.first_air_date.substring(0, 4)) >= 2015
+  ) {
+    return 'web_series';
+  }
+  
+  // Shows with many episodes/seasons are typically TV serials
+  if (
+    (show.number_of_seasons > 3 || show.number_of_episodes > 50) ||
+    // Older shows are more likely to be traditional TV serials
+    (show.first_air_date && parseInt(show.first_air_date.substring(0, 4)) < 2015)
+  ) {
+    return 'tv_serial';
+  }
+  
+  return 'unknown';
 };

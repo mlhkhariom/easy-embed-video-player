@@ -1,281 +1,239 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { getPopularTvShows, getTopRatedTvShows, getIndianTVShows } from '../services/tmdb';
+import { useNavigate } from 'react-router-dom';
+import { TvShow } from '../types';
+import { getWebSeries } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import { AlertCircle, Filter, Search } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { handleAPIError } from '../services/error-handler';
-import { TvShow } from '../types';
+import ErrorHandler from '../components/ErrorHandler';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink } from '@/components/ui/pagination';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const WebSeries = () => {
+  const [webSeries, setWebSeries] = useState<TvShow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredShows, setFilteredShows] = useState<TvShow[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [languageFilter, setLanguageFilter] = useState('all');
+  const [error, setError] = useState<Error | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
   const { toast } = useToast();
-  
-  // Only get web series (not TV serials)
-  const filterWebSeries = (shows: TvShow[]) => {
-    return shows.filter(show => {
-      // Explicit check for web series type first
-      if (show.show_type === 'web_series') return true;
-      
-      // Criteria for web series if not explicitly marked:
-      // - Less than 5 seasons typically
-      // - Higher production value (use vote_average as a proxy)
-      // - Not a TV serial
-      return (
-        (!show.number_of_seasons || show.number_of_seasons < 5) && 
-        show.show_type !== 'tv_serial' &&
-        (show.vote_average >= 6.5)
-      );
-    });
-  };
-
-  // Query for Indian TV shows (web series & serials mixed)
-  const { data: indianShows, error: indianShowsError } = useQuery({
-    queryKey: ['indian-tv'],
-    queryFn: getIndianTVShows,
-  });
-
-  // Fetch popular shows as a fallback
-  const { data: popularShows, error: popularError } = useQuery({
-    queryKey: ['popular-tv'],
-    queryFn: getPopularTvShows,
-    enabled: !indianShows || indianShows.results.length === 0,
-  });
-
-  // Fetch top rated shows as another option
-  const { data: topRatedShows, error: topRatedError } = useQuery({
-    queryKey: ['top-rated-tv'],
-    queryFn: getTopRatedTvShows,
-    enabled: !indianShows || indianShows.results.length === 0,
-  });
-
-  // Available languages in the shows
-  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (indianShows?.results) {
-      // Extract and deduplicate all available languages
-      const languages = new Set<string>();
-      
-      indianShows.results.forEach(show => {
-        if (show.original_language) {
-          languages.add(show.original_language);
-        }
+    const fetchWebSeries = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
         
-        if (show.languages?.length) {
-          show.languages.forEach(lang => languages.add(lang));
-        }
-      });
-      
-      setAvailableLanguages(Array.from(languages));
-    }
-  }, [indianShows]);
-
-  useEffect(() => {
-    if (indianShows || (popularShows && topRatedShows)) {
-      let allShows: TvShow[] = [];
-      
-      // Prioritize Indian shows if available
-      if (indianShows?.results && indianShows.results.length > 0) {
-        allShows = indianShows.results;
-      } else if (popularShows?.results && topRatedShows?.results) {
-        // Fallback to combining popular and top rated
-        const webSeriesPopular = filterWebSeries(popularShows.results);
-        const webSeriesTopRated = filterWebSeries(topRatedShows.results);
+        const data = await getWebSeries(currentPage);
         
-        // Combine and remove duplicates
-        const combinedShows = [...webSeriesPopular, ...webSeriesTopRated];
-        const uniqueIds = new Set();
-        allShows = combinedShows.filter(show => {
-          if (uniqueIds.has(show.id)) return false;
-          uniqueIds.add(show.id);
-          return true;
+        // Filter to ensure only web series content is displayed
+        // Web series typically have limited seasons/episodes compared to TV serials
+        const filteredData = data.results.filter(show => {
+          // Explicit check for web_series type first
+          if (show.show_type === 'web_series') return true;
+          
+          // Additional criteria to identify web series
+          return (
+            (!show.number_of_seasons || show.number_of_seasons < 5) && 
+            (!show.number_of_episodes || show.number_of_episodes < 50) &&
+            show.show_type !== 'tv_serial' &&
+            (show.vote_average >= 6.5) // Higher quality content is more likely to be a web series
+          );
         });
-      }
-      
-      // Filter web series only
-      let webSeriesOnly = allShows.filter(show => {
-        if (show.show_type === 'web_series') return true;
         
-        // If show_type not explicitly set, use criteria
-        return (!show.number_of_seasons || show.number_of_seasons < 5) && 
-              show.vote_average >= 6.5;
-      });
-      
-      // Apply selected filter
-      if (selectedFilter === 'popular') {
-        webSeriesOnly.sort((a, b) => b.popularity - a.popularity);
-      } else if (selectedFilter === 'top_rated') {
-        webSeriesOnly.sort((a, b) => b.vote_average - a.vote_average);
+        setWebSeries(filteredData);
+        setTotalPages(data.total_pages > 20 ? 20 : data.total_pages); // Limit to max 20 pages
+      } catch (error) {
+        console.error('Error fetching web series:', error);
+        setError(error as Error);
+        const errorMessage = handleAPIError(error);
+        toast({
+          title: "Error loading web series",
+          description: errorMessage.message,
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Apply language filter
-      if (languageFilter !== 'all') {
-        webSeriesOnly = webSeriesOnly.filter(show => 
-          show.original_language === languageFilter || 
-          show.languages?.includes(languageFilter)
-        );
-      }
-      
-      // Filter by search query if present
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        webSeriesOnly = webSeriesOnly.filter(show => 
-          show.name?.toLowerCase().includes(query) || 
-          show.overview?.toLowerCase().includes(query)
-        );
-      }
-      
-      setFilteredShows(webSeriesOnly);
-      setIsLoading(false);
-    }
-  }, [indianShows, popularShows, topRatedShows, selectedFilter, languageFilter, searchQuery]);
-
-  const hasError = indianShowsError || popularError || topRatedError;
-  
-  if (hasError) {
-    const error = indianShowsError || popularError || topRatedError;
-    const errorMessage = handleAPIError(error);
-    
-    toast({
-      title: "Error loading web series",
-      description: errorMessage.message || "Failed to load content. Please try again later.",
-      variant: "destructive"
-    });
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-  };
-
-  // Language name mapping
-  const getLanguageName = (code: string): string => {
-    const languageMap: Record<string, string> = {
-      'hi': 'Hindi',
-      'ta': 'Tamil',
-      'te': 'Telugu',
-      'ml': 'Malayalam',
-      'bn': 'Bengali',
-      'mr': 'Marathi',
-      'kn': 'Kannada',
-      'gu': 'Gujarati',
-      'pa': 'Punjabi',
-      'en': 'English'
     };
     
-    return languageMap[code] || code.toUpperCase();
+    fetchWebSeries();
+  }, [currentPage, toast]);
+  
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo(0, 0);
+    }
   };
-
+  
+  // Generate pagination items
+  const generatePaginationItems = () => {
+    const items = [];
+    
+    // Add first page
+    items.push(
+      <PaginationItem key="first">
+        <PaginationLink 
+          onClick={() => handlePageChange(1)}
+          isActive={currentPage === 1}
+        >
+          1
+        </PaginationLink>
+      </PaginationItem>
+    );
+    
+    // Add ellipsis if needed
+    if (currentPage > 3) {
+      items.push(
+        <PaginationItem key="ellipsis-1">
+          <span className="px-4">...</span>
+        </PaginationItem>
+      );
+    }
+    
+    // Add pages around current page
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+    
+    for (let i = startPage; i <= endPage; i++) {
+      if (i === 1 || i === totalPages) continue; // Skip first and last page as they're added separately
+      
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink 
+            onClick={() => handlePageChange(i)}
+            isActive={currentPage === i}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    // Add ellipsis if needed
+    if (currentPage < totalPages - 2) {
+      items.push(
+        <PaginationItem key="ellipsis-2">
+          <span className="px-4">...</span>
+        </PaginationItem>
+      );
+    }
+    
+    // Add last page if it's different from the first page
+    if (totalPages > 1) {
+      items.push(
+        <PaginationItem key="last">
+          <PaginationLink 
+            onClick={() => handlePageChange(totalPages)}
+            isActive={currentPage === totalPages}
+          >
+            {totalPages}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+    
+    return items;
+  };
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-24">
+          <ErrorHandler error={error} />
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="min-h-screen bg-gradient-to-b from-moviemate-background to-purple-900/20">
+    <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-8 pt-24">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Indian Web Series</h1>
-            <p className="text-gray-400">Discover premium web series from across India</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search web series..."
-                  className="pl-8 w-[200px] bg-moviemate-card/50"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </form>
-            
-            <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-              <SelectTrigger className="w-[150px] bg-moviemate-card/50">
-                <SelectValue placeholder="Filter by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Web Series</SelectItem>
-                <SelectItem value="popular">Popular</SelectItem>
-                <SelectItem value="top_rated">Top Rated</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {availableLanguages.length > 0 && (
-              <Select value={languageFilter} onValueChange={setLanguageFilter}>
-                <SelectTrigger className="w-[150px] bg-moviemate-card/50">
-                  <SelectValue placeholder="Language" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Languages</SelectItem>
-                  {availableLanguages.map(lang => (
-                    <SelectItem key={lang} value={lang}>
-                      {getLanguageName(lang)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+      <main className="container mx-auto px-4 pt-24 pb-16">
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-white">Web Series</h1>
         </div>
         
-        <Separator className="mb-6 bg-gray-700/50" />
-        
-        {hasError && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              Failed to load web series. Please try again later.
-            </AlertDescription>
-          </Alert>
-        )}
-        
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-lg bg-moviemate-card">
-                <div className="aspect-[2/3]"></div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {Array.from({ length: 20 }).map((_, index) => (
+              <div key={index} className="animate-pulse space-y-2">
+                <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
               </div>
             ))}
           </div>
-        ) : filteredShows.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {filteredShows.map((show) => (
-              <MovieCard key={show.id} item={show} type="tv" />
-            ))}
+        ) : webSeries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg bg-moviemate-card p-8 text-center">
+            <h2 className="mb-4 text-2xl font-bold">No Web Series Found</h2>
+            <p className="mb-6 text-gray-400">Try a different page or check back later for new content.</p>
+            <Button onClick={() => navigate('/')}>Back to Home</Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-xl bg-moviemate-card/50 p-12 text-center backdrop-blur-sm">
-            <Search size={64} className="mb-4 text-gray-500" />
-            <h3 className="mb-2 text-xl font-semibold text-white">No web series found</h3>
-            <p className="text-gray-400">Try adjusting your filters or search criteria</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => {
-                setSelectedFilter('all');
-                setLanguageFilter('all');
-                setSearchQuery('');
-              }}
-            >
-              <Filter className="mr-2 h-4 w-4" />
-              Reset Filters
-            </Button>
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {webSeries.map((show) => (
+                <MovieCard 
+                  key={show.id} 
+                  item={show}
+                  type="tv"
+                />
+              ))}
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination className="mt-8">
+                <PaginationContent>
+                  <PaginationItem>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="sr-only">Previous page</span>
+                    </Button>
+                  </PaginationItem>
+                  
+                  {!isMobile && generatePaginationItems()}
+                  
+                  {isMobile && (
+                    <PaginationItem>
+                      <span className="px-2 text-sm">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </PaginationItem>
+                  )}
+                  
+                  <PaginationItem>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      <span className="sr-only">Next page</span>
+                    </Button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </>
         )}
       </main>
     </div>
