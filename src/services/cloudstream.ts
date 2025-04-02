@@ -38,6 +38,22 @@ export interface CloudStreamSource {
   is_enabled?: boolean;
 }
 
+export interface CloudStreamPluginResponse {
+  name: string;
+  internalName: string;
+  description?: string;
+  iconUrl?: string;
+  apiVersion: number;
+  url: string;
+  repositoryUrl: string;
+  language: string;
+  fileSize: number;
+  status: number;
+  authors: string[];
+  tvTypes: string[];
+  version: number;
+}
+
 // Available Indian languages
 export const INDIAN_LANGUAGES = [
   { code: 'hi', name: 'Hindi' },
@@ -50,6 +66,7 @@ export const INDIAN_LANGUAGES = [
   { code: 'gu', name: 'Gujarati' },
   { code: 'pa', name: 'Punjabi' },
   { code: 'ur', name: 'Urdu' },
+  { code: 'si', name: 'Sinhala' },
 ];
 
 // Pre-defined CloudStream sources for Indian content
@@ -342,19 +359,60 @@ export const parseCloudStreamRepo = async (
   sources: any[];
 }> => {
   try {
-    const response = await supabase.functions.invoke('cloudstream-utils', {
-      body: {
-        action: 'parse_repository',
-        repoUrl
+    // If the URL is directly to a plugins.json file
+    if (repoUrl.endsWith('plugins.json')) {
+      const response = await fetch(repoUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch repository data');
       }
-    });
+      
+      const data: CloudStreamPluginResponse[] = await response.json();
+      
+      // Transform the response to match our expected format
+      const plugins = data.map(plugin => ({
+        name: plugin.name,
+        url: plugin.url,
+        version: plugin.version.toString(),
+        description: plugin.description || `Plugin for ${plugin.name}`,
+        author: plugin.authors?.join(', ') || 'Unknown',
+        repository: plugin.repositoryUrl,
+        categories: plugin.tvTypes.map(type => type.toLowerCase()),
+        language: plugin.language,
+        internalName: plugin.internalName,
+        iconUrl: plugin.iconUrl,
+        status: plugin.status,
+        apiVersion: plugin.apiVersion,
+        fileSize: plugin.fileSize
+      }));
+      
+      // Extract sources if applicable
+      const sources = plugins.map(plugin => ({
+        name: plugin.name,
+        url: plugin.url,
+        repo: plugin.repository,
+        description: plugin.description,
+        language: plugin.language,
+        categories: plugin.categories,
+        logo: plugin.iconUrl
+      }));
+      
+      return { plugins, sources };
+    } else {
+      // For other repository formats, use the original implementation
+      const response = await supabase.functions.invoke('cloudstream-utils', {
+        body: {
+          action: 'parse_repository',
+          repoUrl
+        }
+      });
 
-    if (response.error) {
-      console.error('Error parsing repository:', response.error);
-      return { plugins: [], sources: [] };
+      if (response.error) {
+        console.error('Error parsing repository:', response.error);
+        return { plugins: [], sources: [] };
+      }
+
+      return response.data || { plugins: [], sources: [] };
     }
-
-    return response.data || { plugins: [], sources: [] };
   } catch (error) {
     console.error('Error parsing repository:', error);
     return { plugins: [], sources: [] };

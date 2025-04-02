@@ -70,7 +70,7 @@ export interface Channel {
 }
 
 export interface CloudStreamPlugin {
-  id: string;
+  id?: string;
   name: string;
   url: string;
   version?: string;
@@ -78,9 +78,15 @@ export interface CloudStreamPlugin {
   language?: string;
   categories?: string[];
   repository?: string;
-  isEnabled: boolean;
+  isEnabled?: boolean;
   isInstalled?: boolean;
   author?: string;
+  internalName?: string;
+  iconUrl?: string;
+  status?: number;
+  apiVersion?: number;
+  fileSize?: number;
+  tvTypes?: string[];
 }
 
 export interface CloudStreamRepo {

@@ -5,7 +5,7 @@ import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
 import { fetchAllPlugins, addPlugin, fetchAllRepositories, fetchAllSources, addRepository, parseCloudStreamRepo, syncSourcesToSupabase } from '@/services/cloudstream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, AlertCircle } from 'lucide-react';
+import { Search, Plus, AlertCircle, Download, ExternalLink } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -85,7 +85,6 @@ const CloudStreamPluginManager = () => {
   const queryClient = useQueryClient();
   const { settings } = useAdmin();
 
-  // Fetch plugins from Supabase
   const { 
     data: plugins, 
     isLoading: isLoadingPlugins, 
@@ -96,7 +95,6 @@ const CloudStreamPluginManager = () => {
     queryFn: fetchAllPlugins
   });
 
-  // Fetch repositories from Supabase
   const { 
     data: repositories, 
     isLoading: isLoadingRepositories, 
@@ -107,7 +105,6 @@ const CloudStreamPluginManager = () => {
     queryFn: fetchAllRepositories
   });
 
-  // Fetch sources from Supabase
   const { 
     data: sources, 
     isLoading: isLoadingSources, 
@@ -118,16 +115,13 @@ const CloudStreamPluginManager = () => {
     queryFn: fetchAllSources
   });
 
-  // Function to toggle plugin status
   const handleTogglePlugin = async (pluginId: string, isEnabled: boolean) => {
-    // Optimistically update the cache
     queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], (old) =>
       old?.map((plugin) =>
         plugin.id === pluginId ? { ...plugin, isEnabled: isEnabled } : plugin
       ) || []
     );
 
-    // Make the API call
     const response = await fetch(`/api/admin/cloudstream/plugins/${pluginId}`, {
       method: 'PUT',
       headers: {
@@ -142,7 +136,6 @@ const CloudStreamPluginManager = () => {
         description: "Failed to update plugin status",
         variant: "destructive"
       });
-      // If the API call fails, revert the cache to the previous state
       await queryClient.cancelQueries({ queryKey: ['cloudstream-plugins'] });
       queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins || []);
     } else {
@@ -152,20 +145,16 @@ const CloudStreamPluginManager = () => {
       });
     }
 
-    // Invalidate the cache to trigger a refetch
     queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
   };
 
-  // Function to toggle repository status
   const handleToggleRepository = async (repoId: string, isEnabled: boolean) => {
-    // Optimistically update the cache
     queryClient.setQueryData<CloudStreamRepo[]>(['cloudstream-repositories'], (old) =>
       old?.map((repo) =>
         repo.id === repoId ? { ...repo, isEnabled: isEnabled } : repo
       ) || []
     );
 
-    // Make the API call
     const response = await fetch(`/api/admin/cloudstream/repositories/${repoId}`, {
       method: 'PUT',
       headers: {
@@ -180,7 +169,6 @@ const CloudStreamPluginManager = () => {
         description: "Failed to update repository status",
         variant: "destructive"
       });
-      // If the API call fails, revert the cache to the previous state
       await queryClient.cancelQueries({ queryKey: ['cloudstream-repositories'] });
       queryClient.setQueryData<CloudStreamRepo[]>(['cloudstream-repositories'], repositories || []);
     } else {
@@ -190,20 +178,16 @@ const CloudStreamPluginManager = () => {
       });
     }
 
-    // Invalidate the cache to trigger a refetch
     queryClient.invalidateQueries({ queryKey: ['cloudstream-repositories'] });
   };
 
-  // Function to install/uninstall plugin
   const handleInstallPlugin = async (pluginId: string, isInstalled: boolean) => {
-    // Optimistically update the cache
     queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], (old) =>
       old?.map((plugin) =>
         plugin.id === pluginId ? { ...plugin, isInstalled: isInstalled } : plugin
       ) || []
     );
 
-    // Make the API call
     const response = await fetch(`/api/admin/cloudstream/plugins/${pluginId}/install`, {
       method: 'PUT',
       headers: {
@@ -218,7 +202,6 @@ const CloudStreamPluginManager = () => {
         description: "Failed to install/uninstall plugin",
         variant: "destructive"
       });
-      // If the API call fails, revert the cache to the previous state
       await queryClient.cancelQueries({ queryKey: ['cloudstream-plugins'] });
       queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins || []);
     } else {
@@ -228,16 +211,13 @@ const CloudStreamPluginManager = () => {
       });
     }
 
-    // Invalidate the cache to trigger a refetch
     queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
   };
 
-  // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
-  // Handle category filter change
   const handleCategoryChange = (category: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(category)) {
@@ -248,12 +228,10 @@ const CloudStreamPluginManager = () => {
     });
   };
 
-  // Handle clear category filters
   const handleClearCategories = () => {
     setSelectedCategories([]);
   };
 
-  // Handle add plugin form submission
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -266,7 +244,7 @@ const CloudStreamPluginManager = () => {
       version: "1.0.0"
     },
     mode: "onChange"
-  })
+  });
 
   const handleAddPlugin = async (values: z.infer<typeof formSchema>) => {
     setAddingPlugin(true);
@@ -310,7 +288,6 @@ const CloudStreamPluginManager = () => {
     }
   };
 
-  // Handle add repository form submission
   const handleAddRepository = async () => {
     setIsAddingRepo(true);
 
@@ -349,7 +326,6 @@ const CloudStreamPluginManager = () => {
     }
   };
 
-  // Handle parse repository
   const handleParseRepo = async () => {
     setIsParsingRepo(true);
     setParsedPlugins([]);
@@ -361,7 +337,7 @@ const CloudStreamPluginManager = () => {
       setParsedSources(result.sources);
       toast({
         title: "Success",
-        description: `Repository "${repoUrl}" parsed successfully`,
+        description: `Repository parsed successfully. Found ${result.plugins.length} plugins.`,
       });
     } catch (error) {
       console.error("Error parsing repository:", error);
@@ -375,7 +351,6 @@ const CloudStreamPluginManager = () => {
     }
   };
 
-  // Handle sync sources
   const handleSyncSources = async () => {
     setIsSyncingSources(true);
 
@@ -408,7 +383,6 @@ const CloudStreamPluginManager = () => {
   };
 
   useEffect(() => {
-    // Apply search filter
     let filtered = plugins || [];
 
     if (searchQuery) {
@@ -419,7 +393,6 @@ const CloudStreamPluginManager = () => {
       );
     }
 
-    // Apply category filter
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(plugin =>
         plugin.categories?.some(category => selectedCategories.includes(category))
@@ -428,7 +401,6 @@ const CloudStreamPluginManager = () => {
 
     setFilteredPlugins(filtered);
 
-    // Extract available categories
     if (plugins) {
       const categories = new Set<string>();
       plugins.forEach(plugin => {
@@ -444,10 +416,39 @@ const CloudStreamPluginManager = () => {
     {
       accessorKey: 'name',
       header: 'Name',
+      cell: ({ row }: any) => (
+        <div className="flex items-center space-x-2">
+          {row.original.iconUrl && (
+            <img 
+              src={row.original.iconUrl.replace('%size%', '32')} 
+              alt={row.original.name} 
+              width={24} 
+              height={24} 
+              className="rounded-sm"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          )}
+          <span>{row.original.name}</span>
+        </div>
+      ),
     },
     {
       accessorKey: 'repository',
       header: 'Repository',
+      cell: ({ row }: any) => (
+        <a 
+          href={row.original.repository} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center text-blue-500 hover:underline"
+        >
+          {row.original.repository ? row.original.repository.split('github.com/')[1] || row.original.repository : 'N/A'}
+          <ExternalLink className="ml-1 h-3 w-3" />
+        </a>
+      ),
     },
     {
       accessorKey: 'version',
@@ -456,13 +457,19 @@ const CloudStreamPluginManager = () => {
     {
       accessorKey: 'language',
       header: 'Language',
+      cell: ({ row }: any) => {
+        const language = INDIAN_LANGUAGES.find(lang => lang.code === row.original.language);
+        return <span>{language ? language.name : row.original.language}</span>;
+      },
     },
     {
-      accessorKey: 'categories',
-      header: 'Categories',
+      accessorKey: 'tvTypes',
+      header: 'Content Types',
       cell: ({ row }: any) => (
         <div className="flex flex-wrap gap-1">
-          {row.original.categories?.map((category: string) => (
+          {row.original.tvTypes?.map((type: string) => (
+            <Badge key={type} variant="secondary">{type}</Badge>
+          )) || row.original.categories?.map((category: string) => (
             <Badge key={category} variant="secondary">{category}</Badge>
           ))}
         </div>
@@ -471,18 +478,60 @@ const CloudStreamPluginManager = () => {
     {
       accessorKey: 'author',
       header: 'Author',
+      cell: ({ row }: any) => (
+        <span>{row.original.author || (row.original.authors ? row.original.authors.join(', ') : 'Unknown')}</span>
+      ),
     },
     {
       accessorKey: 'status',
       header: 'Status',
+      cell: ({ row }: any) => {
+        let statusText = 'Unknown';
+        let variant = 'outline';
+        
+        if (row.original.status === 1) {
+          statusText = 'Active';
+          variant = 'default';
+        } else if (row.original.status === 0) {
+          statusText = 'Inactive';
+          variant = 'outline';
+        } else if (row.original.status === 3) {
+          statusText = 'Beta';
+          variant = 'warning';
+        }
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={row.original.isEnabled ? "default" : "outline"}>
+              {row.original.isEnabled ? "Enabled" : "Disabled"}
+            </Badge>
+            <Badge variant={row.original.isInstalled ? "default" : "outline"}>
+              {row.original.isInstalled ? "Installed" : "Not Installed"}
+            </Badge>
+            {typeof row.original.status !== 'undefined' && (
+              <Badge variant={variant as any}>{statusText}</Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
       cell: ({ row }: any) => (
-        <div className="flex items-center gap-2">
-          <Badge variant={row.original.isEnabled ? "default" : "outline"}>
-            {row.original.isEnabled ? "Enabled" : "Disabled"}
-          </Badge>
-          <Badge variant={row.original.isInstalled ? "default" : "outline"}>
-            {row.original.isInstalled ? "Installed" : "Not Installed"}
-          </Badge>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleInstallPlugin(row.original.id, !row.original.isInstalled)}
+          >
+            <Download className="mr-1 h-4 w-4" />
+            {row.original.isInstalled ? 'Uninstall' : 'Install'}
+          </Button>
+          <Switch
+            checked={row.original.isEnabled}
+            onCheckedChange={(checked) => handleTogglePlugin(row.original.id, checked)}
+          />
         </div>
       ),
     },
@@ -780,7 +829,7 @@ const CloudStreamPluginManager = () => {
         <h3 className="text-xl font-bold">Parse Repository</h3>
         <div className="flex items-center space-x-2 mt-2">
           <Input
-            placeholder="Enter repository URL..."
+            placeholder="Enter repository URL or plugins.json URL..."
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
             className="max-w-md"
@@ -799,13 +848,74 @@ const CloudStreamPluginManager = () => {
 
         {parsedPlugins.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-lg font-semibold">Parsed Plugins</h4>
-            <ScrollArea className="h-[200px] w-full rounded-md border">
-              <div className="p-2">
+            <h4 className="text-lg font-semibold">Parsed Plugins ({parsedPlugins.length})</h4>
+            <ScrollArea className="h-[400px] w-full rounded-md border">
+              <div className="p-4 space-y-4">
                 {parsedPlugins.map((plugin, index) => (
-                  <div key={index} className="py-2 border-b last:border-b-0">
-                    <p className="font-medium">{plugin.name}</p>
-                    <p className="text-sm text-gray-500">{plugin.url}</p>
+                  <div key={index} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="flex items-start space-x-3">
+                      {plugin.iconUrl && (
+                        <img 
+                          src={plugin.iconUrl.replace('%size%', '64')} 
+                          alt={plugin.name} 
+                          className="w-12 h-12 rounded-md"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div>
+                        <h5 className="font-bold">{plugin.name}</h5>
+                        <p className="text-sm text-gray-500">{plugin.description || `Plugin for ${plugin.name}`}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {plugin.categories?.map((category: string) => (
+                            <Badge key={category} variant="outline" className="text-xs">{category}</Badge>
+                          )) || plugin.tvTypes?.map((type: string) => (
+                            <Badge key={type} variant="outline" className="text-xs">{type}</Badge>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">Language: {plugin.language}</span>
+                          <span className="text-xs text-gray-500">Version: {plugin.version}</span>
+                          <span className="text-xs text-gray-500">Author: {plugin.author || (plugin.authors ? plugin.authors.join(', ') : 'Unknown')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          addPlugin({
+                            name: plugin.name,
+                            url: plugin.url,
+                            version: plugin.version?.toString() || "1.0.0",
+                            description: plugin.description || `Plugin for ${plugin.name}`,
+                            author: plugin.author || (plugin.authors ? plugin.authors.join(', ') : 'Unknown'),
+                            repository: plugin.repository || plugin.repositoryUrl,
+                            categories: plugin.categories || plugin.tvTypes?.map(t => t.toLowerCase()) || ["indian"],
+                            language: plugin.language || "hi"
+                          }).then(success => {
+                            if (success) {
+                              toast({
+                                title: "Success",
+                                description: `Plugin "${plugin.name}" added successfully`,
+                              });
+                              refetchPlugins();
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: "Failed to add plugin",
+                                variant: "destructive"
+                              });
+                            }
+                          });
+                        }}
+                      >
+                        Add Plugin
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
