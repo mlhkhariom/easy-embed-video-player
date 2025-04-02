@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DataTable } from '@/components/ui/data-table';
-import { CloudStreamPlugin } from '@/types';
-import { fetchAllPlugins } from '@/services/cloudstream';
+import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
+import { fetchAllPlugins, addPlugin, fetchAllRepositories, fetchAllSources, addRepository, parseCloudStreamRepo, syncSourcesToSupabase } from '@/services/cloudstream';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, AlertCircle } from 'lucide-react';
@@ -28,15 +28,12 @@ import {
 import { useForm } from 'react-hook-form';
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { addPlugin, fetchAllRepositories, fetchAllSources } from '../../services/cloudstream';
 import { useToast } from '../ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
 import { Checkbox } from '../ui/checkbox';
 import { useAdmin } from '@/contexts/AdminContext';
-import { addRepository } from '../../services/cloudstream';
-import { parseCloudStreamRepo, syncSourcesToSupabase } from '../../services/cloudstream';
-import { CloudStreamRepo } from '../../types';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -83,6 +80,7 @@ const CloudStreamPluginManager = () => {
   });
   const [addRepoDialogOpen, setAddRepoDialogOpen] = useState(false);
   const [isSyncingSources, setIsSyncingSources] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings } = useAdmin();
@@ -95,8 +93,7 @@ const CloudStreamPluginManager = () => {
     refetch: refetchPlugins 
   } = useQuery({
     queryKey: ['cloudstream-plugins'],
-    queryFn: fetchAllPlugins,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: fetchAllPlugins
   });
 
   // Fetch repositories from Supabase
@@ -107,8 +104,7 @@ const CloudStreamPluginManager = () => {
     refetch: refetchRepositories 
   } = useQuery({
     queryKey: ['cloudstream-repositories'],
-    queryFn: fetchAllRepositories,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: fetchAllRepositories
   });
 
   // Fetch sources from Supabase
@@ -119,8 +115,7 @@ const CloudStreamPluginManager = () => {
     refetch: refetchSources 
   } = useQuery({
     queryKey: ['cloudstream-sources'],
-    queryFn: fetchAllSources,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: fetchAllSources
   });
 
   // Function to toggle plugin status
@@ -129,7 +124,7 @@ const CloudStreamPluginManager = () => {
     queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], (old) =>
       old?.map((plugin) =>
         plugin.id === pluginId ? { ...plugin, isEnabled: isEnabled } : plugin
-      )
+      ) || []
     );
 
     // Make the API call
@@ -148,8 +143,8 @@ const CloudStreamPluginManager = () => {
         variant: "destructive"
       });
       // If the API call fails, revert the cache to the previous state
-      await queryClient.cancelQueries(['cloudstream-plugins']);
-      queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins);
+      await queryClient.cancelQueries({ queryKey: ['cloudstream-plugins'] });
+      queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins || []);
     } else {
       toast({
         title: "Success",
@@ -158,7 +153,7 @@ const CloudStreamPluginManager = () => {
     }
 
     // Invalidate the cache to trigger a refetch
-    queryClient.invalidateQueries(['cloudstream-plugins']);
+    queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
   };
 
   // Function to toggle repository status
@@ -167,7 +162,7 @@ const CloudStreamPluginManager = () => {
     queryClient.setQueryData<CloudStreamRepo[]>(['cloudstream-repositories'], (old) =>
       old?.map((repo) =>
         repo.id === repoId ? { ...repo, isEnabled: isEnabled } : repo
-      )
+      ) || []
     );
 
     // Make the API call
@@ -186,8 +181,8 @@ const CloudStreamPluginManager = () => {
         variant: "destructive"
       });
       // If the API call fails, revert the cache to the previous state
-      await queryClient.cancelQueries(['cloudstream-repositories']);
-      queryClient.setQueryData<CloudStreamRepo[]>(['cloudstream-repositories'], repositories);
+      await queryClient.cancelQueries({ queryKey: ['cloudstream-repositories'] });
+      queryClient.setQueryData<CloudStreamRepo[]>(['cloudstream-repositories'], repositories || []);
     } else {
       toast({
         title: "Success",
@@ -196,7 +191,7 @@ const CloudStreamPluginManager = () => {
     }
 
     // Invalidate the cache to trigger a refetch
-    queryClient.invalidateQueries(['cloudstream-repositories']);
+    queryClient.invalidateQueries({ queryKey: ['cloudstream-repositories'] });
   };
 
   // Function to install/uninstall plugin
@@ -205,7 +200,7 @@ const CloudStreamPluginManager = () => {
     queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], (old) =>
       old?.map((plugin) =>
         plugin.id === pluginId ? { ...plugin, isInstalled: isInstalled } : plugin
-      )
+      ) || []
     );
 
     // Make the API call
@@ -224,8 +219,8 @@ const CloudStreamPluginManager = () => {
         variant: "destructive"
       });
       // If the API call fails, revert the cache to the previous state
-      await queryClient.cancelQueries(['cloudstream-plugins']);
-      queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins);
+      await queryClient.cancelQueries({ queryKey: ['cloudstream-plugins'] });
+      queryClient.setQueryData<CloudStreamPlugin[]>(['cloudstream-plugins'], plugins || []);
     } else {
       toast({
         title: "Success",
@@ -234,7 +229,7 @@ const CloudStreamPluginManager = () => {
     }
 
     // Invalidate the cache to trigger a refetch
-    queryClient.invalidateQueries(['cloudstream-plugins']);
+    queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
   };
 
   // Handle search input change
@@ -278,8 +273,14 @@ const CloudStreamPluginManager = () => {
 
     try {
       const result = await addPlugin({
-        ...values,
-        author: "User Added" // Adding the required author field
+        name: values.name,
+        url: values.url,
+        version: values.version || "1.0.0",
+        description: values.description || `Plugin for ${values.name}`,
+        author: "User Added",
+        repository: values.repository,
+        categories: values.categories || ["indian"],
+        language: values.language || "hi"
       });
       
       if (result) {
@@ -459,9 +460,9 @@ const CloudStreamPluginManager = () => {
     {
       accessorKey: 'categories',
       header: 'Categories',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="flex flex-wrap gap-1">
-          {row.categories?.map(category => (
+          {row.original.categories?.map((category: string) => (
             <Badge key={category} variant="secondary">{category}</Badge>
           ))}
         </div>
@@ -474,13 +475,13 @@ const CloudStreamPluginManager = () => {
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="flex items-center gap-2">
-          <Badge variant={row.isEnabled ? "success" : "outline"}>
-            {row.isEnabled ? "Enabled" : "Disabled"}
+          <Badge variant={row.original.isEnabled ? "default" : "outline"}>
+            {row.original.isEnabled ? "Enabled" : "Disabled"}
           </Badge>
-          <Badge variant={row.isInstalled ? "default" : "outline"}>
-            {row.isInstalled ? "Installed" : "Not Installed"}
+          <Badge variant={row.original.isInstalled ? "default" : "outline"}>
+            {row.original.isInstalled ? "Installed" : "Not Installed"}
           </Badge>
         </div>
       ),

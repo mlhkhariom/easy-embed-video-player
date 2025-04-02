@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -6,11 +7,11 @@ import {
   fetchAllPlugins,
   fetchAllRepositories,
   fetchAllSources,
-  CloudStreamPlugin,
-  CloudStreamRepo,
   syncSourcesToSupabase,
-  syncContent
+  syncContent,
+  parseCloudStreamRepo
 } from '@/services/cloudstream';
+import { CloudStreamPlugin, CloudStreamRepo } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 const AdminCloudStream = () => {
   const [repositories, setRepositories] = useState<CloudStreamRepo[]>([]);
   const [plugins, setPlugins] = useState<CloudStreamPlugin[]>([]);
-  const [newRepo, setNewRepo] = useState({ name: '', url: '', description: '' });
+  const [newRepo, setNewRepo] = useState({ name: '', url: '', description: '', author: '' });
   const [newPlugin, setNewPlugin] = useState({
     name: "",
     url: "",
@@ -112,7 +113,7 @@ const AdminCloudStream = () => {
 
   // Function to handle repository addition
   const handleAddRepository = async () => {
-    if (!newRepo.name || !newRepo.url) {
+    if (!newRepo.name || !newRepo.url || !newRepo.author) {
       toast({
         title: "Error",
         description: "Please fill in all required fields for the repository",
@@ -130,7 +131,7 @@ const AdminCloudStream = () => {
           title: "Success",
           description: `Repository "${newRepo.name}" added successfully`,
         });
-        setNewRepo({ name: '', url: '', description: '' });
+        setNewRepo({ name: '', url: '', description: '', author: '' });
         setAddRepoDialogOpen(false);
         await refetchRepos();
       } else {
@@ -243,7 +244,7 @@ const AdminCloudStream = () => {
     // Optimistically update the UI
     const previousRepos = queryClient.getQueryData(['cloudstream-repositories']);
     queryClient.setQueryData(['cloudstream-repositories'], (old: CloudStreamRepo[] | undefined) =>
-      old?.map(repo => (repo.id === repoId ? { ...repo, isEnabled: isEnabled } : repo))
+      old?.map(repo => (repo.id === repoId ? { ...repo, isEnabled: isEnabled } : repo)) || []
     );
 
     try {
@@ -275,7 +276,7 @@ const AdminCloudStream = () => {
       queryClient.setQueryData(['cloudstream-repositories'], previousRepos);
     } finally {
       // Invalidate the query to refetch the repositories
-      queryClient.invalidateQueries(['cloudstream-repositories']);
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-repositories'] });
     }
   };
 
@@ -284,7 +285,7 @@ const AdminCloudStream = () => {
     // Optimistically update the UI
     const previousPlugins = queryClient.getQueryData(['cloudstream-plugins']);
     queryClient.setQueryData(['cloudstream-plugins'], (old: CloudStreamPlugin[] | undefined) =>
-      old?.map(plugin => (plugin.id === pluginId ? { ...plugin, isEnabled: isEnabled } : plugin))
+      old?.map(plugin => (plugin.id === pluginId ? { ...plugin, isEnabled: isEnabled } : plugin)) || []
     );
 
     try {
@@ -316,7 +317,7 @@ const AdminCloudStream = () => {
       queryClient.setQueryData(['cloudstream-plugins'], previousPlugins);
     } finally {
       // Invalidate the query to refetch the plugins
-      queryClient.invalidateQueries(['cloudstream-plugins']);
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
     }
   };
 
@@ -325,7 +326,7 @@ const AdminCloudStream = () => {
     // Optimistically update the UI
     const previousPlugins = queryClient.getQueryData(['cloudstream-plugins']);
     queryClient.setQueryData(['cloudstream-plugins'], (old: CloudStreamPlugin[] | undefined) =>
-      old?.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalled: isInstalled } : plugin))
+      old?.map(plugin => (plugin.id === pluginId ? { ...plugin, isInstalled: isInstalled } : plugin)) || []
     );
 
     try {
@@ -357,7 +358,7 @@ const AdminCloudStream = () => {
       queryClient.setQueryData(['cloudstream-plugins'], previousPlugins);
     } finally {
       // Invalidate the query to refetch the plugins
-      queryClient.invalidateQueries(['cloudstream-plugins']);
+      queryClient.invalidateQueries({ queryKey: ['cloudstream-plugins'] });
     }
   };
 
@@ -471,6 +472,12 @@ const AdminCloudStream = () => {
                   </Label>
                   <Textarea id="description" value={newRepo.description} onChange={(e) => setNewRepo({ ...newRepo, description: e.target.value })} className="col-span-3" />
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="author" className="text-right">
+                    Author
+                  </Label>
+                  <Input id="author" value={newRepo.author} onChange={(e) => setNewRepo({ ...newRepo, author: e.target.value })} className="col-span-3" />
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="secondary" onClick={() => setAddRepoDialogOpen(false)}>
@@ -519,7 +526,7 @@ const AdminCloudStream = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {repositories.map((repo) => (
+              {repositories && repositories.map((repo) => (
                 <TableRow key={repo.id}>
                   <TableCell className="font-medium">{repo.name}</TableCell>
                   <TableCell>
@@ -529,7 +536,7 @@ const AdminCloudStream = () => {
                   </TableCell>
                   <TableCell>{repo.description}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={repo.isEnabled ? "success" : "outline"}>
+                    <Badge variant={repo.isEnabled ? "default" : "outline"}>
                       {repo.isEnabled ? "Enabled" : "Disabled"}
                     </Badge>
                   </TableCell>
@@ -675,7 +682,7 @@ const AdminCloudStream = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {plugins.map((plugin) => (
+              {plugins && plugins.map((plugin) => (
                 <TableRow key={plugin.id}>
                   <TableCell className="font-medium">{plugin.name}</TableCell>
                   <TableCell>
@@ -686,7 +693,7 @@ const AdminCloudStream = () => {
                   <TableCell>{plugin.repository}</TableCell>
                   <TableCell>{plugin.description}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={plugin.isEnabled ? "success" : "outline"}>
+                    <Badge variant={plugin.isEnabled ? "default" : "outline"}>
                       {plugin.isEnabled ? "Enabled" : "Disabled"}
                     </Badge>
                   </TableCell>

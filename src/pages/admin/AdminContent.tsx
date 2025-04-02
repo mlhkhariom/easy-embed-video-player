@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
-import { Settings } from '@/types';
+import { AdminSettings } from '@/types';
 import { Movie, TvShow } from '@/types';
-import { fetchSettings, updateSettings as updateSettingsAPI } from '@/services/settings';
+import { fetchSettings, updateSettings } from '@/services/settings';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -12,13 +13,13 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useAdmin } from '@/contexts/AdminContext';
 import { Search } from 'lucide-react';
-import { fetchTrendingMovies, fetchTrendingTVShows } from '@/services/tmdb';
+import { getTrendingMovies, getTrendingTvShows } from '@/services/tmdb';
 import MovieCard from '@/components/MovieCard';
 
 const AdminContent = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { settings, setSettings } = useAdmin();
+  const { settings, setSettings: updateAdminSettings } = useAdmin();
 
   // State variables
   const [siteName, setSiteName] = useState(settings?.siteName || '');
@@ -29,8 +30,8 @@ const AdminContent = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResultsMovies, setSearchResultsMovies] = useState<Movie[]>([]);
   const [searchResultsTVShows, setSearchResultsTVShows] = useState<TvShow[]>([]);
-  const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(settings.featuredMovie);
-  const [featuredTVShow, setFeaturedTVShow] = useState<TvShow | null>(settings.featuredTVShow);
+  const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(settings.featuredContent?.movie || null);
+  const [featuredTVShow, setFeaturedTVShow] = useState<TvShow | null>(settings.featuredContent?.tvShow || null);
 
   // Fetch settings
   const { isLoading: isLoadingSettings, error: errorSettings } = useQuery({
@@ -40,20 +41,20 @@ const AdminContent = () => {
       setSiteName(data?.siteName || '');
       setEnableTrending(data?.enableTrending || false);
       setEnableCloudStream(data?.enableCloudStream || false);
-      setSettings(data);
-      setFeaturedMovie(data?.featuredMovie || null);
-      setFeaturedTVShow(data?.featuredTVShow || null);
+      updateAdminSettings(data);
+      setFeaturedMovie(data?.featuredContent?.movie || null);
+      setFeaturedTVShow(data?.featuredContent?.tvShow || null);
     }
   });
 
   // Update settings mutation
-  const { mutate: updateSettings, isLoading: isUpdatingSettings } = useMutation({
-    mutationFn: (updates: Partial<Settings>) => updateSettingsAPI(updates),
+  const { mutate: updateSettingsMutation, isPending: isUpdatingSettings } = useMutation({
+    mutationFn: (updates: Partial<AdminSettings>) => updateSettings(updates),
     onSuccess: () => {
       toast({
         title: "Settings updated successfully.",
       });
-      queryClient.invalidateQueries(['settings']);
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
     onError: (error: any) => {
       toast({
@@ -68,8 +69,8 @@ const AdminContent = () => {
   useEffect(() => {
     const fetchTrendingContent = async () => {
       try {
-        const movies = await fetchTrendingMovies();
-        const tvShows = await fetchTrendingTVShows();
+        const movies = await getTrendingMovies();
+        const tvShows = await getTrendingTvShows();
         setTrendingMovies(movies);
         setTrendingTVShows(tvShows);
       } catch (error) {
@@ -107,7 +108,7 @@ const AdminContent = () => {
 
   // Handle save settings
   const handleSaveSettings = () => {
-    updateSettings({
+    updateSettingsMutation({
       siteName: siteName,
       enableTrending: enableTrending,
       enableCloudStream: enableCloudStream
@@ -141,62 +142,64 @@ const AdminContent = () => {
   };
 
   // Handle feature movie
-  const handleFeatureMovie = (movie: any) => {
-    // Convert to proper Movie type with as unknown first
-    const movieData = {
-      id: movie.id,
-      title: movie.title,
-      poster_path: movie.posterPath,
-      backdrop_path: movie.backdropPath,
-      // Add other required Movie properties with default values
-      overview: '',
-      release_date: '',
-      vote_average: 0,
-      vote_count: 0,
-      genre_ids: []
-    } as Movie;
-    
-    updateSettings({
+  const handleFeatureMovie = (movie: Movie) => {
+    const updatedSettings = {
       ...settings,
-      featuredMovie: movieData
-    });
+      featuredContent: {
+        ...settings.featuredContent,
+        movie: {
+          id: movie.id,
+          title: movie.title,
+          posterPath: movie.poster_path,
+          backdropPath: movie.backdrop_path
+        }
+      }
+    };
+    
+    updateSettingsMutation(updatedSettings);
   };
 
   // Handle feature TV show
-  const handleFeatureTVShow = (show: any) => {
-    // Convert to proper TvShow type with as unknown first
-    const showData = {
-      id: show.id,
-      name: show.name,
-      poster_path: show.posterPath,
-      backdrop_path: show.backdropPath,
-      // Add other required TvShow properties with default values
-      overview: '',
-      first_air_date: '',
-      vote_average: 0,
-      vote_count: 0,
-      genre_ids: []
-    } as TvShow;
-    
-    updateSettings({
+  const handleFeatureTVShow = (show: TvShow) => {
+    const updatedSettings = {
       ...settings,
-      featuredTVShow: showData
-    });
+      featuredContent: {
+        ...settings.featuredContent,
+        tvShow: {
+          id: show.id,
+          name: show.name,
+          posterPath: show.poster_path,
+          backdropPath: show.backdrop_path
+        }
+      }
+    };
+    
+    updateSettingsMutation(updatedSettings);
   };
 
   // Clear featured content
   const clearFeaturedMovie = () => {
-    updateSettings({
+    const updatedSettings = {
       ...settings,
-      featuredMovie: null
-    });
+      featuredContent: {
+        ...settings.featuredContent,
+        movie: null
+      }
+    };
+    
+    updateSettingsMutation(updatedSettings);
   };
 
   const clearFeaturedTVShow = () => {
-    updateSettings({
+    const updatedSettings = {
       ...settings,
-      featuredTVShow: null
-    });
+      featuredContent: {
+        ...settings.featuredContent,
+        tvShow: null
+      }
+    };
+    
+    updateSettingsMutation(updatedSettings);
   };
 
   return (

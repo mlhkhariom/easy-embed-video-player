@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface AdminUser {
@@ -18,6 +19,7 @@ export interface AdminSettings {
   enableCloudStream: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
+  enableTrending?: boolean; // Added for trending feature
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
@@ -78,6 +80,7 @@ export interface CloudStreamPlugin {
   repository?: string;
   isEnabled: boolean;
   isInstalled?: boolean;
+  author?: string;
 }
 
 export interface CloudStreamRepo {
@@ -106,6 +109,7 @@ export interface CloudStreamSource {
 export interface CloudStreamContent {
   id: string;
   source_id: string;
+  source?: string;
   title: string;
   type: 'movie' | 'series';
   year?: number;
@@ -115,6 +119,7 @@ export interface CloudStreamContent {
   plot?: string;
   genres?: string[];
   url: string;
+  external_id?: string;
   created_at: string;
   updated_at: string;
 }

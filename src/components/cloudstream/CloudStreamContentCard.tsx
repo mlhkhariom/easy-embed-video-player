@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { CloudStreamContent } from '@/services/cloudstream';
+import { CloudStreamContent } from '@/types';
 
 interface CloudStreamContentCardProps {
   content: CloudStreamContent;
