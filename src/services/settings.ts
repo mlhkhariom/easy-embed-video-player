@@ -16,7 +16,6 @@ const defaultSettings: Settings = {
   enableAutoPlay: true,
   enable3DEffects: true,
   enableTrending: false,
-  enableCloudStream: false, // Added back with default false
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
   customCSS: '',
   featuredContent: {

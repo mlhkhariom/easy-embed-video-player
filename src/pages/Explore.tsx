@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { getPopularMovies, getPopularTV, getTopRatedMovies, getTopRatedTV } from '../services/tmdb';
+import { getPopularMovies, getPopularTvShows, getTopRatedMovies, getTopRatedTvShows } from '../services/tmdb';
 import { Movie, TvShow } from '../types';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
@@ -27,9 +27,9 @@ const Explore = () => {
           topRatedTvShowsRes
         ] = await Promise.all([
           getPopularMovies(),
-          getPopularTV(),
+          getPopularTvShows(),
           getTopRatedMovies(),
-          getTopRatedTV()
+          getTopRatedTvShows()
         ]);
         
         setPopularMovies(popularMoviesRes.results);

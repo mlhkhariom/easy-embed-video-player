@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface AdminUser {
@@ -18,7 +19,6 @@ export interface AdminSettings {
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   enableTrending?: boolean; // Added for trending feature
-  enableCloudStream?: boolean; // Added back for compatibility
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
@@ -221,47 +221,4 @@ export interface Image {
   width: number;
   vote_average: number;
   vote_count: number;
-}
-
-// Adding CloudStream types back for compatibility
-// These can be removed later when all references are cleaned up
-export interface CloudStreamContent {
-  id: string;
-  source_id: string;
-  source?: string;
-  title: string;
-  type: 'movie' | 'series';
-  year?: number;
-  poster?: string;
-  backdrop?: string;
-  rating?: number;
-  plot?: string;
-  genres?: string[];
-  url: string;
-  external_id?: string;
-}
-
-export interface CloudStreamPlugin {
-  id: string;
-  name: string;
-  url: string;
-  version: string;
-  description: string;
-  author: string;
-  repository: string;
-  categories: string[];
-  language: string;
-  isEnabled: boolean;
-  isInstalled: boolean;
-}
-
-export interface CloudStreamRepo {
-  id: string;
-  name: string;
-  url: string;
-  description: string;
-  author: string;
-  isEnabled: boolean;
-  lastSynced?: string;
-  pluginCount: number;
 }
