@@ -3,8 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize, 
-  SkipBack, SkipForward, Settings, Film, Award
+  SkipBack, SkipForward, Settings, Film, Award, 
+  RefreshCw, Shield
 } from 'lucide-react';
+import { fetchSettings, getBestPlayerAPI, generatePlayerUrl } from '@/services/settings';
+import { useToast } from "@/components/ui/use-toast";
 
 interface VideoPlayerProps {
   tmdbId?: number;
@@ -26,12 +29,18 @@ const VideoPlayer = ({
   const [playerUrl, setPlayerUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentApiIndex, setCurrentApiIndex] = useState(0);
+  const [availableApis, setAvailableApis] = useState<any[]>([]);
+  const [volume, setVolume] = useState(0.8);
+  const [showApiSelector, setShowApiSelector] = useState(false);
   const playerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const timeoutRef = useRef<number | null>(null);
+  const { toast } = useToast();
 
   // Control visibility timeout
   const handleMouseMove = () => {
@@ -71,47 +80,97 @@ const VideoPlayer = ({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Load player settings
   useEffect(() => {
-    // Reset states when props change
-    setIsLoading(true);
-    setLoadError(false);
+    const loadSettings = async () => {
+      const settings = await fetchSettings();
+      setIsMuted(settings.playerSettings.muted);
+      setVolume(settings.playerSettings.defaultVolume);
+      
+      // Get active APIs
+      setAvailableApis(settings.playerAPIs.filter(api => api.isActive));
+    };
     
-    try {
-      // Construct the player URL based on available IDs
-      if (tmdbId) {
-        if (type === 'movie') {
-          setPlayerUrl(`https://vidsrc.dev/embed/movie/${tmdbId}`);
-        } else if (type === 'tv' && season && episode) {
-          setPlayerUrl(`https://vidsrc.dev/embed/tv/${tmdbId}/${season}/${episode}`);
+    loadSettings();
+  }, []);
+
+  // Load player URL when component mounts or props change
+  useEffect(() => {
+    const loadPlayerUrl = async () => {
+      // Reset states when props change
+      setIsLoading(true);
+      setLoadError(null);
+      setShowApiSelector(false);
+      
+      try {
+        // Get available APIs
+        const settings = await fetchSettings();
+        const activeApis = settings.playerAPIs.filter(api => api.isActive);
+        setAvailableApis(activeApis);
+        
+        if (activeApis.length === 0) {
+          throw new Error('No active player APIs configured');
         }
-      } else if (imdbId) {
-        if (type === 'movie') {
-          setPlayerUrl(`https://vidsrc.dev/embed/movie/${imdbId}`);
-        } else if (type === 'tv' && season && episode) {
-          setPlayerUrl(`https://vidsrc.dev/embed/tv/${imdbId}/${season}/${episode}`);
+        
+        // Use first API by default
+        const api = activeApis[currentApiIndex];
+        
+        // Generate player URL based on content ID type
+        let id = '';
+        if (imdbId) {
+          id = imdbId;
+        } else if (tmdbId) {
+          id = tmdbId.toString();
+        } else {
+          throw new Error('No valid content ID available');
         }
-      } else {
-        // No valid ID available
-        throw new Error('No valid content ID available');
+        
+        const url = generatePlayerUrl(api, type, id, season, episode);
+        setPlayerUrl(url);
+        
+      } catch (error) {
+        console.error('Error setting up player:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load video player';
+        setLoadError(errorMessage);
+        if (onError) {
+          onError(errorMessage);
+        }
       }
-    } catch (error) {
-      console.error('Error setting up player:', error);
-      setLoadError(true);
-      if (onError) {
-        onError('Failed to load video player');
-      }
+      
+      // Simulate loading delay
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    };
+    
+    loadPlayerUrl();
+  }, [tmdbId, imdbId, type, season, episode, currentApiIndex, onError]);
+
+  // Switch to next available API source
+  const switchToNextApi = () => {
+    if (availableApis.length <= 1) {
+      toast({
+        title: "No alternative sources",
+        description: "No other player sources are available.",
+        variant: "destructive"
+      });
+      return;
     }
     
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const nextIndex = (currentApiIndex + 1) % availableApis.length;
+    setCurrentApiIndex(nextIndex);
+    setIsLoading(true);
     
-    return () => clearTimeout(timer);
-  }, [tmdbId, imdbId, type, season, episode, onError]);
+    toast({
+      title: "Switching source",
+      description: `Trying ${availableApis[nextIndex].name}...`,
+    });
+  };
 
   const handleIframeError = () => {
-    setLoadError(true);
+    setLoadError('Failed to load video content');
     if (onError) {
       onError('Failed to load video content');
     }
@@ -120,6 +179,14 @@ const VideoPlayer = ({
   // Toggle player controls
   const handlePlay = () => setIsPlaying(!isPlaying);
   const handleMute = () => setIsMuted(!isMuted);
+  const toggleApiSelector = () => setShowApiSelector(!showApiSelector);
+
+  // Handle volume change
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -142,7 +209,7 @@ const VideoPlayer = ({
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-moviemate-background to-moviemate-card">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-black/90 to-moviemate-card/90 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4">
             <motion.div 
               className="h-16 w-16 rounded-full border-4 border-moviemate-primary border-t-transparent"
@@ -174,6 +241,7 @@ const VideoPlayer = ({
             style={{ perspective: 1000 }}
           >
             <iframe
+              ref={iframeRef}
               src={playerUrl}
               className="h-full w-full border-0"
               allowFullScreen
@@ -190,23 +258,67 @@ const VideoPlayer = ({
           <AnimatePresence>
             {showControls && (
               <motion.div 
-                className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 flex flex-col justify-between p-5"
+                className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-transparent to-black/60 flex flex-col justify-between p-5"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                {/* Top Controls - Title */}
+                {/* Top Controls - Title & Source Selector */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Award className="text-moviemate-primary" size={18} />
                     <span className="text-white font-medium text-sm">
                       {type === 'movie' ? 'Movie' : `S${season} E${episode}`}
                     </span>
+                    {availableApis.length > 0 && currentApiIndex < availableApis.length && (
+                      <div className="relative ml-4">
+                        <button
+                          onClick={toggleApiSelector}
+                          className="flex items-center gap-1 rounded-full bg-black/40 px-3 py-1 text-xs text-white hover:bg-black/60 transition-colors"
+                        >
+                          <Shield size={12} className="text-moviemate-primary" />
+                          {availableApis[currentApiIndex]?.name || 'Source'}
+                        </button>
+                        
+                        {showApiSelector && (
+                          <motion.div 
+                            className="absolute top-full left-0 mt-2 bg-black/80 backdrop-blur-sm rounded-lg overflow-hidden shadow-lg z-50"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                          >
+                            <div className="py-1">
+                              {availableApis.map((api, index) => (
+                                <button
+                                  key={api.id}
+                                  className={`w-full text-left px-4 py-2 text-xs ${currentApiIndex === index ? 'bg-moviemate-primary/20 text-moviemate-primary' : 'text-white hover:bg-black/40'}`}
+                                  onClick={() => {
+                                    setCurrentApiIndex(index);
+                                    setShowApiSelector(false);
+                                  }}
+                                >
+                                  {api.name}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-white/90 text-xs bg-black/40 px-3 py-1 rounded-full">
-                    FreeCinema
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={switchToNextApi}
+                      className="rounded-full bg-black/40 p-1.5 text-white hover:bg-black/60 transition-colors"
+                      title="Try alternative source"
+                    >
+                      <RefreshCw size={14} />
+                    </button>
+                    <span className="text-white/90 text-xs bg-black/40 px-3 py-1 rounded-full">
+                      FreeCinema
+                    </span>
+                  </div>
                 </div>
                 
                 {/* Center Play Button */}
@@ -228,7 +340,7 @@ const VideoPlayer = ({
                 {/* Bottom Controls - Progress */}
                 <div className="flex flex-col gap-3">
                   {/* Progress bar */}
-                  <div className="w-full h-1 bg-white/30 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-white/30 rounded-full overflow-hidden cursor-pointer">
                     <motion.div 
                       className="h-full bg-gradient-to-r from-moviemate-primary to-purple-500"
                       initial={{ width: "0%" }}
@@ -268,18 +380,32 @@ const VideoPlayer = ({
                         <SkipForward size={20} />
                       </motion.button>
                       
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleMute}
-                        className="text-white hover:text-moviemate-primary transition-colors"
-                      >
-                        {isMuted ? (
-                          <VolumeX size={20} />
-                        ) : (
-                          <Volume2 size={20} />
-                        )}
-                      </motion.button>
+                      <div className="group relative">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={handleMute}
+                          className="text-white hover:text-moviemate-primary transition-colors"
+                        >
+                          {isMuted ? (
+                            <VolumeX size={20} />
+                          ) : (
+                            <Volume2 size={20} />
+                          )}
+                        </motion.button>
+                        
+                        <div className="hidden group-hover:block absolute left-0 bottom-full mb-2 bg-black/80 rounded-md p-2 w-32">
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={volume}
+                            onChange={handleVolumeChange}
+                            className="w-full cursor-pointer accent-moviemate-primary"
+                          />
+                        </div>
+                      </div>
                       
                       <span className="text-white/80 text-xs hidden sm:inline">
                         00:30 / 01:55:42
@@ -337,14 +463,22 @@ const VideoPlayer = ({
             </svg>
             <h3 className="text-lg font-medium text-white">Unable to load video content</h3>
             <p className="text-sm text-gray-300 mb-4">
-              There was a problem loading the video. This could be due to network issues or the content may not be available.
+              {loadError || 'There was a problem loading the video. This could be due to network issues or the content may not be available.'}
             </p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-moviemate-primary text-white rounded-lg hover:bg-moviemate-primary/90 transition-colors"
-            >
-              Try Again
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={switchToNextApi}
+                className="px-4 py-2 bg-moviemate-primary text-white rounded-lg hover:bg-moviemate-primary/90 transition-colors"
+              >
+                Try Another Source
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Reload Page
+              </button>
+            </div>
           </div>
         </div>
       )}

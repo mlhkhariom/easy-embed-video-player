@@ -1,4 +1,3 @@
-
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -250,4 +249,11 @@ export const fetchWithRetry = async <T>(
     
     throw error;
   }
+};
+
+// Get movies by genre
+export const getMoviesByGenre = (genreId: number, page: number = 1): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/discover/movie?api_key=${API_KEY}&language=en-US&with_genres=${genreId}&page=${page}&sort_by=popularity.desc`
+  );
 };

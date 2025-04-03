@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface AdminUser {
@@ -19,23 +18,32 @@ export interface AdminSettings {
   enableCloudStream: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
-  enableTrending?: boolean; // Added for trending feature
+  enableTrending: boolean;
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
-    movie: null | {
-      id: number;
-      title: string;
-      posterPath: string;
-      backdropPath: string;
-    };
-    tvShow: null | {
-      id: number;
-      name: string;
-      posterPath: string;
-      backdropPath: string;
-    };
+    movie: number | null;
+    tvShow: number | null;
   };
+  playerAPIs: PlayerAPI[];
+  playerSettings: PlayerSettings;
+}
+
+export interface PlayerAPI {
+  id: string;
+  name: string;
+  url: string;
+  isActive: boolean;
+  priority: number;
+  apiKey?: string;
+}
+
+export interface PlayerSettings {
+  autoPlay: boolean;
+  muted: boolean;
+  defaultVolume: number;
+  enable3DEffects: boolean;
+  preferredQuality: 'auto' | 'high' | 'medium' | 'low';
 }
 
 export interface LiveTVCategory {
@@ -124,7 +132,7 @@ export interface CloudStreamContent {
   rating?: number;
   plot?: string;
   genres?: string[];
-  url: string; // Making url required to match both versions
+  url: string;
   external_id?: string;
   created_at: string;
   updated_at: string;
