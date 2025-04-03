@@ -299,9 +299,7 @@ export const isWebSeries = (show: TvShow): boolean => {
     parseInt(show.first_air_date.substring(0, 4)) >= 2013;
   
   const webSeriesKeywords = ['web series', 'streaming', 'original series', 'limited series', 'anthology'];
-  const hasWebSeriesKeywords = show.keywords?.keywords?.some(keyword => 
-    webSeriesKeywords.includes(keyword.name.toLowerCase())
-  ) || false;
+  const hasWebSeriesKeywords = false;
   
   let score = 0;
   
