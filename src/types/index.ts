@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface AdminUser {
@@ -252,15 +251,20 @@ export interface CloudStreamContent {
   id: string;
   title: string;
   year?: number;
-  posterUrl: string;
+  poster?: string;
+  posterUrl?: string;
   backdropUrl?: string;
-  type: 'movie' | 'tvshow';
+  backdrop?: string;
+  type: 'movie' | 'tvshow' | 'series';
   source_id: string;
   url: string;
   created_at: string;
   updated_at: string;
-  poster?: string;
   source?: string;
+  external_id?: string;
+  plot?: string;
+  genres?: string[];
+  rating?: number;
 }
 
 export interface CloudStreamPlugin {
@@ -287,4 +291,24 @@ export interface CloudStreamRepo {
   author?: string;
   isEnabled?: boolean;
   pluginCount?: number;
+}
+
+export interface ExternalIDs {
+  imdb_id?: string;
+  facebook_id?: string;
+  instagram_id?: string;
+  twitter_id?: string;
+}
+
+export interface CreditsResponse {
+  id: number;
+  cast: Cast[];
+  crew: Crew[];
+}
+
+export interface TMDBResponse<T> {
+  page: number;
+  results: T[];
+  total_pages: number;
+  total_results: number;
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -35,7 +34,6 @@ const CloudStream = () => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  // Fetch sources from Supabase
   const { 
     data: sourcesData, 
     isLoading: isLoadingSources, 
@@ -47,7 +45,6 @@ const CloudStream = () => {
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Effect to sync sources on first load
   useEffect(() => {
     const syncSources = async () => {
       const result = await syncSourcesToSupabase();
@@ -59,7 +56,6 @@ const CloudStream = () => {
     syncSources();
   }, []);
 
-  // Set up real-time subscription
   useEffect(() => {
     const unsubscribe = subscribeToCloudStreamUpdates(() => {
       refetchSources();
@@ -71,12 +67,10 @@ const CloudStream = () => {
     };
   }, []);
 
-  // Process sources when they are loaded
   useEffect(() => {
     if (sourcesData) {
       setAvailableSources(sourcesData);
       
-      // Group sources by category
       const grouped: Record<string, CloudStreamSource[]> = {};
       
       sourcesData.forEach(source => {
@@ -95,7 +89,6 @@ const CloudStream = () => {
         });
       });
       
-      // Make sure Indian content is at the top
       const sortedCategories = Object.keys(grouped).sort((a, b) => {
         if (a === 'indian') return -1;
         if (b === 'indian') return 1;
@@ -107,7 +100,6 @@ const CloudStream = () => {
     }
   }, [sourcesData]);
 
-  // Search content query
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['cloudstreamContent', searchQuery, selectedSources, selectedLanguage, page],
     queryFn: () => searchCloudStreamContent(
@@ -124,20 +116,16 @@ const CloudStream = () => {
     placeholderData: (prev) => prev,
   });
 
-  // Update combined results when new data arrives
   useEffect(() => {
     if (data?.results && !isLoading) {
       if (page === 1) {
-        // Reset results for first page
         setCombinedResults(data.results);
       } else {
-        // Append results for subsequent pages
         setCombinedResults(prev => [...prev, ...data.results]);
       }
     }
   }, [data, isLoading, page]);
 
-  // Infinite scrolling
   useEffect(() => {
     if (loadMoreRef.current && !isLoading) {
       if (observerRef.current) {
@@ -160,7 +148,6 @@ const CloudStream = () => {
     };
   }, [data, isLoading]);
 
-  // Handle search submission
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchParams({ q: searchQuery });
@@ -168,7 +155,6 @@ const CloudStream = () => {
     refetch();
   };
 
-  // Toggle source selection
   const toggleSource = (name: string) => {
     setSelectedSources(prev => 
       prev.includes(name) 
@@ -177,7 +163,6 @@ const CloudStream = () => {
     );
   };
 
-  // Handle filter apply
   const applyFilters = () => {
     setPage(1);
     refetch();
@@ -186,18 +171,15 @@ const CloudStream = () => {
     }
   };
 
-  // Clear filters
   const clearFilters = () => {
     setSelectedSources([]);
     setSelectedLanguage('');
   };
 
-  // Handle content click to navigate to details
-  const handleContentClick = (content: CloudStreamContent) => {
+  const handleContentClick = (content: any) => {
     navigate(`/cloudstream/${content.source}/${content.external_id || content.id.split('-').pop()}`);
   };
 
-  // Force refresh data
   const handleRefresh = async () => {
     await syncSourcesToSupabase();
     await refetchSources();
@@ -208,7 +190,6 @@ const CloudStream = () => {
     });
   };
 
-  // Render loading state
   const renderLoadingState = () => (
     <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
       {Array.from({ length: isMobile ? 6 : 12 }).map((_, i) => (
@@ -217,7 +198,6 @@ const CloudStream = () => {
     </div>
   );
 
-  // Render error state
   const renderErrorState = () => (
     <Alert variant="destructive" className="mb-6">
       <AlertCircle className="h-4 w-4" />
@@ -228,7 +208,6 @@ const CloudStream = () => {
     </Alert>
   );
 
-  // Render empty state
   const renderEmptyState = () => (
     <div className="text-center py-12">
       <h3 className="text-xl font-semibold">No Results Found</h3>
@@ -240,7 +219,6 @@ const CloudStream = () => {
     </div>
   );
 
-  // Render content
   const renderContent = () => (
     <>
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -253,7 +231,6 @@ const CloudStream = () => {
         ))}
       </div>
       
-      {/* Loading indicator for infinite scroll */}
       {data?.hasMore && (
         <div 
           ref={loadMoreRef} 
@@ -261,7 +238,7 @@ const CloudStream = () => {
         >
           {isFetching && (
             <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-moviemate-primary" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               <span className="text-sm text-gray-400">Loading more content...</span>
             </div>
           )}
@@ -383,7 +360,6 @@ const CloudStream = () => {
             {showFilters && (
               <div className="bg-moviemate-card/40 backdrop-blur-sm rounded-lg p-4 space-y-4">
                 <div className="flex flex-wrap gap-4">
-                  {/* Indian Language Filter */}
                   <div className="w-full sm:w-auto">
                     <label className="block text-sm font-medium mb-1">Language</label>
                     <Select

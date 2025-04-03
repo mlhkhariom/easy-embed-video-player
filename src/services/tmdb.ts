@@ -1,14 +1,7 @@
-import { Movie, TvShow, SupportedCountry } from '@/types';
+import { Movie, TvShow, SupportedCountry, ExternalIDs, CreditsResponse, TMDBResponse, Episode, Genre } from '@/types';
 
 const API_KEY = process.env.REACT_APP_TMDB_API_KEY;
 const BASE_URL = process.env.REACT_APP_TMDB_API_URL || 'https://api.themoviedb.org/3';
-
-interface TMDBResponse<T> {
-  page: number;
-  results: T[];
-  total_pages: number;
-  total_results: number;
-}
 
 // Helper function to get image URL
 export const getImageUrl = (path: string | null, size: string = 'original'): string => {
