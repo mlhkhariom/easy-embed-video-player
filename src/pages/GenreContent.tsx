@@ -31,10 +31,9 @@ const GenreContent = () => {
         const API_KEY = '43d89010b257341339737be36dfaac13';
         const contentType = type === 'movie' ? 'movie' : 'tv';
         
-        const response = await fetchApi(`/genre/${contentType}/list`, {
-          api_key: API_KEY,
-          language: 'en-US'
-        });
+        const response = await fetchApi<{ genres: { id: number; name: string }[] }>(
+          `/genre/${contentType}/list?api_key=${API_KEY}&language=en-US`
+        );
         
         const genre = response.genres.find((g) => g.id === parseInt(id || '0'));
         if (genre) {
@@ -58,13 +57,9 @@ const GenreContent = () => {
         const API_KEY = '43d89010b257341339737be36dfaac13';
         const contentType = type === 'movie' ? 'movie' : 'tv';
         
-        const response = await fetchApi(`/discover/${contentType}`, {
-          api_key: API_KEY,
-          language: 'en-US',
-          sort_by: 'popularity.desc',
-          with_genres: id,
-          page: currentPage.toString()
-        });
+        const response = await fetchApi<ContentResponse>(
+          `/discover/${contentType}?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&with_genres=${id}&page=${currentPage}`
+        );
         
         setContent(response.results);
         setTotalPages(response.total_pages);

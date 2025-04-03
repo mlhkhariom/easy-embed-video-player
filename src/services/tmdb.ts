@@ -1,272 +1,253 @@
 
-import { Movie, TvShow, SupportedCountry, Genre, Episode, CreditsResponse, ExternalIDs, TMDBResponse } from '@/types';
+import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
+import { safeFetch, handleAPIError, APIError } from './error-handler';
 
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '43d89010b257341339737be36dfaac13';
-const BASE_URL = import.meta.env.VITE_TMDB_API_URL || 'https://api.themoviedb.org/3';
+const API_KEY = '43d89010b257341339737be36dfaac13';
+const BASE_URL = 'https://api.themoviedb.org/3';
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
-// Helper function to get image URL
-export const getImageUrl = (path: string | null, size: string = 'original'): string => {
+export const getImageUrl = (path: string | null, size: string = 'w500'): string => {
   if (!path) return '/placeholder.svg';
-  return `https://image.tmdb.org/t/p/${size}${path}`;
+  return `${IMAGE_BASE_URL}/${size}${path}`;
 };
 
-// Indian Movies and TV Shows
-export const getIndianMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_original_language=hi`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getIndianTVShows = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_original_language=hi`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-// Search Multi (for searching movies, TV shows, and people)
-export const searchMulti = async (query: string, page = 1): Promise<TMDBResponse<Movie | TvShow>> => {
-  const response = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-// Generic fetch API function
-export const fetchApi = async (endpoint: string, params: Record<string, string> = {}): Promise<any> => {
-  const queryParams = new URLSearchParams({
-    api_key: API_KEY,
-    language: 'en-US',
-    ...params,
-  }).toString();
-
-  const response = await fetch(`${BASE_URL}${endpoint}?${queryParams}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-// Web Series functions
-export const getWebSeries = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(
-    `${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_genres=10759,10765&without_genres=16,10762`
-  );
-  
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  
-  return response.json();
-};
-
-export const isWebSeries = (genre_ids: number[]): boolean => {
-  // Web series typically have action/adventure (10759) or sci-fi/fantasy (10765) genres
-  // and exclude animation (16) and kids (10762)
-  return (
-    (genre_ids.includes(10759) || genre_ids.includes(10765)) && 
-    !genre_ids.includes(16) && 
-    !genre_ids.includes(10762)
-  );
-};
-
-export const getTrendingMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getPopularMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getTopRatedMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/movie/top_rated?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getUpcomingMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/movie/upcoming?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getMovieDetails = async (movieId: number): Promise<Movie> => {
-  const response = await fetch(`${BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=en-US`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getMovieExternalIds = async (movieId: number): Promise<ExternalIDs> => {
-    const response = await fetch(`${BASE_URL}/movie/${movieId}/external_ids?api_key=${API_KEY}`);
-     if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+export const fetchApi = async <T>(endpoint: string, retryCount = 3): Promise<T> => {
+  try {
+    const url = `${BASE_URL}${endpoint}`;
+    const response = await safeFetch(url, { 
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    if (!response.ok) {
+      throw new APIError(`TMDB API Error: ${response.status}`, response.status);
     }
-    return response.json();
-};
-
-export const getRelatedMovies = async (movieId: number, page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/movie/${movieId}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getTrendingTvShows = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/trending/tv/week?api_key=${API_KEY}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getPopularTvShows = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/tv/popular?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getTopRatedTvShows = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/tv/top_rated?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getTvShowDetails = async (tvId: number): Promise<TvShow> => {
-  const response = await fetch(`${BASE_URL}/tv/${tvId}?api_key=${API_KEY}&language=en-US`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
-};
-
-export const getTvShowCredits = async (tvId: number): Promise<CreditsResponse> => {
-  const response = await fetch(`${BASE_URL}/tv/${tvId}/credits?api_key=${API_KEY}&language=en-US`);
-   if (!response.ok) {
-       throw new Error(`API request failed with status ${response.status}`);
-   }
-   return response.json();
-};
-
-export const getTvExternalIds = async (tvId: number): Promise<ExternalIDs> => {
-    const response = await fetch(`${BASE_URL}/tv/${tvId}/external_ids?api_key=${API_KEY}`);
-     if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+    
+    return await response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError' && retryCount > 0) {
+      console.log(`Request timed out, retrying... (${retryCount} attempts left)`);
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchApi(endpoint, retryCount - 1);
     }
-    return response.json();
+    throw handleAPIError(error);
+  }
 };
 
-export const getSeasonDetails = async (tvId: number, seasonNumber: number): Promise<{ id: number; episodes: Episode[] }> => {
-  const response = await fetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+// Movies
+export const getTrendingMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(`/trending/movie/day?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getRelatedTvShows = async (tvId: number, page: number = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/tv/${tvId}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+export const getPopularMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(`/movie/popular?api_key=${API_KEY}&language=en-US`);
 };
 
-export const searchMovies = async (query: string, page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&language=en-US&query=${query}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+export const getTopRatedMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(`/movie/top_rated?api_key=${API_KEY}&language=en-US`);
 };
 
-export const searchTvShows = async (query: string, page: number = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&language=en-US&query=${query}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+export const getMovieDetails = (id: number): Promise<Movie> => {
+  return fetchApi<Movie>(`/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
 };
 
-export const getGenres = async (): Promise<{ genres: Genre[] }> => {
-  const response = await fetch(`${BASE_URL}/genre/movie/list?api_key=${API_KEY}&language=en-US`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+export const getMovieCredits = (id: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/movie/${id}/credits?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getMoviesByGenre = async (genreId: number, page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const response = await fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&with_genres=${genreId}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+// TV Shows
+export const getTrendingTvShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getTvShowsByGenre = async (genreId: number, page: number = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(`${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&with_genres=${genreId}&page=${page}`);
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  return response.json();
+export const getPopularTvShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(`/tv/popular?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getContentByCountry = async (
-  country: string = 'global', 
-  type: 'movie' | 'tv' = 'movie', 
-  page: number = 1
-): Promise<TMDBResponse<any>> => {
-  let url = '';
-  const region = country === 'global' ? '' : `&region=${country.toUpperCase()}`;
-  
-  if (type === 'movie') {
-    url = `${BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}${region}&with_original_language=${getLanguageByCountry(country)}`;
-  } else {
-    url = `${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}${region}&with_original_language=${getLanguageByCountry(country)}`;
-  }
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  
-  return response.json();
+export const getTopRatedTvShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(`/tv/top_rated?api_key=${API_KEY}&language=en-US`);
 };
 
-// Helper function to get language code by country
-function getLanguageByCountry(country: string): string {
-  switch (country) {
-    case 'in':
-      return 'hi';
-    case 'uk':
-      return 'en';
-    case 'us':
-      return 'en';
-    default:
-      return 'en';
-  }
+export const getTvShowDetails = (id: number): Promise<TvShow> => {
+  return fetchApi<TvShow>(`/tv/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
+};
+
+export const getTvShowCredits = (id: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/tv/${id}/credits?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getSeasonDetails = (tvId: number, seasonNumber: number): Promise<Season> => {
+  return fetchApi<Season>(`/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getEpisodeDetails = (
+  tvId: number, 
+  seasonNumber: number, 
+  episodeNumber: number
+): Promise<Episode> => {
+  return fetchApi<Episode>(
+    `/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}?api_key=${API_KEY}&language=en-US`
+  );
+};
+
+// Related content
+export const getRelatedMovies = (id: number, page: number = 1): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/movie/${id}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`
+  );
+};
+
+export const getRelatedTvShows = (id: number, page: number = 1): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(
+    `/tv/${id}/recommendations?api_key=${API_KEY}&language=en-US&page=${page}`
+  );
+};
+
+// Search
+interface MultiSearchResponse {
+  page: number;
+  results: (Movie | TvShow)[];
+  total_pages: number;
+  total_results: number;
 }
+
+export const searchMulti = (query: string, page: number = 1): Promise<MultiSearchResponse> => {
+  return fetchApi<MultiSearchResponse>(
+    `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=${page}&include_adult=false`
+  );
+};
+
+// Get Indian content
+export const getIndianMovies = (): Promise<MovieResponse> => {
+  // Improved Indian movies query with more targeted parameters
+  return fetchApi<MovieResponse>(
+    `/discover/movie?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc&with_watch_providers=&watch_region=IN`
+  ).then(response => {
+    // Post-process to add show_type for Indian movies
+    if (response?.results) {
+      response.results = response.results.map(movie => ({
+        ...movie,
+        show_type: 'movie'
+      }));
+    }
+    return response;
+  });
+};
+
+export const getIndianTVShows = (): Promise<TvResponse> => {
+  // Improved Indian TV shows query with more targeted parameters
+  return fetchApi<TvResponse>(
+    `/discover/tv?api_key=${API_KEY}&with_original_language=hi&region=IN&sort_by=popularity.desc`
+  ).then(response => {
+    // Post-process to categorize shows as web series or TV serials based on attributes
+    if (response?.results) {
+      response.results = response.results.map(show => {
+        // Use existing show_type if defined, otherwise infer from attributes
+        if (!show.show_type) {
+          // Web series criteria: shorter runs, fewer episodes, higher ratings
+          if ((!show.number_of_seasons || show.number_of_seasons < 5) && 
+              (!show.number_of_episodes || show.number_of_episodes < 50) &&
+              show.vote_average >= 6.5) {
+            show.show_type = 'web_series';
+          } 
+          // TV serials: longer runs, more episodes
+          else if ((show.number_of_episodes > 50 || show.number_of_seasons >= 5)) {
+            show.show_type = 'tv_serial';
+          }
+          // Default for anything that doesn't match clear criteria
+          else {
+            // Use a default based on rating as a heuristic
+            show.show_type = show.vote_average >= 7.0 ? 'web_series' : 'tv_serial';
+          }
+        }
+        
+        // Set languages array if not already set
+        if (!show.languages) {
+          show.languages = ['hi'];
+        }
+        
+        // Set original_language if not already set
+        if (!show.original_language) {
+          show.original_language = 'hi';
+        }
+        
+        return show;
+      });
+    }
+    return response;
+  });
+};
+
+// Get external IDs (for IMDB ID)
+export const getMovieExternalIds = async (id: number): Promise<{ imdb_id: string }> => {
+  return fetchApi<{ imdb_id: string }>(`/movie/${id}/external_ids?api_key=${API_KEY}`);
+};
+
+export const getTvExternalIds = async (id: number): Promise<{ imdb_id: string }> => {
+  return fetchApi<{ imdb_id: string }>(`/tv/${id}/external_ids?api_key=${API_KEY}`);
+};
+
+// Cache API responses
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
+export const getCachedApi = async <T>(endpoint: string, forceFresh = false): Promise<T> => {
+  const cacheKey = endpoint;
+  
+  if (!forceFresh && cache.has(cacheKey)) {
+    const cachedData = cache.get(cacheKey)!;
+    const now = Date.now();
+    
+    if (now - cachedData.timestamp < CACHE_DURATION) {
+      return cachedData.data as T;
+    }
+  }
+  
+  const data = await fetchApi<T>(endpoint);
+  cache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  return data;
+};
+
+// Rate limiting and error handling
+let lastRequestTime = 0;
+const REQUEST_INTERVAL = 100; // 100ms between requests
+
+export const rateControlledFetch = async <T>(endpoint: string): Promise<T> => {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  
+  lastRequestTime = Date.now();
+  return fetchApi<T>(endpoint);
+};
+
+// Error handling and retry logic
+export const fetchWithRetry = async <T>(
+  endpoint: string, 
+  retries: number = 3
+): Promise<T> => {
+  try {
+    return await fetchApi<T>(endpoint);
+  } catch (error) {
+    if (retries <= 0) throw error;
+    
+    if (error instanceof APIError && error.status === 429) {
+      // Rate limit exceeded - wait longer before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return fetchWithRetry(endpoint, retries - 1);
+    } else if (error instanceof APIError && (error.status === 500 || error.status === 503)) {
+      // Server error - wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return fetchWithRetry(endpoint, retries - 1);
+    }
+    
+    throw error;
+  }
+};

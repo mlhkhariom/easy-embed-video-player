@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { TvShow, Episode } from '../types';
-import { getTvShowDetails, getTvExternalIds, getSeasonDetails, getRelatedTvShows, getTvShowCredits } from '../services/tmdb';
+import { getTvShowDetails, getTvExternalIds, getSeasonDetails, getRelatedTvShows } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import ContentDetails from '../components/ContentDetails';
 import { Card } from '@/components/ui/card';

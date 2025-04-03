@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface AdminUser {
@@ -15,34 +16,26 @@ export interface AdminSettings {
   sidebarBackgroundColor: string;
   logoUrl: string;
   enableLiveTV: boolean;
+  enableCloudStream: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
-  enableTrending: boolean;
-  enableCloudStream: boolean;
-  selectedCountry: SupportedCountry;
+  enableTrending?: boolean; // Added for trending feature
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
-    movie: number | null;
-    tvShow: number | null;
+    movie: null | {
+      id: number;
+      title: string;
+      posterPath: string;
+      backdropPath: string;
+    };
+    tvShow: null | {
+      id: number;
+      name: string;
+      posterPath: string;
+      backdropPath: string;
+    };
   };
-  playerSettings: {
-    defaultQuality: string;
-    autoplay: boolean;
-    preload: boolean;
-    subtitlesEnabled: boolean;
-    defaultSubtitleLanguage: string;
-    playbackSpeed: number;
-  };
-}
-
-export interface PlayerSettings {
-  defaultQuality: 'auto' | '1080p' | '720p' | '480p' | '360p';
-  autoplay: boolean;
-  preload: boolean;
-  subtitlesEnabled: boolean;
-  defaultSubtitleLanguage: string;
-  playbackSpeed: number;
 }
 
 export interface LiveTVCategory {
@@ -76,6 +69,67 @@ export interface Channel {
   language?: string;
 }
 
+export interface CloudStreamPlugin {
+  id?: string;
+  name: string;
+  url: string;
+  version?: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  repository?: string;
+  isEnabled?: boolean;
+  isInstalled?: boolean;
+  author?: string;
+  internalName?: string;
+  iconUrl?: string;
+  status?: number;
+  apiVersion?: number;
+  fileSize?: number;
+  tvTypes?: string[];
+}
+
+export interface CloudStreamRepo {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  author?: string;
+  isEnabled: boolean;
+  lastSynced?: string;
+  pluginCount?: number;
+}
+
+export interface CloudStreamSource {
+  id: string;
+  name: string;
+  url: string;
+  repo: string;
+  description?: string;
+  language?: string;
+  categories?: string[];
+  logo?: string;
+  isEnabled?: boolean;
+}
+
+export interface CloudStreamContent {
+  id: string;
+  source_id: string;
+  source?: string;
+  title: string;
+  type: 'movie' | 'series';
+  year?: number;
+  poster?: string;
+  backdrop?: string;
+  rating?: number;
+  plot?: string;
+  genres?: string[];
+  url: string; // Making url required to match both versions
+  external_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -104,7 +158,6 @@ export interface Movie {
     posters: Image[];
   };
   credits?: Credits;
-  country?: string;
 }
 
 export interface MovieResponse {
@@ -134,14 +187,9 @@ export interface TvShow {
   tagline?: string;
   type?: string;
   imdb_id?: string;
-  show_type?: 'tv_serial';
+  show_type?: 'web_series' | 'tv_serial';
   original_language?: string;
   languages?: string[];
-  created_by?: {
-    id: number;
-    name: string;
-    profile_path: string | null;
-  }[];
   networks?: {
     id: number;
     name: string;
@@ -235,80 +283,4 @@ export interface Image {
   width: number;
   vote_average: number;
   vote_count: number;
-}
-
-export type SupportedCountry = 'global' | 'us' | 'in' | 'uk';
-
-export interface CountryOption {
-  id: SupportedCountry;
-  name: string;
-  flag: string;
-  region: string;
-  language: string;
-}
-
-export interface CloudStreamContent {
-  id: string;
-  title: string;
-  year?: number;
-  poster?: string;
-  posterUrl?: string;
-  backdropUrl?: string;
-  backdrop?: string;
-  type: 'movie' | 'tvshow' | 'series';
-  source_id: string;
-  url: string;
-  created_at: string;
-  updated_at: string;
-  source?: string;
-  external_id?: string;
-  plot?: string;
-  genres?: string[];
-  rating?: number;
-}
-
-export interface CloudStreamPlugin {
-  id?: string;
-  name: string;
-  url: string;
-  version?: string;
-  description?: string;
-  author?: string;
-  repository?: string;
-  categories?: string[];
-  language?: string;
-  isEnabled?: boolean;
-  isInstalled?: boolean;
-  internalName?: string;
-  iconUrl?: string;
-}
-
-export interface CloudStreamRepo {
-  id?: string;
-  name: string;
-  url: string;
-  description?: string;
-  author?: string;
-  isEnabled?: boolean;
-  pluginCount?: number;
-}
-
-export interface ExternalIDs {
-  imdb_id?: string;
-  facebook_id?: string;
-  instagram_id?: string;
-  twitter_id?: string;
-}
-
-export interface CreditsResponse {
-  id: number;
-  cast: Cast[];
-  crew: Crew[];
-}
-
-export interface TMDBResponse<T> {
-  page: number;
-  results: T[];
-  total_pages: number;
-  total_results: number;
 }

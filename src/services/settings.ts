@@ -13,25 +13,16 @@ const defaultSettings: Settings = {
   sidebarBackgroundColor: '#1a1f2c',
   logoUrl: '',
   enableLiveTV: true,
+  enableCloudStream: true,
   enableAutoPlay: true,
   enable3DEffects: true,
-  enableTrending: true,
-  enableCloudStream: false,
-  selectedCountry: 'global',
+  enableTrending: false,
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
   customCSS: '',
   featuredContent: {
     movie: null,
     tvShow: null,
   },
-  playerSettings: {
-    defaultQuality: 'auto',
-    autoplay: true,
-    preload: true,
-    subtitlesEnabled: true,
-    defaultSubtitleLanguage: 'en',
-    playbackSpeed: 1.0
-  }
 };
 
 // Fetch settings from localStorage

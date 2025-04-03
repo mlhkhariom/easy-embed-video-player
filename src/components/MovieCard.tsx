@@ -59,21 +59,12 @@ const MovieCard = ({
     >
       <Link to={linkPath}>
         <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-moviemate-card">
-          {/* Enhanced 3D transformation on hover */}
           <motion.div 
             className={`absolute inset-0 ${imageLoaded ? 'image-loaded' : 'image-loading'}`}
-            initial={{ rotateY: 0, rotateX: 0 }}
-            animate={{ 
-              rotateY: isHovered ? 5 : 0, 
-              rotateX: isHovered ? -2 : 0,
-              z: isHovered ? 10 : 0
-            }}
-            transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
-            style={{ 
-              transformStyle: 'preserve-3d', 
-              perspective: 1000,
-              transformOrigin: 'center center'
-            }}
+            initial={{ rotateY: 0 }}
+            animate={{ rotateY: isHovered ? 5 : 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
           >
             <img
               src={getImageUrl(posterPath, 'w500')}
@@ -82,22 +73,12 @@ const MovieCard = ({
               onLoad={() => setImageLoaded(true)}
               loading="lazy"
             />
-            
-            {/* Add subtle shadow overlay for depth */}
-            {isHovered && (
-              <motion.div 
-                className="absolute inset-0 bg-gradient-to-br from-black/30 via-transparent to-transparent"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              />
-            )}
           </motion.div>
           
-          {/* Enhanced 3D lighting effect with interactive glow */}
+          {/* 3D lighting effect */}
           {isHovered && (
             <motion.div 
-              className="absolute inset-0 bg-gradient-to-tr from-purple-500/20 via-blue-500/10 to-transparent"
+              className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-transparent"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -105,16 +86,16 @@ const MovieCard = ({
             />
           )}
           
-          {/* Glass effect card info with improved styling */}
+          {/* Glass effect card info */}
           <motion.div 
-            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-4 py-4 pt-16"
+            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12"
             animate={{ 
               y: isHovered ? 0 : 10,
               opacity: isHovered ? 1 : 0.8
             }}
             transition={{ duration: 0.3 }}
           >
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <h3 className="line-clamp-1 text-sm font-medium text-white">{title}</h3>
               {year && (
                 <p className="text-xs text-gray-300">{year}</p>
@@ -138,16 +119,13 @@ const MovieCard = ({
           </motion.div>
         </div>
         
-        {/* Enhanced 3D shadow effect with glow */}
+        {/* 3D shadow effect */}
         <motion.div 
-          className="absolute -bottom-2 left-0 right-0 h-8 blur-md"
+          className="absolute -bottom-2 left-0 right-0 h-6 blur-md"
           initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: isHovered ? 0.6 : 0,
-            scale: isHovered ? 1.05 : 1 
-          }}
+          animate={{ opacity: isHovered ? 0.5 : 0 }}
           style={{
-            background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.4), transparent)',
+            background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.3), transparent)',
             transformOrigin: 'center bottom'
           }}
         />

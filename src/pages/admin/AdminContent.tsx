@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useQuery } from '@tanstack/react-query';
@@ -38,13 +39,14 @@ const AdminContent = () => {
           setEnableCloudStream(data?.enableCloudStream || false);
           updateAdminSettings(data);
           
-          // Load featured movie if available
+          // Convert featured content to Movie/TvShow format if available
           if (data?.featuredContent?.movie) {
+            const movieData = data.featuredContent.movie;
             setFeaturedMovie({
-              id: data.featuredContent.movie,
-              title: 'Featured Movie',
-              poster_path: '',
-              backdrop_path: '',
+              id: movieData.id,
+              title: movieData.title,
+              poster_path: movieData.posterPath,
+              backdrop_path: movieData.backdropPath,
               release_date: '',
               overview: '',
               vote_average: 0,
@@ -54,13 +56,13 @@ const AdminContent = () => {
             });
           }
           
-          // Load featured TV show if available
           if (data?.featuredContent?.tvShow) {
+            const tvData = data.featuredContent.tvShow;
             setFeaturedTVShow({
-              id: data.featuredContent.tvShow,
-              name: 'Featured TV Show',
-              poster_path: '',
-              backdrop_path: '',
+              id: tvData.id,
+              name: tvData.name,
+              poster_path: tvData.posterPath,
+              backdrop_path: tvData.backdropPath,
               first_air_date: '',
               overview: '',
               vote_average: 0,
@@ -85,8 +87,18 @@ const AdminContent = () => {
     try {
       // Prepare featured content data
       const featuredContent = {
-        movie: featuredMovie ? featuredMovie.id : null,
-        tvShow: featuredTVShow ? featuredTVShow.id : null
+        movie: featuredMovie ? {
+          id: featuredMovie.id,
+          title: featuredMovie.title,
+          posterPath: featuredMovie.poster_path,
+          backdropPath: featuredMovie.backdrop_path
+        } : null,
+        tvShow: featuredTVShow ? {
+          id: featuredTVShow.id,
+          name: featuredTVShow.name,
+          posterPath: featuredTVShow.poster_path,
+          backdropPath: featuredTVShow.backdrop_path
+        } : null
       };
 
       // Update settings

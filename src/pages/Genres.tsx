@@ -24,8 +24,8 @@ const Genres = () => {
         
         // Fetch movie and TV genres in parallel
         const [movieGenresRes, tvGenresRes] = await Promise.all([
-          fetchApi(`/genre/movie/list`, { api_key: API_KEY, language: 'en-US' }),
-          fetchApi(`/genre/tv/list`, { api_key: API_KEY, language: 'en-US' })
+          fetchApi<GenreResponse>(`/genre/movie/list?api_key=${API_KEY}&language=en-US`),
+          fetchApi<GenreResponse>(`/genre/tv/list?api_key=${API_KEY}&language=en-US`)
         ]);
         
         setMovieGenres(movieGenresRes.genres);

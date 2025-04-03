@@ -13,17 +13,17 @@ const Movies = () => {
 
   const { data: popularMovies, error: popularError } = useQuery({
     queryKey: ['popular-movies'],
-    queryFn: () => getPopularMovies(),
+    queryFn: getPopularMovies,
   });
 
   const { data: topRatedMovies, error: topRatedError } = useQuery({
     queryKey: ['top-rated-movies'],
-    queryFn: () => getTopRatedMovies(),
+    queryFn: getTopRatedMovies,
   });
 
   const { data: indianMovies, error: indianError } = useQuery({
     queryKey: ['indian-movies'],
-    queryFn: () => getIndianMovies(),
+    queryFn: getIndianMovies,
   });
 
   useEffect(() => {
