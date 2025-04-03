@@ -1,9 +1,8 @@
+
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../contexts/AdminContext';
 import { 
-  AppWindow, 
-  Search, 
   Menu, 
   X, 
   Home, 
@@ -15,17 +14,35 @@ import {
   Radio,
   History,
   BookmarkCheck,
-  Settings
+  Settings,
+  Clock,
+  ChevronDown,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import SearchBar from './SearchBar';
 import CountrySelector from './CountrySelector';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { settings, isAuthenticated } = useAdmin();
   
   useEffect(() => {
@@ -143,6 +160,8 @@ const Navbar = () => {
           
           <div className="hidden items-center gap-4 md:flex">
             <SearchBar />
+            
+            <CountrySelector />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

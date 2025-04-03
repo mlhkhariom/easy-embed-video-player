@@ -15,7 +15,7 @@ const defaultSettings: Settings = {
   enableLiveTV: true,
   enableAutoPlay: true,
   enable3DEffects: true,
-  enableTrending: false,
+  enableTrending: true,
   enableCloudStream: false,
   selectedCountry: 'global',
   tmdbApiKey: '43d89010b257341339737be36dfaac13',

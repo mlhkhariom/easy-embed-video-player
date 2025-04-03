@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface AdminUser {
@@ -137,6 +138,11 @@ export interface TvShow {
   show_type?: 'tv_serial';
   original_language?: string;
   languages?: string[];
+  created_by?: {
+    id: number;
+    name: string;
+    profile_path: string | null;
+  }[];
   networks?: {
     id: number;
     name: string;

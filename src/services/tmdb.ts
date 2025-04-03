@@ -1,4 +1,4 @@
-import { Movie, TvShow } from '@/types';
+import { Movie, TvShow, SupportedCountry } from '@/types';
 
 const API_KEY = process.env.REACT_APP_TMDB_API_KEY;
 const BASE_URL = process.env.REACT_APP_TMDB_API_URL || 'https://api.themoviedb.org/3';
@@ -10,145 +10,75 @@ interface TMDBResponse<T> {
   total_results: number;
 }
 
-interface Genre {
-  id: number;
-  name: string;
-}
+// Helper function to get image URL
+export const getImageUrl = (path: string | null, size: string = 'original'): string => {
+  if (!path) return '/placeholder.svg';
+  return `https://image.tmdb.org/t/p/${size}${path}`;
+};
 
-interface Season {
-  air_date: string;
-  episode_count: number;
-  id: number;
-  name: string;
-  overview: string;
-  poster_path: string;
-  season_number: number;
-}
+// Indian Movies and TV Shows
+export const getIndianMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
+  const response = await fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_original_language=hi`);
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  return response.json();
+};
 
-interface Episode {
-  air_date: string;
-  episode_number: number;
-  id: number;
-  name: string;
-  overview: string;
-  production_code: string;
-  runtime: number;
-  season_number: number;
-  show_id: number;
-  still_path: string;
-  vote_average: number;
-  vote_count: number;
-}
+export const getIndianTVShows = async (page = 1): Promise<TMDBResponse<TvShow>> => {
+  const response = await fetch(`${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_original_language=hi`);
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  return response.json();
+};
 
-interface Network {
-  name: string;
-  id: number;
-  logo_path: string;
-  origin_country: string;
-}
+// Search Multi (for searching movies, TV shows, and people)
+export const searchMulti = async (query: string, page = 1): Promise<TMDBResponse<Movie | TvShow>> => {
+  const response = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=${page}`);
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  return response.json();
+};
 
-interface ProductionCompany {
-  name: string;
-  id: number;
-  logo_path: string | null;
-  origin_country: string;
-}
+// Generic fetch API function
+export const fetchApi = async (endpoint: string, params: Record<string, string> = {}): Promise<any> => {
+  const queryParams = new URLSearchParams({
+    api_key: API_KEY,
+    language: 'en-US',
+    ...params,
+  }).toString();
 
-interface ExternalIDs {
-  imdb_id: string;
-  facebook_id: string | null;
-  instagram_id: string | null;
-  twitter_id: string | null;
-  id: number;
-}
+  const response = await fetch(`${BASE_URL}${endpoint}?${queryParams}`);
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  return response.json();
+};
 
-interface CreditsResponse {
-  id: number;
-  cast: Cast[];
-  crew: Crew[];
-}
+// Web Series functions
+export const getWebSeries = async (page = 1): Promise<TMDBResponse<TvShow>> => {
+  const response = await fetch(
+    `${BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_genres=10759,10765&without_genres=16,10762`
+  );
+  
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  
+  return response.json();
+};
 
-interface Cast {
-  adult: boolean;
-  gender: number | null;
-  id: number;
-  known_for_department: string;
-  name: string;
-  original_name: string;
-  popularity: number;
-  profile_path: string | null;
-  character: string;
-  credit_id: string;
-  order: number;
-}
-
-interface Crew {
-  adult: boolean;
-  gender: number | null;
-  id: number;
-  known_for_department: string;
-  name: string;
-  original_name: string;
-  popularity: number;
-  profile_path: string | null;
-  credit_id: string;
-  department: string;
-  job: string;
-}
-
-export interface Movie {
-  adult: boolean;
-  backdrop_path: string | null;
-  genre_ids: number[];
-  id: number;
-  original_language: string;
-  original_title: string;
-  overview: string;
-  popularity: number;
-  poster_path: string | null;
-  release_date: string;
-  title: string;
-  video: boolean;
-  vote_average: number;
-  vote_count: number;
-  genres: Genre[];
-  runtime: number;
-  spoken_languages: { english_name: string; iso_639_1: string; name: string }[];
-  production_companies: ProductionCompany[];
-  imdb_id?: string;
-  homepage?: string;
-  media_type?: string;
-}
-
-// Update the TvShow interface to include country if needed
-export interface TvShow {
-  id: number;
-  name: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  vote_average: number;
-  vote_count: number;
-  first_air_date: string;
-  last_air_date: string;
-  status: string;
-  genres: Genre[];
-  number_of_episodes: number;
-  number_of_seasons: number;
-  seasons: Season[];
-  episode_run_time: number[];
-  networks: Network[];
-  production_companies: ProductionCompany[];
-  origin_country: string[];
-  original_language: string;
-  popularity: number;
-  imdb_id?: string;
-  homepage?: string;
-  // Added for type safety
-  title?: string; 
-  media_type?: string;
-  release_date?: string;
-}
+export const isWebSeries = (genre_ids: number[]): boolean => {
+  // Web series typically have action/adventure (10759) or sci-fi/fantasy (10765) genres
+  // and exclude animation (16) and kids (10762)
+  return (
+    (genre_ids.includes(10759) || genre_ids.includes(10765)) && 
+    !genre_ids.includes(16) && 
+    !genre_ids.includes(10762)
+  );
+};
 
 export const getTrendingMovies = async (page = 1): Promise<TMDBResponse<Movie>> => {
   const response = await fetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}&page=${page}`);
@@ -310,30 +240,6 @@ export const getTvShowsByGenre = async (genreId: number, page: number = 1): Prom
   return response.json();
 };
 
-// Add these Web Series functions to fix imports
-export const getWebSeries = async (page = 1): Promise<TMDBResponse<TvShow>> => {
-  const response = await fetch(
-    `${process.env.REACT_APP_TMDB_API_URL || 'https://api.themoviedb.org/3'}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_genres=10759,10765&without_genres=16,10762`
-  );
-  
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-  
-  return response.json();
-};
-
-export const isWebSeries = (genre_ids: number[]): boolean => {
-  // Web series typically have action/adventure (10759) or sci-fi/fantasy (10765) genres
-  // and exclude animation (16) and kids (10762)
-  return (
-    (genre_ids.includes(10759) || genre_ids.includes(10765)) && 
-    !genre_ids.includes(16) && 
-    !genre_ids.includes(10762)
-  );
-};
-
-// Fix the getContentByCountry function to handle country data properly
 export const getContentByCountry = async (
   country: string = 'global', 
   type: 'movie' | 'tv' = 'movie', 
