@@ -19,7 +19,6 @@ export interface AdminSettings {
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   enableTrending?: boolean; // Added for trending feature
-  enableCloudStream?: boolean; // Added for CloudStream feature
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
@@ -129,7 +128,6 @@ export interface TvShow {
   show_type?: 'tv_serial';
   original_language?: string;
   languages?: string[];
-  created_by?: Crew[];
   networks?: {
     id: number;
     name: string;
@@ -223,37 +221,4 @@ export interface Image {
   width: number;
   vote_average: number;
   vote_count: number;
-}
-
-// CloudStream interfaces
-export interface CloudStreamPlugin {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  authors: string[];
-  language: string;
-  repositoryUrl?: string;
-  isActive: boolean;
-}
-
-export interface CloudStreamRepo {
-  id: string;
-  name: string;
-  url: string;
-  isEnabled: boolean;
-}
-
-export interface CloudStreamContent {
-  id: string;
-  title: string;
-  type: 'movie' | 'series';
-  year?: number;
-  posterUrl?: string;
-  backdropUrl?: string;
-  plot?: string;
-  rating?: number;
-  genres?: string[];
-  duration?: number;
-  sourcePluginId: string;
 }

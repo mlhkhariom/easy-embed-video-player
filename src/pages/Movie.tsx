@@ -1,16 +1,14 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getMovieDetails, getMovieCredits, getImageUrl } from '../services/tmdb';
-import { Movie, Credits } from '../types';
+import { Movie } from '../types';
 import { motion } from 'framer-motion';
 import { CalendarDays, Clock, Play, Star, Heart, ChevronLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import CastCarousel from '../components/CastCarousel';
-import DirectorCard from '../components/DirectorCard';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +26,7 @@ const MoviePage = () => {
   });
   
   // Fetch movie credits
-  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+  const { data: credits } = useQuery({
     queryKey: ['movieCredits', movieId],
     queryFn: () => getMovieCredits(movieId),
     enabled: !!movieId
@@ -68,14 +66,14 @@ const MoviePage = () => {
   const { runtime, year, genres } = formatMovieDetails(movie);
   
   // Get director
-  const director = credits?.crew?.find(member => member.job === 'Director');
+  const director = credits?.crew?.find(member => member.job === 'Director')?.name || '';
   
-  // Loading state
-  const isLoading = isLoadingMovie || isLoadingCredits;
+  // Get top cast (limit to 5)
+  const topCast = credits?.cast?.slice(0, 5).map(actor => actor.name).join(', ') || '';
   
   return (
     <div className="relative min-h-screen bg-[#121218] text-white">
-      {isLoading ? (
+      {isLoadingMovie ? (
         <div className="flex h-screen items-center justify-center">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-t-blue-500"></div>
         </div>
@@ -171,6 +169,19 @@ const MoviePage = () => {
               ))}
             </div>
             
+            {/* Director & Cast */}
+            {director && (
+              <div className="mt-6">
+                <p className="text-gray-300">Director: <span className="text-white">{director}</span></p>
+              </div>
+            )}
+            
+            {topCast && (
+              <div className="mt-2">
+                <p className="text-gray-300">Stars: <span className="text-white">{topCast}</span></p>
+              </div>
+            )}
+            
             {/* Overview */}
             <div className="mt-8">
               <h2 className="text-2xl font-bold">Introduction</h2>
@@ -178,14 +189,6 @@ const MoviePage = () => {
                 {movie.overview}
               </p>
             </div>
-            
-            {/* Director Card */}
-            {director && <DirectorCard director={director} />}
-            
-            {/* Cast Carousel */}
-            {credits?.cast && credits.cast.length > 0 && (
-              <CastCarousel cast={credits.cast} title="Top Cast" />
-            )}
             
             {/* Action Buttons */}
             <div className="mt-10 flex gap-4">
