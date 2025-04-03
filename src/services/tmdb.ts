@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -138,17 +139,7 @@ export const getIndianTVShows = (): Promise<TvResponse> => {
     if (response?.results) {
       response.results = response.results.map(show => {
         if (!show.show_type) {
-          if ((!show.number_of_seasons || show.number_of_seasons < 5) && 
-              (!show.number_of_episodes || show.number_of_episodes < 50) &&
-              show.vote_average >= 6.5) {
-            show.show_type = 'web_series';
-          } 
-          else if ((show.number_of_episodes > 50 || show.number_of_seasons >= 5)) {
-            show.show_type = 'tv_serial';
-          }
-          else {
-            show.show_type = show.vote_average >= 7.0 ? 'web_series' : 'tv_serial';
-          }
+          show.show_type = 'tv_serial';
         }
         
         if (!show.languages) {
@@ -236,82 +227,4 @@ export const fetchWithRetry = async <T>(
     
     throw error;
   }
-};
-
-// Enhanced function to get web series specifically
-export const getWebSeries = async (page = 1): Promise<{
-  page: number;
-  results: TvShow[];
-  total_pages: number;
-  total_results: number;
-}> => {
-  try {
-    const response = await fetchApi<TvResponse>(
-      `/discover/tv?api_key=${API_KEY}&language=en-US&with_original_language=hi|en&sort_by=popularity.desc&vote_average.gte=7.0&with_type=4&page=${page}&with_runtime.lte=60&with_status=Ended|Canceled|Returning Series`
-    );
-    
-    const webSeriesResults = response.results.filter(show => {
-      return isWebSeries(show);
-    });
-    
-    return {
-      ...response,
-      results: webSeriesResults.map(show => ({
-        ...show,
-        show_type: 'web_series'
-      }))
-    };
-  } catch (error) {
-    console.error('Error fetching web series:', error);
-    throw handleAPIError(error);
-  }
-};
-
-// Comprehensive helper function to identify web series with stronger certainty
-export const isWebSeries = (show: TvShow): boolean => {
-  if (show.show_type === 'web_series') return true;
-  if (show.show_type === 'tv_serial') return false;
-  
-  const streamingPlatforms = [
-    'netflix', 'prime', 'amazon', 'hotstar', 'disney+', 'hulu', 
-    'hbo max', 'zee5', 'alt balaji', 'sony liv', 'voot', 'mx player',
-    'apple tv', 'peacock', 'paramount+', 'discovery+', 'crunchyroll'
-  ];
-  
-  const isStreamingPlatformMentioned = streamingPlatforms.some(platform => 
-    (show.overview?.toLowerCase().includes(platform) || 
-    show.name?.toLowerCase().includes(platform))
-  );
-  
-  const hasOTTPlatform = show.networks?.some(network => 
-    streamingPlatforms.some(platform => 
-      network.name?.toLowerCase().includes(platform)
-    )
-  );
-  
-  const isLimitedSeries = 
-    (show.number_of_seasons <= 4 && show.number_of_seasons > 0) ||
-    (show.number_of_episodes > 0 && show.number_of_episodes < 60);
-    
-  const hasHighRating = show.vote_average >= 7.0;
-    
-  const isNewProduction = show.first_air_date && 
-    parseInt(show.first_air_date.substring(0, 4)) >= 2013;
-  
-  const webSeriesKeywords = ['web series', 'streaming', 'original series', 'limited series', 'anthology'];
-  const hasWebSeriesKeywords = false;
-  
-  let score = 0;
-  
-  if (isStreamingPlatformMentioned) score += 3;
-  if (hasOTTPlatform) score += 3;
-  if (isLimitedSeries) score += 2;
-  if (hasHighRating) score += 1;
-  if (isNewProduction) score += 2;
-  if (hasWebSeriesKeywords) score += 3;
-  
-  if (show.number_of_episodes > 100) score -= 3;
-  if (show.number_of_seasons > 7) score -= 3;
-  
-  return score >= 4;
 };

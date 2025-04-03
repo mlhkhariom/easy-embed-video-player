@@ -14,10 +14,7 @@ import Genres from "./pages/Genres";
 import GenreContent from "./pages/GenreContent";
 import Trending from "./pages/Trending";
 import LiveTV from "./pages/LiveTV";
-import CloudStream from "./pages/CloudStream";
-import CloudStreamDetails from "./pages/CloudStreamDetails";
 import Movies from "./pages/Movies";
-import WebSeries from "./pages/WebSeries";
 import TvSerials from "./pages/TvSerials";
 import History from "./pages/History";
 import WatchList from "./pages/WatchList";
@@ -26,7 +23,6 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLiveTV from "./pages/admin/AdminLiveTV";
 import AdminContent from "./pages/admin/AdminContent";
-import AdminCloudStream from "./pages/admin/AdminCloudStream";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
@@ -58,7 +54,6 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/movies" element={<Movies />} />
                 <Route path="/movie/:id" element={<Movie />} />
-                <Route path="/tv" element={<WebSeries />} />
                 <Route path="/tv-serials" element={<TvSerials />} />
                 <Route path="/tv/:id" element={<TvShow />} />
                 <Route path="/search" element={<Search />} />
@@ -69,8 +64,6 @@ const App = () => (
                 <Route path="/genre/:type/:id" element={<GenreContent />} />
                 <Route path="/trending" element={<Trending />} />
                 <Route path="/live-tv" element={<LiveTV />} />
-                <Route path="/cloudstream" element={<CloudStream />} />
-                <Route path="/cloudstream/:sourceId/:contentId" element={<CloudStreamDetails />} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
@@ -78,7 +71,6 @@ const App = () => (
                 <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
                 <Route path="/admin/live-tv" element={<AdminGuard><AdminLiveTV /></AdminGuard>} />
                 <Route path="/admin/content" element={<AdminGuard><AdminContent /></AdminGuard>} />
-                <Route path="/admin/cloudstream" element={<AdminGuard><AdminCloudStream /></AdminGuard>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

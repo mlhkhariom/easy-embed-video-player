@@ -13,7 +13,6 @@ const defaultSettings: Settings = {
   sidebarBackgroundColor: '#1a1f2c',
   logoUrl: '',
   enableLiveTV: true,
-  enableCloudStream: true,
   enableAutoPlay: true,
   enable3DEffects: true,
   enableTrending: false,

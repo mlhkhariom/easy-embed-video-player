@@ -10,7 +10,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger
 } from "@/components/ui/navigation-menu";
-import { Tv, Film, Radio, TrendingUp, ListFilter, Cloud, Settings, Home, History, Clock, ChevronDown, Languages } from 'lucide-react';
+import { Tv, Film, Radio, TrendingUp, ListFilter, Settings, Home, History, Clock, ChevronDown, Languages } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -41,13 +41,11 @@ const Navbar = () => {
   const primaryNavItems = [
     { label: 'Home', path: '/', icon: <Home size={16} /> },
     { label: 'Movies', path: '/movies', icon: <Film size={16} /> },
-    { label: 'Web Series', path: '/tv', icon: <Tv size={16} /> },
     { label: 'TV Serials', path: '/tv-serials', icon: <Languages size={16} /> },
   ];
   
   const secondaryNavItems = [
     { label: 'Live TV', path: '/live-tv', isConditional: true, enabledSetting: 'enableLiveTV', icon: <Radio size={16} /> },
-    { label: 'CloudStream', path: '/cloudstream', isConditional: true, enabledSetting: 'enableCloudStream', icon: <Cloud size={16} /> },
     { label: 'Trending', path: '/trending', icon: <TrendingUp size={16} /> },
     { label: 'History', path: '/history', icon: <History size={16} /> },
   ];

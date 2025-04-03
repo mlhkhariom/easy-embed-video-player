@@ -16,7 +16,6 @@ export interface AdminSettings {
   sidebarBackgroundColor: string;
   logoUrl: string;
   enableLiveTV: boolean;
-  enableCloudStream: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   enableTrending?: boolean; // Added for trending feature
@@ -67,67 +66,6 @@ export interface Channel {
   url?: string;
   category?: string;
   language?: string;
-}
-
-export interface CloudStreamPlugin {
-  id?: string;
-  name: string;
-  url: string;
-  version?: string;
-  description?: string;
-  language?: string;
-  categories?: string[];
-  repository?: string;
-  isEnabled?: boolean;
-  isInstalled?: boolean;
-  author?: string;
-  internalName?: string;
-  iconUrl?: string;
-  status?: number;
-  apiVersion?: number;
-  fileSize?: number;
-  tvTypes?: string[];
-}
-
-export interface CloudStreamRepo {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  author?: string;
-  isEnabled: boolean;
-  lastSynced?: string;
-  pluginCount?: number;
-}
-
-export interface CloudStreamSource {
-  id: string;
-  name: string;
-  url: string;
-  repo: string;
-  description?: string;
-  language?: string;
-  categories?: string[];
-  logo?: string;
-  isEnabled?: boolean;
-}
-
-export interface CloudStreamContent {
-  id: string;
-  source_id: string;
-  source?: string;
-  title: string;
-  type: 'movie' | 'series';
-  year?: number;
-  poster?: string;
-  backdrop?: string;
-  rating?: number;
-  plot?: string;
-  genres?: string[];
-  url: string; // Making url required to match both versions
-  external_id?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Movie {
@@ -187,7 +125,7 @@ export interface TvShow {
   tagline?: string;
   type?: string;
   imdb_id?: string;
-  show_type?: 'web_series' | 'tv_serial';
+  show_type?: 'tv_serial';
   original_language?: string;
   languages?: string[];
   networks?: {
