@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,7 +8,7 @@
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 11%;
+    --card: 222 47% 14%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 11%;
@@ -40,101 +41,178 @@
   }
 
   body {
-    @apply bg-[#121218] text-foreground;
+    @apply bg-moviemate-background text-foreground;
     /* Enhanced 3D style for the entire application */
     perspective: 1000px;
   }
 
-  /* Gradient background for card-like components */
-  .gradient-card {
-    background: linear-gradient(135deg, rgba(30, 35, 45, 0.8) 0%, rgba(18, 18, 24, 0.9) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
+  /* Enhanced scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
 
-  /* Glass effect with blur */
-  .glass-effect {
-    background: rgba(18, 18, 24, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+  ::-webkit-scrollbar-track {
+    @apply bg-moviemate-background;
+    border-radius: 10px;
   }
 
-  /* Neon-style text for the app title */
-  .neon-text {
-    color: #61dafb;
-    text-shadow: 0 0 5px rgba(97, 218, 251, 0.7), 
-                 0 0 10px rgba(97, 218, 251, 0.5), 
-                 0 0 15px rgba(97, 218, 251, 0.3);
-  }
-
-  /* Movie card hover effects */
-  .movie-card {
+  ::-webkit-scrollbar-thumb {
+    @apply bg-moviemate-primary/50 rounded-full;
     transition: all 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-moviemate-primary;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+  }
+
+  /* Enhanced image loading transitions */
+  .image-loading {
+    @apply bg-gray-700 animate-pulse;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .image-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
+    );
+    animation: loading-shimmer 1.5s infinite;
+  }
+
+  @keyframes loading-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .image-loaded {
+    @apply animate-fade-in;
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* Enhanced page transitions */
+  .page-enter {
+    @apply animate-fade-in;
+    animation-duration: 400ms;
+    transform-origin: center bottom;
+  }
+
+  .page-exit {
+    @apply animate-fade-out;
+    animation-duration: 300ms;
+    transform-origin: center top;
+  }
+
+  /* Enhanced movie card */
+  .movie-card {
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), 
+                box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    will-change: transform, box-shadow;
     transform-style: preserve-3d;
   }
 
   .movie-card:hover {
-    transform: translateY(-5px) scale(1.02);
-    box-shadow: 0 10px 25px -5px rgba(97, 218, 251, 0.3);
+    transform: translateY(-8px) scale(1.02) translateZ(5px);
+    @apply shadow-xl shadow-moviemate-primary/30;
+  }
+  
+  /* Enhanced FreeCinema player styles */
+  .freecinema-player {
+    @apply relative overflow-hidden rounded-xl;
+    box-shadow: 0 15px 40px -8px rgba(139, 92, 246, 0.4);
+    transform: translateZ(0);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .freecinema-player:hover {
+    transform: translateY(-5px) translateZ(5px);
+    box-shadow: 0 20px 50px -10px rgba(139, 92, 246, 0.5);
   }
-
-  ::-webkit-scrollbar-track {
-    background: rgba(18, 18, 24, 0.7);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(97, 218, 251, 0.5);
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(97, 218, 251, 0.8);
-  }
-
-  /* Rating star */
-  .rating-star {
-    color: #FFD700;
-  }
-
-  /* Animated gradient border */
-  .gradient-border {
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .gradient-border::after {
+  
+  .freecinema-player::before {
     content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(45deg, #61dafb, #ff3d71, #61dafb);
-    -webkit-mask: 
-      linear-gradient(#fff 0 0) content-box, 
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.5;
+    @apply absolute inset-0 bg-gradient-to-br from-moviemate-primary/15 to-transparent rounded-xl;
+    z-index: 0;
+  }
+  
+  .freecinema-player-controls {
+    @apply transition-all duration-300;
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  
+  .freecinema-player:hover .freecinema-player-controls {
+    @apply opacity-100;
+    transform: translateY(0);
+  }
+  
+  .freecinema-progress {
+    @apply h-2 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .freecinema-progress-bar {
+    @apply h-full bg-gradient-to-r from-moviemate-primary to-purple-500 transition-all duration-200;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+  }
+  
+  .freecinema-glass-button {
+    @apply rounded-full bg-white/15 p-2 backdrop-blur-lg hover:bg-white/25 transition-all;
+    transform: translateZ(0);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
-  /* Bottom navigation */
-  .bottom-nav {
-    background: rgba(18, 18, 24, 0.8);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  .freecinema-glass-button:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .freecinema-volume-slider {
+    @apply w-20 appearance-none h-2 bg-white/30 rounded-lg;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .freecinema-volume-slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-white cursor-pointer;
+    border: 2px solid rgba(139, 92, 246, 0.7);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+    transition: all 0.2s ease;
   }
 
-  /* Search field with gradient */
-  .search-gradient {
-    background: linear-gradient(90deg, rgba(97, 218, 251, 0.1), rgba(255, 61, 113, 0.1));
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  .freecinema-volume-slider::-webkit-slider-thumb:hover {
+    @apply bg-moviemate-primary;
+    transform: scale(1.1);
+  }
+
+  /* 3D buttons */
+  .btn-3d {
+    position: relative;
+    transition: all 0.3s ease;
+    transform: translateZ(0);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .btn-3d:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .btn-3d:active {
+    transform: translateY(-1px) scale(0.99);
   }
 }
 

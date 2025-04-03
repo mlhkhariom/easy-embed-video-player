@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -38,20 +39,6 @@ export const getTrendingMovies = (): Promise<MovieResponse> => {
   return fetchApi<MovieResponse>(`/trending/movie/day?api_key=${API_KEY}&language=en-US`);
 };
 
-// Add the missing getTrendingTV function
-export const getTrendingTV = (): Promise<TvResponse> => {
-  return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
-};
-
-// Web Series functions needed for the WebSeries.tsx page
-export const getWebSeries = (page: number = 1): Promise<TvResponse> => {
-  return fetchApi<TvResponse>(`/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_type=4`);
-};
-
-export const isWebSeries = (tvShow: TvShow): boolean => {
-  return tvShow.type === 'web_series' || (tvShow.original_language === 'hi' && tvShow.show_type === 'tv_serial');
-};
-
 export const getPopularMovies = (): Promise<MovieResponse> => {
   return fetchApi<MovieResponse>(`/movie/popular?api_key=${API_KEY}&language=en-US`);
 };
@@ -64,15 +51,8 @@ export const getMovieDetails = (id: number): Promise<Movie> => {
   return fetchApi<Movie>(`/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
 };
 
-export const getMovieCredits = async (movieId: number) => {
-  const url = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${API_KEY}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch movie credits: ${response.status}`);
-  }
-  
-  return response.json();
+export const getMovieCredits = (id: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/movie/${id}/credits?api_key=${API_KEY}&language=en-US`);
 };
 
 // TV Shows
@@ -92,18 +72,9 @@ export const getTvShowDetails = (id: number): Promise<TvShow> => {
   return fetchApi<TvShow>(`/tv/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
 };
 
-export const getTvShowCredits = async (tvId: number) => {
-  const url = `https://api.themoviedb.org/3/tv/${tvId}/credits?api_key=${API_KEY}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch TV credits: ${response.status}`);
-  }
-  
-  return response.json();
+export const getTvShowCredits = (id: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/tv/${id}/credits?api_key=${API_KEY}&language=en-US`);
 };
-
-export const getTvCredits = getTvShowCredits;
 
 export const getSeasonDetails = (tvId: number, seasonNumber: number): Promise<Season> => {
   return fetchApi<Season>(`/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`);
