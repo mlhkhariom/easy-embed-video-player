@@ -2,15 +2,13 @@
 import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getTvShowDetails, getTvShowCredits, getImageUrl } from '../services/tmdb';
+import { getTvShowDetails, getTvCredits, getImageUrl } from '../services/tmdb';
 import { TvShow } from '../types';
 import { motion } from 'framer-motion';
 import { CalendarDays, Clock, Play, Star, Heart, ChevronLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import CastCarousel from '../components/CastCarousel';
-import DirectorCard from '../components/DirectorCard';
 
 const TvShowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +26,9 @@ const TvShowPage = () => {
   });
   
   // Fetch TV show credits
-  const { data: credits, isLoading: isLoadingCredits } = useQuery({
+  const { data: credits } = useQuery({
     queryKey: ['tvCredits', tvShowId],
-    queryFn: () => getTvShowCredits(tvShowId),
+    queryFn: () => getTvCredits(tvShowId),
     enabled: !!tvShowId
   });
   
@@ -68,16 +66,14 @@ const TvShowPage = () => {
   const { duration, year, genres } = formatTvShowDetails(tvShow);
   
   // Get creator/showrunner
-  const creator = tvShow?.created_by?.[0] || credits?.crew?.find(member => 
-    member.job === 'Executive Producer' || member.job === 'Creator'
-  );
+  const creator = tvShow?.created_by?.[0]?.name || credits?.crew?.find(member => member.job === 'Executive Producer')?.name || '';
   
-  // Loading state
-  const isLoading = isLoadingTvShow || isLoadingCredits;
+  // Get top cast (limit to 5)
+  const topCast = credits?.cast?.slice(0, 5).map(actor => actor.name).join(', ') || '';
   
   return (
     <div className="relative min-h-screen bg-[#121218] text-white">
-      {isLoading ? (
+      {isLoadingTvShow ? (
         <div className="flex h-screen items-center justify-center">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-t-blue-500"></div>
         </div>
@@ -173,6 +169,19 @@ const TvShowPage = () => {
               ))}
             </div>
             
+            {/* Creator & Cast */}
+            {creator && (
+              <div className="mt-6">
+                <p className="text-gray-300">Creator: <span className="text-white">{creator}</span></p>
+              </div>
+            )}
+            
+            {topCast && (
+              <div className="mt-2">
+                <p className="text-gray-300">Stars: <span className="text-white">{topCast}</span></p>
+              </div>
+            )}
+            
             {/* Overview */}
             <div className="mt-8">
               <h2 className="text-2xl font-bold">Introduction</h2>
@@ -180,14 +189,6 @@ const TvShowPage = () => {
                 {tvShow.overview}
               </p>
             </div>
-            
-            {/* Creator/Showrunner Card */}
-            {creator && <DirectorCard director={creator} />}
-            
-            {/* Cast Carousel */}
-            {credits?.cast && credits.cast.length > 0 && (
-              <CastCarousel cast={credits.cast} title="Top Cast" />
-            )}
             
             {/* Action Buttons */}
             <div className="mt-10 flex gap-4">
