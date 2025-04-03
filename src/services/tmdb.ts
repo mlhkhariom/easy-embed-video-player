@@ -43,6 +43,15 @@ export const getTrendingTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
 };
 
+// Web Series functions needed for the WebSeries.tsx page
+export const getWebSeries = (page: number = 1): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(`/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&page=${page}&with_type=4`);
+};
+
+export const isWebSeries = (tvShow: TvShow): boolean => {
+  return tvShow.type === 'web_series' || (tvShow.original_language === 'hi' && tvShow.show_type === 'tv_serial');
+};
+
 export const getPopularMovies = (): Promise<MovieResponse> => {
   return fetchApi<MovieResponse>(`/movie/popular?api_key=${API_KEY}&language=en-US`);
 };
@@ -93,6 +102,8 @@ export const getTvShowCredits = async (tvId: number) => {
   
   return response.json();
 };
+
+export const getTvCredits = getTvShowCredits;
 
 export const getSeasonDetails = (tvId: number, seasonNumber: number): Promise<Season> => {
   return fetchApi<Season>(`/tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`);

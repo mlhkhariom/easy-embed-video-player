@@ -1,8 +1,7 @@
-
 import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getTvShowDetails, getTvCredits, getImageUrl } from '../services/tmdb';
+import { getTvShowDetails, getTvShowCredits, getImageUrl } from '../services/tmdb';
 import { TvShow } from '../types';
 import { motion } from 'framer-motion';
 import { CalendarDays, Clock, Play, Star, Heart, ChevronLeft } from 'lucide-react';
@@ -18,17 +17,15 @@ const TvShowPage = () => {
   
   const tvShowId = id ? parseInt(id) : 0;
   
-  // Fetch TV show details
   const { data: tvShow, isLoading: isLoadingTvShow } = useQuery({
     queryKey: ['tvShow', tvShowId],
     queryFn: () => getTvShowDetails(tvShowId),
     enabled: !!tvShowId
   });
   
-  // Fetch TV show credits
   const { data: credits } = useQuery({
     queryKey: ['tvCredits', tvShowId],
-    queryFn: () => getTvCredits(tvShowId),
+    queryFn: () => getTvShowCredits(tvShowId),
     enabled: !!tvShowId
   });
   
@@ -48,7 +45,6 @@ const TvShowPage = () => {
     navigate(-1);
   };
   
-  // Format TV show details
   const formatTvShowDetails = (tvShow: TvShow | undefined) => {
     if (!tvShow) return { duration: '', year: '', genres: [] };
     
@@ -65,10 +61,8 @@ const TvShowPage = () => {
   
   const { duration, year, genres } = formatTvShowDetails(tvShow);
   
-  // Get creator/showrunner
   const creator = tvShow?.created_by?.[0]?.name || credits?.crew?.find(member => member.job === 'Executive Producer')?.name || '';
   
-  // Get top cast (limit to 5)
   const topCast = credits?.cast?.slice(0, 5).map(actor => actor.name).join(', ') || '';
   
   return (
@@ -84,7 +78,6 @@ const TvShowPage = () => {
           transition={{ duration: 0.5 }}
           className="pb-24"
         >
-          {/* TV Show Poster with Back Button and Save Button */}
           <div className="relative h-screen max-h-[70vh]">
             <img 
               src={getImageUrl(tvShow.backdrop_path || tvShow.poster_path, 'original')}
@@ -94,7 +87,6 @@ const TvShowPage = () => {
             
             <div className="absolute inset-0 bg-gradient-to-t from-[#121218] via-[#121218]/60 to-transparent"></div>
             
-            {/* Back Button */}
             <button 
               onClick={handleBack}
               className="absolute top-10 left-4 z-10 rounded-full bg-black/40 p-2 backdrop-blur-sm"
@@ -102,7 +94,6 @@ const TvShowPage = () => {
               <ChevronLeft className="h-6 w-6" />
             </button>
             
-            {/* Save Button */}
             <button 
               onClick={handleSave}
               className="absolute top-10 right-4 z-10 rounded-full bg-black/40 p-2 backdrop-blur-sm"
@@ -110,7 +101,6 @@ const TvShowPage = () => {
               <Heart className={`h-6 w-6 ${isSaved ? 'fill-red-500 text-red-500' : ''}`} />
             </button>
             
-            {/* TV Show Info */}
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center text-sm text-gray-300">
@@ -128,7 +118,6 @@ const TvShowPage = () => {
                   )}
                 </div>
                 
-                {/* Play Trailer Button */}
                 <Button 
                   variant="outline" 
                   className="mt-4 w-40 rounded-full border-white/30 bg-black/30 backdrop-blur-sm"
@@ -139,7 +128,6 @@ const TvShowPage = () => {
             </div>
           </div>
           
-          {/* TV Show Details */}
           <div className="p-6">
             <div className="flex justify-between">
               <h1 className="text-3xl font-bold">{tvShow.name}</h1>
@@ -153,7 +141,6 @@ const TvShowPage = () => {
               <p className="mt-1 text-gray-400">{tvShow.tagline}</p>
             )}
             
-            {/* Genres */}
             <div className="mt-4 flex flex-wrap gap-2">
               {genres.map(genre => (
                 <span 
@@ -169,7 +156,6 @@ const TvShowPage = () => {
               ))}
             </div>
             
-            {/* Creator & Cast */}
             {creator && (
               <div className="mt-6">
                 <p className="text-gray-300">Creator: <span className="text-white">{creator}</span></p>
@@ -182,7 +168,6 @@ const TvShowPage = () => {
               </div>
             )}
             
-            {/* Overview */}
             <div className="mt-8">
               <h2 className="text-2xl font-bold">Introduction</h2>
               <p className="mt-3 text-gray-300 leading-relaxed">
@@ -190,7 +175,6 @@ const TvShowPage = () => {
               </p>
             </div>
             
-            {/* Action Buttons */}
             <div className="mt-10 flex gap-4">
               <Button className="flex-1 bg-blue-500 hover:bg-blue-600">
                 <Play className="mr-2 h-5 w-5" /> Watch Now
@@ -215,7 +199,6 @@ const TvShowPage = () => {
   );
 };
 
-// Helper function to assign colors to genres
 const getGenreColor = (genreName: string): string => {
   const colors: Record<string, string> = {
     'Action & Adventure': '#3366ff',
