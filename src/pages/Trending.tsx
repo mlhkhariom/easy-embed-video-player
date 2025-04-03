@@ -1,135 +1,116 @@
-
 import { useState, useEffect } from 'react';
-import { getTrendingMovies, getTrendingTvShows } from '../services/tmdb';
-import { Movie, TvShow } from '../types';
-import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { getTrendingMovies, getTrendingTV } from '../services/tmdb';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from 'react-router-dom';
+import { Movie, TvShow } from '../types';
+import { Film, Tv, Loader } from 'lucide-react';
+import { motion } from "framer-motion";
 
 const Trending = () => {
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [trendingTvShows, setTrendingTvShows] = useState<TvShow[]>([]);
-  const [activeTab, setActiveTab] = useState<'movies' | 'tvshows'>('movies');
+  const [activeTab, setActiveTab] = useState('movies');
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+
+  const { data: trendingMovies, error: trendingMoviesError } = useQuery({
+    queryKey: ['trending-movies'],
+    queryFn: getTrendingMovies,
+  });
+
+  const { data: trendingTV, error: trendingTVError } = useQuery({
+    queryKey: ['trending-tv'],
+    queryFn: getTrendingTV,
+  });
+
   useEffect(() => {
-    const fetchTrending = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const [moviesData, tvShowsData] = await Promise.all([
-          getTrendingMovies(),
-          getTrendingTvShows(),
-        ]);
-        
-        setTrendingMovies(moviesData.results);
-        setTrendingTvShows(tvShowsData.results);
-      } catch (error) {
-        console.error('Error fetching trending content:', error);
-        setError('Failed to load trending content. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchTrending();
-  }, []);
-  
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-  
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-    },
-  };
-  
+    if (trendingMovies && trendingTV) {
+      setIsLoading(false);
+    }
+  }, [trendingMovies, trendingTV]);
+
+  const hasError = trendingMoviesError || trendingTVError;
+
+  const movies = trendingMovies?.results as Movie[];
+  const tvShows = trendingTV?.results as TvShow[];
+
   return (
     <div className="min-h-screen bg-moviemate-background">
       <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <h1 className="text-3xl font-bold text-white">Trending Today</h1>
-          
-          <Tabs defaultValue="movies" className="w-full md:w-auto" onValueChange={(value) => setActiveTab(value as 'movies' | 'tvshows')}>
-            <TabsList className="grid w-full grid-cols-2 md:w-auto">
-              <TabsTrigger value="movies">Movies</TabsTrigger>
-              <TabsTrigger value="tvshows">TV Shows</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {[...Array(10)].map((_, index) => (
-              <div key={index} className="animate-pulse">
-                <div className="aspect-[2/3] rounded-lg bg-moviemate-card"></div>
-              </div>
-            ))}
+
+      <main className="container mx-auto px-4 py-8 pt-24">
+        <h1 className="mb-8 text-3xl font-bold text-white">Trending</h1>
+
+        {hasError && (
+          <div className="rounded-lg bg-red-500/10 p-4 text-center">
+            <p className="text-red-300">Error fetching trending content</p>
           </div>
-        ) : error ? (
-          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
-            <AlertTitle className="text-white">Error</AlertTitle>
-            <AlertDescription className="text-gray-300">{error}</AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            {activeTab === 'movies' ? (
-              <motion.div 
+        )}
+
+        <Tabs defaultValue="movies" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="movies">
+              <Film className="mr-1 h-4 w-4" />
+              Movies ({trendingMovies?.results?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="tv">
+              <Tv className="mr-1 h-4 w-4" />
+              TV Shows ({trendingTV?.results?.length || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="movies" className="mt-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader className="h-8 w-8 animate-spin text-moviemate-primary" />
+              </div>
+            ) : movies?.length ? (
+              <motion.div
                 className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ staggerChildren: 0.05 }}
               >
-                {trendingMovies.map((movie) => (
-                  <motion.div key={movie.id} variants={itemVariants}>
-                    <MovieCard
-                      movieId={movie.id}
-                      title={movie.title}
-                      posterPath={movie.poster_path}
-                      rating={movie.vote_average}
-                      mediaType="movie"
-                    />
-                  </motion.div>
+                {movies.map((movie) => (
+                  <MovieCard key={movie.id} item={movie} type="movie" />
                 ))}
               </motion.div>
             ) : (
-              <motion.div 
+              <div className="rounded-lg bg-moviemate-card p-8 text-center">
+                <p className="text-xl text-gray-400">No trending movies found</p>
+                <Link to="/movies" className="mt-4 text-moviemate-primary hover:underline">
+                  Browse Movies
+                </Link>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="tv" className="mt-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader className="h-8 w-8 animate-spin text-moviemate-primary" />
+              </div>
+            ) : tvShows?.length ? (
+              <motion.div
                 className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ staggerChildren: 0.05 }}
               >
-                {trendingTvShows.map((tvShow) => (
-                  <motion.div key={tvShow.id} variants={itemVariants}>
-                    <MovieCard
-                      movieId={tvShow.id}
-                      title={tvShow.name}
-                      posterPath={tvShow.poster_path}
-                      rating={tvShow.vote_average}
-                      mediaType="tv"
-                    />
-                  </motion.div>
+                {tvShows.map((tvShow) => (
+                  <MovieCard key={tvShow.id} item={tvShow} type="tv" />
                 ))}
               </motion.div>
+            ) : (
+              <div className="rounded-lg bg-moviemate-card p-8 text-center">
+                <p className="text-xl text-gray-400">No trending TV shows found</p>
+                <Link to="/tv-serials" className="mt-4 text-moviemate-primary hover:underline">
+                  Browse TV Shows
+                </Link>
+              </div>
             )}
-          </>
-        )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

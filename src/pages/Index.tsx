@@ -7,6 +7,9 @@ import Navbar from '../components/Navbar';
 import { useAdmin } from '../contexts/AdminContext';
 import { PlayCircle } from 'lucide-react';
 import { Movie, TvShow } from '../types';
+import Hero from '../components/Hero';
+import ContentRow from '../components/ContentRow';
+import Footer from '../components/Footer';
 
 const Index = () => {
   const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(null);
