@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -50,43 +51,45 @@ export const getMovieDetails = (id: number): Promise<Movie> => {
   return fetchApi<Movie>(`/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
 };
 
-export const getMovieCredits = async (movieId: number) => {
-  const url = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${API_KEY}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch movie credits: ${response.status}`);
-  }
-  
-  return response.json();
+export const getMovieCredits = async (movieId: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/movie/${movieId}/credits?api_key=${API_KEY}`);
 };
 
 // TV Shows
-export const getTrendingTvShows = (): Promise<TvResponse> => {
+export const getTrendingTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getPopularTvShows = (): Promise<TvResponse> => {
+export const getTrendingTvShows = (): Promise<TvResponse> => {
+  return getTrendingTV();
+};
+
+export const getPopularTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/tv/popular?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getTopRatedTvShows = (): Promise<TvResponse> => {
+export const getPopularTvShows = (): Promise<TvResponse> => {
+  return getPopularTV();
+};
+
+export const getTopRatedTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/tv/top_rated?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedTvShows = (): Promise<TvResponse> => {
+  return getTopRatedTV();
 };
 
 export const getTvShowDetails = (id: number): Promise<TvShow> => {
   return fetchApi<TvShow>(`/tv/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos,images,credits`);
 };
 
-export const getTvShowCredits = async (tvId: number) => {
-  const url = `https://api.themoviedb.org/3/tv/${tvId}/credits?api_key=${API_KEY}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch TV credits: ${response.status}`);
-  }
-  
-  return response.json();
+export const getTvShowCredits = async (tvId: number): Promise<Credits> => {
+  return fetchApi<Credits>(`/tv/${tvId}/credits?api_key=${API_KEY}`);
+};
+
+export const getTvCredits = async (tvId: number): Promise<Credits> => {
+  return getTvShowCredits(tvId);
 };
 
 export const getSeasonDetails = (tvId: number, seasonNumber: number): Promise<Season> => {
