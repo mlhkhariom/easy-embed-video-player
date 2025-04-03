@@ -17,26 +17,23 @@ export interface AdminSettings {
   enableLiveTV: boolean;
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
-  enableTrending?: boolean; // Added for trending feature
-  enableCloudStream?: boolean; // Added for CloudStream feature
-  selectedCountry: string; // Added for country selection
+  enableTrending: boolean;
+  enableCloudStream: boolean;
+  selectedCountry: SupportedCountry;
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
-    movie: null | {
-      id: number;
-      title: string;
-      posterPath: string;
-      backdropPath: string;
-    };
-    tvShow: null | {
-      id: number;
-      name: string;
-      posterPath: string;
-      backdropPath: string;
-    };
+    movie: number | null;
+    tvShow: number | null;
   };
-  playerSettings: PlayerSettings; // Added for player settings
+  playerSettings: {
+    defaultQuality: string;
+    autoplay: boolean;
+    preload: boolean;
+    subtitlesEnabled: boolean;
+    defaultSubtitleLanguage: string;
+    playbackSpeed: number;
+  };
 }
 
 export interface PlayerSettings {
@@ -107,7 +104,7 @@ export interface Movie {
     posters: Image[];
   };
   credits?: Credits;
-  country?: string; // Added for country filtering
+  country?: string;
 }
 
 export interface MovieResponse {
@@ -235,7 +232,7 @@ export interface Image {
   vote_count: number;
 }
 
-export type SupportedCountry = 'us' | 'in' | 'uk' | 'global';
+export type SupportedCountry = 'global' | 'us' | 'in' | 'uk';
 
 export interface CountryOption {
   id: SupportedCountry;
@@ -248,24 +245,40 @@ export interface CountryOption {
 export interface CloudStreamContent {
   id: string;
   title: string;
-  posterUrl: string;
-  type: 'movie' | 'tv';
   year?: number;
-  description?: string;
-  rating?: number;
-  plugin?: string;
+  posterUrl: string;
+  backdropUrl?: string;
+  type: 'movie' | 'tvshow';
+  source_id: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+  poster?: string;
+  source?: string;
 }
 
 export interface CloudStreamPlugin {
+  id?: string;
   name: string;
-  version: string;
   url: string;
-  status: 'active' | 'inactive';
+  version?: string;
   description?: string;
+  author?: string;
+  repository?: string;
+  categories?: string[];
+  language?: string;
+  isEnabled?: boolean;
+  isInstalled?: boolean;
+  internalName?: string;
+  iconUrl?: string;
 }
 
 export interface CloudStreamRepo {
+  id?: string;
   name: string;
   url: string;
-  plugins: CloudStreamPlugin[];
+  description?: string;
+  author?: string;
+  isEnabled?: boolean;
+  pluginCount?: number;
 }

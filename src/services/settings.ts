@@ -1,3 +1,4 @@
+
 import { AdminSettings } from '@/types';
 
 export interface Settings extends AdminSettings {}

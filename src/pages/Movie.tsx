@@ -49,9 +49,8 @@ const MoviePage = () => {
         // Use country-specific related movies if available
         const related = await getRelatedMovies(movieId);
         // Make sure each movie has a unique key by adding a prefix to the ID
-        const uniqueMovies = related.results.slice(0, 10).map((movie, index) => ({
-          ...movie,
-          id: movie.id // Ensure each ID is unique
+        const uniqueMovies = related.results.slice(0, 10).map((movie) => ({
+          ...movie
         }));
         setRelatedMovies(uniqueMovies);
       } catch (error) {
@@ -59,7 +58,11 @@ const MoviePage = () => {
         // Try to get fallback movies from selected country
         try {
           const countryMovies = await getContentByCountry(settings.selectedCountry, 'movie');
-          setRelatedMovies(countryMovies.results.slice(0, 10));
+          // Ensure we're only setting movies (not TvShow types)
+          const movies = countryMovies.results
+            .filter(item => item.media_type === 'movie' || !item.media_type)
+            .slice(0, 10);
+          setRelatedMovies(movies as Movie[]);
         } catch (fallbackError) {
           console.error('Error fetching fallback movies:', fallbackError);
         }

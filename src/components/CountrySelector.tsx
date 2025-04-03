@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAdmin } from '../contexts/AdminContext';
 import { Button } from '@/components/ui/button';
-import { Flag, Globe, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SupportedCountry, CountryOption } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 const countryOptions: CountryOption[] = [
   {
@@ -76,14 +77,17 @@ export const CountrySelector = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className="w-60 bg-gradient-to-br from-moviemate-card/80 to-moviemate-card/95 backdrop-blur-xl border border-white/10"
+        className={cn(
+          "w-60 bg-gradient-to-br from-moviemate-card/80 to-moviemate-card/95 backdrop-blur-xl border border-white/10"
+        )}
       >
         {countryOptions.map((country) => (
           <DropdownMenuItem
             key={country.id}
-            className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 cursor-pointer",
               settings.selectedCountry === country.id ? 'bg-moviemate-primary/20' : ''
-            }`}
+            )}
             onClick={() => handleSelectCountry(country.id)}
           >
             <span className="text-xl">{country.flag}</span>
