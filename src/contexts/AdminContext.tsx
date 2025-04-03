@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { AdminSettings, AdminUser, LiveTVCategory, SupportedCountry } from '../types';
 
@@ -35,6 +36,7 @@ const defaultSettings: AdminSettings = {
   enableLiveTV: true,
   enableAutoPlay: true,
   enable3DEffects: true,
+  enableTrending: true,
   enableCloudStream: false,
   selectedCountry: 'global',
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
