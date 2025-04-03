@@ -27,7 +27,6 @@ import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import ErrorHandler from "./components/ErrorHandler";
 
 // Customize QueryClient with error handling
 const queryClient = new QueryClient({
