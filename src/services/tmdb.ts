@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -36,6 +37,11 @@ export const fetchApi = async <T>(endpoint: string, retryCount = 3): Promise<T> 
 // Movies
 export const getTrendingMovies = (): Promise<MovieResponse> => {
   return fetchApi<MovieResponse>(`/trending/movie/day?api_key=${API_KEY}&language=en-US`);
+};
+
+// Add the missing getTrendingTV function
+export const getTrendingTV = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
 };
 
 export const getPopularMovies = (): Promise<MovieResponse> => {
