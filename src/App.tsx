@@ -23,6 +23,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminLiveTV from "./pages/admin/AdminLiveTV";
 import AdminContent from "./pages/admin/AdminContent";
+import PlayerSettings from "./pages/admin/PlayerSettings";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import DynamicStyles from "./components/DynamicStyles";
 import { AdminProvider } from "./contexts/AdminContext";
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
                 <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
+                <Route path="/admin/player-settings" element={<AdminGuard><PlayerSettings /></AdminGuard>} />
                 <Route path="/admin/live-tv" element={<AdminGuard><AdminLiveTV /></AdminGuard>} />
                 <Route path="/admin/content" element={<AdminGuard><AdminContent /></AdminGuard>} />
                 

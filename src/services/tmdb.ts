@@ -1,4 +1,3 @@
-
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -125,7 +124,8 @@ export const getIndianMovies = (): Promise<MovieResponse> => {
     if (response?.results) {
       response.results = response.results.map(movie => ({
         ...movie,
-        show_type: 'movie'
+        show_type: 'movie',
+        country: 'in'
       }));
     }
     return response;
@@ -150,11 +150,87 @@ export const getIndianTVShows = (): Promise<TvResponse> => {
           show.original_language = 'hi';
         }
         
+        if (!show.country) {
+          show.country = 'in';
+        }
+        
         return show;
       });
     }
     return response;
   });
+};
+
+// Get US content
+export const getUSMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/discover/movie?api_key=${API_KEY}&region=US&sort_by=popularity.desc&with_watch_providers=&watch_region=US`
+  ).then(response => {
+    if (response?.results) {
+      response.results = response.results.map(movie => ({
+        ...movie,
+        country: 'us'
+      }));
+    }
+    return response;
+  });
+};
+
+export const getUSTVShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(
+    `/discover/tv?api_key=${API_KEY}&region=US&sort_by=popularity.desc`
+  ).then(response => {
+    if (response?.results) {
+      response.results = response.results.map(show => ({
+        ...show,
+        country: 'us'
+      }));
+    }
+    return response;
+  });
+};
+
+// Get UK content
+export const getUKMovies = (): Promise<MovieResponse> => {
+  return fetchApi<MovieResponse>(
+    `/discover/movie?api_key=${API_KEY}&region=GB&sort_by=popularity.desc&with_watch_providers=&watch_region=GB`
+  ).then(response => {
+    if (response?.results) {
+      response.results = response.results.map(movie => ({
+        ...movie,
+        country: 'uk'
+      }));
+    }
+    return response;
+  });
+};
+
+export const getUKTVShows = (): Promise<TvResponse> => {
+  return fetchApi<TvResponse>(
+    `/discover/tv?api_key=${API_KEY}&region=GB&sort_by=popularity.desc`
+  ).then(response => {
+    if (response?.results) {
+      response.results = response.results.map(show => ({
+        ...show,
+        country: 'uk'
+      }));
+    }
+    return response;
+  });
+};
+
+// Function to get content based on country
+export const getContentByCountry = async (country: string, contentType: 'movie' | 'tv'): Promise<MovieResponse | TvResponse> => {
+  switch (country) {
+    case 'in':
+      return contentType === 'movie' ? getIndianMovies() : getIndianTVShows();
+    case 'us':
+      return contentType === 'movie' ? getUSMovies() : getUSTVShows();
+    case 'uk':
+      return contentType === 'movie' ? getUKMovies() : getUKTVShows();
+    default:
+      return contentType === 'movie' ? getPopularMovies() : getPopularTvShows();
+  }
 };
 
 // Get external IDs (for IMDB ID)

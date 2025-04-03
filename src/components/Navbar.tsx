@@ -1,27 +1,31 @@
-
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import SearchBar from './SearchBar';
+import { Link, useLocation } from 'react-router-dom';
+import { useAdmin } from '../contexts/AdminContext';
 import { 
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger
-} from "@/components/ui/navigation-menu";
-import { Tv, Film, Radio, TrendingUp, ListFilter, Settings, Home, History, Clock, ChevronDown, Languages } from 'lucide-react';
-import { useAdmin } from '@/contexts/AdminContext';
+  AppWindow, 
+  Search, 
+  Menu, 
+  X, 
+  Home, 
+  Film, 
+  Tv2, 
+  Compass, 
+  List, 
+  TrendingUp,
+  Radio,
+  History,
+  BookmarkCheck,
+  Settings
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import SearchBar from './SearchBar';
+import CountrySelector from './CountrySelector';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { settings, isAuthenticated } = useAdmin();
   
   useEffect(() => {
@@ -33,7 +37,6 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
-  // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -41,7 +44,7 @@ const Navbar = () => {
   const primaryNavItems = [
     { label: 'Home', path: '/', icon: <Home size={16} /> },
     { label: 'Movies', path: '/movies', icon: <Film size={16} /> },
-    { label: 'TV Serials', path: '/tv-serials', icon: <Languages size={16} /> },
+    { label: 'TV Serials', path: '/tv-serials', icon: <Tv2 size={16} /> },
   ];
   
   const secondaryNavItems = [
@@ -50,7 +53,6 @@ const Navbar = () => {
     { label: 'History', path: '/history', icon: <History size={16} /> },
   ];
   
-  // Filter out conditional nav items based on settings
   const filteredSecondaryNavItems = secondaryNavItems.filter(item => 
     !item.isConditional || settings[item.enabledSetting as keyof typeof settings]
   );
@@ -72,7 +74,6 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between md:h-20">
-          {/* Logo */}
           <div className="flex items-center gap-2">
             <Link 
               to="/" 
@@ -95,7 +96,6 @@ const Navbar = () => {
               <span className="hidden md:inline">{settings.siteName || 'FreeCinema'}</span>
             </Link>
             
-            {/* Primary Navigation - Desktop */}
             <div className="ml-6 hidden md:flex md:items-center md:gap-1">
               {primaryNavItems.map((item) => (
                 <Link
@@ -111,7 +111,6 @@ const Navbar = () => {
                 </Link>
               ))}
               
-              {/* Dropdown for secondary nav items */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -142,11 +141,9 @@ const Navbar = () => {
             </div>
           </div>
           
-          {/* Right Side - Desktop */}
           <div className="hidden items-center gap-4 md:flex">
             <SearchBar />
             
-            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -179,7 +176,6 @@ const Navbar = () => {
             </DropdownMenu>
           </div>
           
-          {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
             <SearchBar minimal />
             
@@ -210,7 +206,6 @@ const Navbar = () => {
           </div>
         </div>
         
-        {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="animate-slide-down border-t border-gray-800 py-4 md:hidden">
             <div className="grid grid-cols-2 gap-2">

@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface AdminUser {
@@ -19,6 +18,8 @@ export interface AdminSettings {
   enableAutoPlay: boolean;
   enable3DEffects: boolean;
   enableTrending?: boolean; // Added for trending feature
+  enableCloudStream?: boolean; // Added for CloudStream feature
+  selectedCountry: string; // Added for country selection
   tmdbApiKey: string;
   customCSS: string;
   featuredContent: {
@@ -35,6 +36,16 @@ export interface AdminSettings {
       backdropPath: string;
     };
   };
+  playerSettings: PlayerSettings; // Added for player settings
+}
+
+export interface PlayerSettings {
+  defaultQuality: 'auto' | '1080p' | '720p' | '480p' | '360p';
+  autoplay: boolean;
+  preload: boolean;
+  subtitlesEnabled: boolean;
+  defaultSubtitleLanguage: string;
+  playbackSpeed: number;
 }
 
 export interface LiveTVCategory {
@@ -96,6 +107,7 @@ export interface Movie {
     posters: Image[];
   };
   credits?: Credits;
+  country?: string; // Added for country filtering
 }
 
 export interface MovieResponse {
@@ -221,4 +233,39 @@ export interface Image {
   width: number;
   vote_average: number;
   vote_count: number;
+}
+
+export type SupportedCountry = 'us' | 'in' | 'uk' | 'global';
+
+export interface CountryOption {
+  id: SupportedCountry;
+  name: string;
+  flag: string;
+  region: string;
+  language: string;
+}
+
+export interface CloudStreamContent {
+  id: string;
+  title: string;
+  posterUrl: string;
+  type: 'movie' | 'tv';
+  year?: number;
+  description?: string;
+  rating?: number;
+  plugin?: string;
+}
+
+export interface CloudStreamPlugin {
+  name: string;
+  version: string;
+  url: string;
+  status: 'active' | 'inactive';
+  description?: string;
+}
+
+export interface CloudStreamRepo {
+  name: string;
+  url: string;
+  plugins: CloudStreamPlugin[];
 }

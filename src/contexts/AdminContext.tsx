@@ -1,6 +1,5 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { AdminSettings, AdminUser, LiveTVCategory } from '../types';
+import { AdminSettings, AdminUser, LiveTVCategory, SupportedCountry } from '../types';
 
 interface AdminContextType {
   isAuthenticated: boolean;
@@ -14,6 +13,7 @@ interface AdminContextType {
   updateFeaturedChannels: (channels: string[]) => void;
   m3uSources: M3USource[];
   updateM3USources: (sources: M3USource[]) => void;
+  setSelectedCountry: (country: SupportedCountry) => void;
 }
 
 export interface M3USource {
@@ -35,12 +35,22 @@ const defaultSettings: AdminSettings = {
   enableLiveTV: true,
   enableAutoPlay: true,
   enable3DEffects: true,
+  enableCloudStream: false,
+  selectedCountry: 'global',
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
   customCSS: '',
   featuredContent: {
     movie: null,
     tvShow: null,
   },
+  playerSettings: {
+    defaultQuality: 'auto',
+    autoplay: true,
+    preload: true,
+    subtitlesEnabled: true,
+    defaultSubtitleLanguage: 'en',
+    playbackSpeed: 1.0
+  }
 };
 
 const DEFAULT_ADMIN: AdminUser = {
@@ -154,6 +164,10 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
+  const setSelectedCountry = (country: SupportedCountry) => {
+    updateSettings({ selectedCountry: country });
+  };
+
   const updateLiveTVCategories = (categories: LiveTVCategory[]) => {
     setLiveTVCategories(categories);
   };
@@ -180,6 +194,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         updateFeaturedChannels,
         m3uSources,
         updateM3USources,
+        setSelectedCountry,
       }}
     >
       {children}

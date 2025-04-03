@@ -1,4 +1,3 @@
-
 import { AdminSettings } from '@/types';
 
 export interface Settings extends AdminSettings {}
@@ -16,12 +15,22 @@ const defaultSettings: Settings = {
   enableAutoPlay: true,
   enable3DEffects: true,
   enableTrending: false,
+  enableCloudStream: false,
+  selectedCountry: 'global',
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
   customCSS: '',
   featuredContent: {
     movie: null,
     tvShow: null,
   },
+  playerSettings: {
+    defaultQuality: 'auto',
+    autoplay: true,
+    preload: true,
+    subtitlesEnabled: true,
+    defaultSubtitleLanguage: 'en',
+    playbackSpeed: 1.0
+  }
 };
 
 // Fetch settings from localStorage
