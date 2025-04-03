@@ -1,7 +1,8 @@
-import { Movie, TvShow, SupportedCountry, ExternalIDs, CreditsResponse, TMDBResponse, Episode, Genre } from '@/types';
 
-const API_KEY = process.env.REACT_APP_TMDB_API_KEY;
-const BASE_URL = process.env.REACT_APP_TMDB_API_URL || 'https://api.themoviedb.org/3';
+import { Movie, TvShow, SupportedCountry, Genre, Episode, CreditsResponse, ExternalIDs, TMDBResponse } from '@/types';
+
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '43d89010b257341339737be36dfaac13';
+const BASE_URL = import.meta.env.VITE_TMDB_API_URL || 'https://api.themoviedb.org/3';
 
 // Helper function to get image URL
 export const getImageUrl = (path: string | null, size: string = 'original'): string => {
