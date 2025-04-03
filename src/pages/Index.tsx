@@ -1,14 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getTrendingMovies, getTrendingTV, getPopularMovies, getPopularTV, getTopRatedMovies, getTopRatedTV } from '../services/tmdb';
+import { getTrendingMovies, getPopularMovies, getTopRatedMovies } from '../services/tmdb';
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import Hero from '../components/Hero';
-import ContentRow from '../components/ContentRow';
-import { Movie, TvShow } from '../types';
 import { useAdmin } from '../contexts/AdminContext';
 import { PlayCircle } from 'lucide-react';
+import { Movie, TvShow } from '../types';
 
 const Index = () => {
   const [featuredMovie, setFeaturedMovie] = useState<Movie | null>(null);
@@ -21,22 +19,10 @@ const Index = () => {
     queryFn: getTrendingMovies,
   });
 
-  // Fetch trending TV shows
-  const { data: trendingTV, isLoading: isLoadingTrendingTV, error: errorTrendingTV } = useQuery({
-    queryKey: ['trendingTV'],
-    queryFn: getTrendingTV,
-  });
-
   // Fetch popular movies
   const { data: popularMovies, isLoading: isLoadingPopularMovies, error: errorPopularMovies } = useQuery({
     queryKey: ['popularMovies'],
     queryFn: getPopularMovies,
-  });
-
-  // Fetch popular TV shows
-  const { data: popularTV, isLoading: isLoadingPopularTV, error: errorPopularTV } = useQuery({
-    queryKey: ['popularTV'],
-    queryFn: getPopularTV,
   });
 
   // Fetch top rated movies
@@ -45,18 +31,37 @@ const Index = () => {
     queryFn: getTopRatedMovies,
   });
 
-  // Fetch top rated TV shows
-  const { data: topRatedTV, isLoading: isLoadingTopRatedTV, error: errorTopRatedTV } = useQuery({
-    queryKey: ['topRatedTV'],
-    queryFn: getTopRatedTV,
-  });
-
   useEffect(() => {
     if (settings?.featuredContent?.movie) {
-      setFeaturedMovie(settings.featuredContent.movie as Movie);
+      const { id, title, posterPath, backdropPath } = settings.featuredContent.movie;
+      setFeaturedMovie({
+        id,
+        title,
+        poster_path: posterPath,
+        backdrop_path: backdropPath,
+        release_date: '',
+        overview: '',
+        vote_average: 0,
+        vote_count: 0,
+        popularity: 0,
+        adult: false,
+      });
     }
     if (settings?.featuredContent?.tvShow) {
-      setFeaturedTVShow(settings.featuredContent.tvShow as TvShow);
+      const { id, name, posterPath, backdropPath } = settings.featuredContent.tvShow;
+      setFeaturedTVShow({
+        id,
+        name,
+        poster_path: posterPath,
+        backdrop_path: backdropPath,
+        first_air_date: '',
+        overview: '',
+        vote_average: 0,
+        vote_count: 0,
+        popularity: 0,
+        number_of_seasons: 0,
+        number_of_episodes: 0,
+      });
     }
   }, [settings]);
 
@@ -77,16 +82,6 @@ const Index = () => {
                 error={errorTrendingMovies}
               />
             )}
-
-            {(trendingTV && trendingTV.results.length > 0) && (
-              <ContentRow
-                title="Trending TV Shows"
-                content={trendingTV.results}
-                type="tv"
-                isLoading={isLoadingTrendingTV}
-                error={errorTrendingTV}
-              />
-            )}
           </>
         )}
 
@@ -100,16 +95,6 @@ const Index = () => {
           />
         )}
 
-        {(popularTV && popularTV.results.length > 0) && (
-          <ContentRow
-            title="Popular TV Shows"
-            content={popularTV.results}
-            type="tv"
-            isLoading={isLoadingPopularTV}
-            error={errorPopularTV}
-          />
-        )}
-
         {(topRatedMovies && topRatedMovies.results.length > 0) && (
           <ContentRow
             title="Top Rated Movies"
@@ -117,16 +102,6 @@ const Index = () => {
             type="movie"
             isLoading={isLoadingTopRatedMovies}
             error={errorTopRatedMovies}
-          />
-        )}
-
-        {(topRatedTV && topRatedTV.results.length > 0) && (
-          <ContentRow
-            title="Top Rated TV Shows"
-            content={topRatedTV.results}
-            type="tv"
-            isLoading={isLoadingTopRatedTV}
-            error={errorTopRatedTV}
           />
         )}
       </main>

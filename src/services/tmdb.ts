@@ -56,15 +56,15 @@ export const getMovieCredits = (id: number): Promise<Credits> => {
 };
 
 // TV Shows
-export const getTrendingTvShows = (): Promise<TvResponse> => {
+export const getTrendingTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/trending/tv/day?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getPopularTvShows = (): Promise<TvResponse> => {
+export const getPopularTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/tv/popular?api_key=${API_KEY}&language=en-US`);
 };
 
-export const getTopRatedTvShows = (): Promise<TvResponse> => {
+export const getTopRatedTV = (): Promise<TvResponse> => {
   return fetchApi<TvResponse>(`/tv/top_rated?api_key=${API_KEY}&language=en-US`);
 };
 
