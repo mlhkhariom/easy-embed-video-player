@@ -6,7 +6,8 @@ const GlobalCSS: React.FC = () => {
   const { settings } = useAdmin();
 
   return (
-    <style jsx global>{`
+    <style dangerouslySetInnerHTML={{
+      __html: `
       :root {
         --primary-color: ${settings.primaryColor || '#9b87f5'};
         --secondary-color: ${settings.secondaryColor || '#7E69AB'};
@@ -15,7 +16,7 @@ const GlobalCSS: React.FC = () => {
       }
       
       ${settings.customCSS || ''}
-    `}</style>
+    `}} />
   );
 };
 

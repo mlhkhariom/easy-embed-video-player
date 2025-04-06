@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { AdminProvider } from './contexts/AdminContext';
 import { AdminGuard } from './components/admin/AdminGuard';
+import GlobalCSS from './components/GlobalCSS';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminContent from './pages/admin/AdminContent';
@@ -30,11 +30,6 @@ import CloudStream from './pages/CloudStream';
 import CloudStreamDetails from './pages/CloudStreamDetails';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminPlayer from './pages/admin/AdminPlayer';
-
-// Create a global CSS component
-const GlobalCSS = () => {
-  return null; // This is a placeholder component
-};
 
 const queryClient = new QueryClient();
 
@@ -64,7 +59,6 @@ const App = () => {
                 <Route path="/cloudstream" element={<CloudStream />} />
                 <Route path="/cloudstream/:id" element={<CloudStreamDetails />} />
                 
-                {/* Admin routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route
                   path="/admin"
@@ -115,7 +109,6 @@ const App = () => {
                   }
                 />
                 
-                {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
