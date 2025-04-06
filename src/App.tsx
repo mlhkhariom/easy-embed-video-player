@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { AdminProvider } from './contexts/AdminContext';
-import { AdminGuard } from './components/AdminGuard';
+import { AdminGuard } from './components/admin/AdminGuard';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminContent from './pages/admin/AdminContent';
@@ -27,10 +28,13 @@ import WebSeries from './pages/WebSeries';
 import TvSerials from './pages/TvSerials';
 import CloudStream from './pages/CloudStream';
 import CloudStreamDetails from './pages/CloudStreamDetails';
-import GlobalCSS from './components/GlobalCSS';
-import DynamicStyles from './components/DynamicStyles';
-import ErrorBoundary from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminPlayer from './pages/admin/AdminPlayer';
+
+// Create a global CSS component
+const GlobalCSS = () => {
+  return null; // This is a placeholder component
+};
 
 const queryClient = new QueryClient();
 
@@ -42,7 +46,6 @@ const App = () => {
           <QueryClientProvider client={queryClient}>
             <AdminProvider>
               <GlobalCSS />
-              <DynamicStyles />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/movie/:id" element={<Movie />} />

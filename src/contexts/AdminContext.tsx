@@ -63,12 +63,43 @@ const defaultSettings: AdminSettings = {
   enableCloudStream: true,
   enableAutoPlay: true,
   enable3DEffects: true,
+  enableTrending: false,
   tmdbApiKey: '43d89010b257341339737be36dfaac13',
   customCSS: '',
   featuredContent: {
     movie: null,
     tvShow: null,
   },
+  playerAPIs: [
+    {
+      id: 'vidsrc',
+      name: 'VidSrc',
+      url: 'https://vidsrc.dev/embed/{type}/{id}',
+      isActive: true,
+      priority: 1
+    },
+    {
+      id: 'superembed',
+      name: 'SuperEmbed',
+      url: 'https://multiembed.mov/directstream.php?video_id={id}&{type}=1',
+      isActive: true,
+      priority: 2
+    },
+    {
+      id: 'dbgo',
+      name: 'DBGO',
+      url: 'https://dbgo.fun/imdb.php?id={id}',
+      isActive: true,
+      priority: 3
+    }
+  ],
+  playerSettings: {
+    autoPlay: true,
+    muted: false,
+    defaultVolume: 0.8,
+    enable3DEffects: true,
+    preferredQuality: 'auto'
+  }
 };
 
 const DEFAULT_ADMIN: AdminUser = {

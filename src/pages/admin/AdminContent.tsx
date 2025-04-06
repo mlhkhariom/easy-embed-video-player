@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useQuery } from '@tanstack/react-query';
@@ -39,16 +38,17 @@ const AdminContent = () => {
           setEnableCloudStream(data?.enableCloudStream || false);
           updateAdminSettings(data);
           
-          // Convert featured content to Movie/TvShow format if available
+          // If we have movie ID, we'd need to fetch the full movie data from an API
           if (data?.featuredContent?.movie) {
-            const movieData = data.featuredContent.movie;
+            // Here we're just setting the ID, in a real application 
+            // you would fetch the full movie details
             setFeaturedMovie({
-              id: movieData.id,
-              title: movieData.title,
-              poster_path: movieData.posterPath,
-              backdrop_path: movieData.backdropPath,
-              release_date: '',
-              overview: '',
+              id: data.featuredContent.movie,
+              title: "Movie Title", // This would come from API
+              poster_path: "/placeholder.jpg", // This would come from API
+              backdrop_path: "/placeholder.jpg", // This would come from API
+              release_date: "",
+              overview: "",
               vote_average: 0,
               vote_count: 0,
               popularity: 0,
@@ -57,14 +57,14 @@ const AdminContent = () => {
           }
           
           if (data?.featuredContent?.tvShow) {
-            const tvData = data.featuredContent.tvShow;
+            // Similar to movie, we'd fetch TV show details in a real app
             setFeaturedTVShow({
-              id: tvData.id,
-              name: tvData.name,
-              poster_path: tvData.posterPath,
-              backdrop_path: tvData.backdropPath,
-              first_air_date: '',
-              overview: '',
+              id: data.featuredContent.tvShow,
+              name: "TV Show Name", // This would come from API
+              poster_path: "/placeholder.jpg", // This would come from API
+              backdrop_path: "/placeholder.jpg", // This would come from API
+              first_air_date: "",
+              overview: "",
               vote_average: 0,
               vote_count: 0,
               popularity: 0,
@@ -85,20 +85,10 @@ const AdminContent = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Prepare featured content data
+      // In the actual API, we just store the IDs
       const featuredContent = {
-        movie: featuredMovie ? {
-          id: featuredMovie.id,
-          title: featuredMovie.title,
-          posterPath: featuredMovie.poster_path,
-          backdropPath: featuredMovie.backdrop_path
-        } : null,
-        tvShow: featuredTVShow ? {
-          id: featuredTVShow.id,
-          name: featuredTVShow.name,
-          posterPath: featuredTVShow.poster_path,
-          backdropPath: featuredTVShow.backdrop_path
-        } : null
+        movie: featuredMovie ? featuredMovie.id : null,
+        tvShow: featuredTVShow ? featuredTVShow.id : null
       };
 
       // Update settings

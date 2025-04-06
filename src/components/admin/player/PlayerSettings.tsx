@@ -24,7 +24,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Volume2, Play, Cube } from 'lucide-react';
+import { Volume2, Play, Box } from 'lucide-react';
 
 const PlayerSettings = () => {
   const { settings, updateSettings } = useAdmin();
@@ -118,7 +118,7 @@ const PlayerSettings = () => {
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
                         <div className="flex items-center">
-                          <Cube className="mr-2 h-4 w-4 text-primary" />
+                          <Box className="mr-2 h-4 w-4 text-primary" />
                           <FormLabel className="text-base">3D Effects</FormLabel>
                         </div>
                         <FormDescription>
