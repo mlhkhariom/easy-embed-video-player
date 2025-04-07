@@ -5,8 +5,15 @@ import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getPopularMovies, getTopRatedMovies, getMoviesByGenre } from '../services/tmdb';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { getPopularMovies, getTopRatedMovies, getMoviesByGenre, getGenres } from '../services/tmdb';
 import { useToast } from '@/components/ui/use-toast';
+import { FadeIn, StaggerContainer, StaggerItem, ScrollReveal } from '../components/ui/animations';
+import { GlassCard } from '../components/ui/effects';
+import { CardsGridSkeleton } from '../components/ui/loaders';
+import { Film, Filter, Search, SortDesc, Calendar } from 'lucide-react';
 
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,11 +21,17 @@ const Movies = () => {
   const genreParam = searchParams.get('genre');
   
   const [movies, setMovies] = useState<any[]>([]);
+  const [filteredMovies, setFilteredMovies] = useState<any[]>([]);
+  const [genres, setGenres] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+  const [yearFilter, setYearFilter] = useState('');
   const { toast } = useToast();
   
   // Intersection observer
@@ -31,8 +44,25 @@ const Movies = () => {
     setMovies([]);
     setPage(1);
     setHasMore(true);
+    setSearchQuery('');
+    setSelectedGenres([]);
+    setYearFilter('');
     window.scrollTo(0, 0);
   };
+  
+  // Fetch movie genres
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await getGenres();
+        setGenres(response.genres);
+      } catch (error) {
+        console.error('Error fetching genres:', error);
+      }
+    };
+    
+    fetchGenres();
+  }, []);
   
   // Fetch movies based on category
   const fetchMovies = useCallback(async (resetMovies = false) => {
@@ -59,8 +89,13 @@ const Movies = () => {
       if (response && response.results) {
         if (resetMovies) {
           setMovies(response.results);
+          setFilteredMovies(response.results);
         } else {
-          setMovies(prevMovies => [...prevMovies, ...response.results]);
+          setMovies(prevMovies => {
+            const newMovies = [...prevMovies, ...response.results];
+            setFilteredMovies(newMovies);
+            return newMovies;
+          });
         }
         
         setHasMore(page < response.total_pages);
@@ -112,10 +147,59 @@ const Movies = () => {
     }
   }, [page, fetchMovies]);
   
+  // Handle search and filtering
+  useEffect(() => {
+    if (!movies.length) return;
+    
+    let results = [...movies];
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(movie => 
+        movie.title.toLowerCase().includes(query) || 
+        (movie.overview && movie.overview.toLowerCase().includes(query))
+      );
+    }
+    
+    // Apply genre filter
+    if (selectedGenres.length > 0) {
+      results = results.filter(movie => 
+        movie.genre_ids?.some(id => selectedGenres.includes(id))
+      );
+    }
+    
+    // Apply year filter
+    if (yearFilter) {
+      results = results.filter(movie => 
+        movie.release_date && movie.release_date.includes(yearFilter)
+      );
+    }
+    
+    setFilteredMovies(results);
+  }, [searchQuery, selectedGenres, yearFilter, movies]);
+  
+  // Toggle genre selection
+  const toggleGenre = (genreId: number) => {
+    setSelectedGenres(prev => 
+      prev.includes(genreId) 
+        ? prev.filter(id => id !== genreId) 
+        : [...prev, genreId]
+    );
+  };
+  
+  // Reset filters
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedGenres([]);
+    setYearFilter('');
+  };
+  
   // Get page title based on params
   const getPageTitle = () => {
     if (genreParam) {
-      return 'Genre Movies';
+      const genre = genres.find(g => g.id === parseInt(genreParam));
+      return genre ? `${genre.name} Movies` : 'Genre Movies';
     }
     
     switch (categoryParam) {
@@ -128,75 +212,162 @@ const Movies = () => {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-moviemate-background">
       <Navbar />
       
       <main className="container mx-auto px-4 pt-24 pb-12">
-        <h1 className="text-3xl font-bold mb-6">{getPageTitle()}</h1>
-        
-        {!genreParam && (
-          <Tabs defaultValue={categoryParam} onValueChange={handleTabChange} className="mb-8">
-            <TabsList>
-              <TabsTrigger value="popular">Popular</TabsTrigger>
-              <TabsTrigger value="top_rated">Top Rated</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
+        <FadeIn>
+          <div className="flex flex-col items-start justify-between gap-4 mb-6 md:flex-row md:items-center">
+            <div>
+              <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
+                <Film className="h-8 w-8 text-moviemate-primary" />
+                {getPageTitle()}
+              </h1>
+              <p className="text-gray-400 mt-1">
+                Discover and explore the best cinema has to offer
+              </p>
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter size={16} />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+          </div>
+          
+          {!genreParam && (
+            <Tabs defaultValue={categoryParam} onValueChange={handleTabChange} className="mb-6">
+              <TabsList>
+                <TabsTrigger value="popular" className="flex items-center gap-1">
+                  <SortDesc className="h-4 w-4" />
+                  Popular
+                </TabsTrigger>
+                <TabsTrigger value="top_rated" className="flex items-center gap-1">
+                  <Star className="h-4 w-4" />
+                  Top Rated
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          
+          <div className="mb-6">
+            <form className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search movies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </form>
+          </div>
+          
+          {showFilters && (
+            <ScrollReveal>
+              <GlassCard intensity="low" className="p-6 mb-8">
+                <h3 className="text-lg font-medium text-white mb-4">Filters</h3>
+                
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-400 mb-2">Genres</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {genres.map(genre => (
+                        <Button
+                          key={genre.id}
+                          size="sm"
+                          variant={selectedGenres.includes(genre.id) ? "default" : "outline"}
+                          className={selectedGenres.includes(genre.id) ? "bg-moviemate-primary" : ""}
+                          onClick={() => toggleGenre(genre.id)}
+                        >
+                          {genre.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-400 mb-2">Release Year</h4>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Enter year (e.g., 2023)"
+                        value={yearFilter}
+                        onChange={(e) => setYearFilter(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button onClick={resetFilters} variant="outline">
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            </ScrollReveal>
+          )}
+        </FadeIn>
         
         {error ? (
           <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-center">
             <p className="text-destructive">{error}</p>
-            <button 
+            <Button 
               onClick={() => fetchMovies(true)} 
-              className="mt-2 px-4 py-2 bg-primary text-white rounded-md"
+              className="mt-2"
             >
               Retry
-            </button>
+            </Button>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {movies.map((movie, index) => {
-                const isLastElement = index === movies.length - 1;
+        ) : isLoading && page === 1 ? (
+          <CardsGridSkeleton count={10} />
+        ) : filteredMovies.length > 0 ? (
+          <StaggerContainer>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {filteredMovies.map((movie, index) => {
+                const isLastElement = index === filteredMovies.length - 1;
                 return (
-                  <div 
-                    key={movie.id} 
-                    ref={isLastElement ? lastMovieRef : null}
-                  >
-                    <MovieCard 
-                      movieId={movie.id}
-                      title={movie.title}
-                      posterPath={movie.poster_path}
-                      rating={movie.vote_average}
-                      mediaType="movie"
-                    />
-                  </div>
+                  <StaggerItem key={`${movie.id}-${index}`}>
+                    <div 
+                      ref={isLastElement ? lastMovieRef : null}
+                    >
+                      <MovieCard 
+                        item={movie}
+                        type="movie"
+                      />
+                    </div>
+                  </StaggerItem>
                 );
               })}
-              
-              {(isLoading || isLoadingMore) && (
-                Array.from({ length: 10 }).map((_, index) => (
-                  <div key={`skeleton-${index}`} className="rounded-lg overflow-hidden">
-                    <Skeleton className="aspect-[2/3] w-full" />
-                    <Skeleton className="h-4 w-2/3 mt-2" />
-                    <Skeleton className="h-3 w-1/3 mt-1" />
-                  </div>
-                ))
-              )}
             </div>
             
-            {!isLoading && !isLoadingMore && movies.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground text-lg">No movies found.</p>
+            {isLoadingMore && (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 mt-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={`skeleton-${index}`} className="aspect-[2/3] rounded-lg" />
+                ))}
               </div>
             )}
-            
-            {!hasMore && movies.length > 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">End of results</p>
+          </StaggerContainer>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground text-lg">No movies found.</p>
+            {(searchQuery || selectedGenres.length > 0 || yearFilter) && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-400 mb-2">Try adjusting your filters</p>
+                <Button onClick={resetFilters}>
+                  Reset Filters
+                </Button>
               </div>
             )}
-          </>
+          </div>
+        )}
+        
+        {!isLoading && !isLoadingMore && filteredMovies.length > 0 && !hasMore && (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">End of results</p>
+          </div>
         )}
       </main>
     </div>

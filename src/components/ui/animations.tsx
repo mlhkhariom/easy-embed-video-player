@@ -101,17 +101,17 @@ export const HoverScale: React.FC<{
   );
 };
 
-// Scroll reveal animation
+// Scroll reveal animation - fix the TypeScript error by using 'amount' instead of 'threshold'
 export const ScrollReveal: React.FC<{
   children: React.ReactNode;
-  threshold?: number;
+  amount?: number;
   className?: string;
-}> = ({ children, threshold = 0.1, className = '' }) => {
+}> = ({ children, amount = 0.1, className = '' }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, threshold }}
+      viewport={{ once: true, amount }}
       transition={{ duration: 0.7 }}
       className={className}
     >

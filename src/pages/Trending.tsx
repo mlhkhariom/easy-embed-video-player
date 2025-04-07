@@ -1,132 +1,176 @@
 
 import { useState, useEffect } from 'react';
-import { getTrendingMovies, getTrendingTvShows } from '../services/tmdb';
-import { Movie, TvShow } from '../types';
-import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import MovieCard from '../components/MovieCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
+import { FadeIn, SlideUp, StaggerContainer, StaggerItem } from '../components/ui/animations';
+import { GradientText, Parallax } from '../components/ui/effects';
+import { CardSkeleton, CardsGridSkeleton } from '../components/ui/loaders';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/use-toast';
+import { getTrendingContent } from '../services/tmdb';
+import { TrendingUp, Film, Tv, Clock, Calendar } from 'lucide-react';
 
 const Trending = () => {
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [trendingTvShows, setTrendingTvShows] = useState<TvShow[]>([]);
-  const [activeTab, setActiveTab] = useState<'movies' | 'tvshows'>('movies');
+  const [trendingContent, setTrendingContent] = useState<any[]>([]);
+  const [contentType, setContentType] = useState<'all' | 'movie' | 'tv'>('all');
+  const [timeWindow, setTimeWindow] = useState<'day' | 'week'>('week');
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
-    const fetchTrending = async () => {
+    const fetchTrendingContent = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        setError(null);
-        
-        const [moviesData, tvShowsData] = await Promise.all([
-          getTrendingMovies(),
-          getTrendingTvShows(),
-        ]);
-        
-        setTrendingMovies(moviesData.results);
-        setTrendingTvShows(tvShowsData.results);
+        const data = await getTrendingContent(contentType, timeWindow);
+        setTrendingContent(data.results);
       } catch (error) {
-        console.error('Error fetching trending content:', error);
-        setError('Failed to load trending content. Please try again later.');
+        console.error('Failed to fetch trending content:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load trending content",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchTrending();
-  }, []);
+    fetchTrendingContent();
+  }, [contentType, timeWindow, toast]);
   
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-  
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-    },
+  const goToDetails = (id: number, type: 'movie' | 'tv') => {
+    navigate(`/${type}/${id}`);
   };
   
   return (
-    <div className="min-h-screen bg-moviemate-background">
+    <div className="min-h-screen bg-gradient-to-b from-moviemate-background to-purple-900/20">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <h1 className="text-3xl font-bold text-white">Trending Today</h1>
+      <main className="container mx-auto px-4 pt-24 pb-16">
+        <FadeIn>
+          <div className="flex flex-col items-start justify-between gap-4 mb-8 md:flex-row md:items-center">
+            <div>
+              <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
+                <TrendingUp className="h-8 w-8 text-moviemate-primary" />
+                <span>Trending</span>
+              </h1>
+              <p className="text-gray-400 mt-1">
+                Discover what's popular right now
+              </p>
+            </div>
+            
+            <div className="flex space-x-2 items-center">
+              <Button 
+                variant={timeWindow === 'day' ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTimeWindow('day')}
+                className="flex items-center gap-2"
+              >
+                <Clock size={16} />
+                Today
+              </Button>
+              <Button 
+                variant={timeWindow === 'week' ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTimeWindow('week')}
+                className="flex items-center gap-2"
+              >
+                <Calendar size={16} />
+                This Week
+              </Button>
+            </div>
+          </div>
           
-          <Tabs defaultValue="movies" className="w-full md:w-auto" onValueChange={(value) => setActiveTab(value as 'movies' | 'tvshows')}>
-            <TabsList className="grid w-full grid-cols-2 md:w-auto">
-              <TabsTrigger value="movies">Movies</TabsTrigger>
-              <TabsTrigger value="tvshows">TV Shows</TabsTrigger>
+          <Tabs
+            defaultValue="all"
+            value={contentType}
+            onValueChange={(value) => setContentType(value as 'all' | 'movie' | 'tv')}
+            className="mb-8"
+          >
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="movie" className="flex items-center gap-2">
+                <Film size={16} />
+                Movies
+              </TabsTrigger>
+              <TabsTrigger value="tv" className="flex items-center gap-2">
+                <Tv size={16} />
+                TV Shows
+              </TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
+        </FadeIn>
         
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {[...Array(10)].map((_, index) => (
-              <div key={index} className="animate-pulse">
-                <div className="aspect-[2/3] rounded-lg bg-moviemate-card"></div>
-              </div>
-            ))}
-          </div>
-        ) : error ? (
-          <Alert variant="destructive" className="bg-red-500/20 border-red-500/50">
-            <AlertTitle className="text-white">Error</AlertTitle>
-            <AlertDescription className="text-gray-300">{error}</AlertDescription>
-          </Alert>
+          <CardsGridSkeleton count={12} />
         ) : (
           <>
-            {activeTab === 'movies' ? (
-              <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {trendingMovies.map((movie) => (
-                  <motion.div key={movie.id} variants={itemVariants}>
-                    <MovieCard
-                      movieId={movie.id}
-                      title={movie.title}
-                      posterPath={movie.poster_path}
-                      rating={movie.vote_average}
-                      mediaType="movie"
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div 
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {trendingTvShows.map((tvShow) => (
-                  <motion.div key={tvShow.id} variants={itemVariants}>
-                    <MovieCard
-                      movieId={tvShow.id}
-                      title={tvShow.name}
-                      posterPath={tvShow.poster_path}
-                      rating={tvShow.vote_average}
-                      mediaType="tv"
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
+            {/* Hero section - first trending item */}
+            {trendingContent.length > 0 && (
+              <SlideUp>
+                <div 
+                  className="relative w-full h-[50vh] rounded-xl overflow-hidden mb-8 bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `url(https://image.tmdb.org/t/p/original${trendingContent[0].backdrop_path})` 
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <GradientText className="text-3xl font-bold mb-2">
+                      {trendingContent[0].title || trendingContent[0].name}
+                    </GradientText>
+                    <p className="text-white mb-4 line-clamp-2">
+                      {trendingContent[0].overview}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => goToDetails(
+                          trendingContent[0].id, 
+                          trendingContent[0].title ? 'movie' : 'tv'
+                        )}
+                      >
+                        View Details
+                      </Button>
+                      <Button variant="outline">
+                        Add to Watchlist
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </SlideUp>
+            )}
+            
+            {/* Trending grid */}
+            <Parallax speed={0.05} direction="up">
+              <h2 className="text-2xl font-bold text-white mb-6">
+                Trending {contentType === 'movie' ? 'Movies' : contentType === 'tv' ? 'TV Shows' : 'Content'}
+              </h2>
+            </Parallax>
+            
+            <StaggerContainer>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {trendingContent.map((item) => {
+                  const type = item.media_type || (item.title ? 'movie' : 'tv');
+                  return (
+                    <StaggerItem key={item.id}>
+                      <MovieCard
+                        item={item}
+                        type={type}
+                      />
+                    </StaggerItem>
+                  );
+                })}
+              </div>
+            </StaggerContainer>
+            
+            {trendingContent.length === 0 && (
+              <div className="text-center py-20">
+                <p className="text-xl text-gray-400">No trending content found</p>
+                <p className="text-gray-500 mt-2">Try changing your filters</p>
+              </div>
             )}
           </>
         )}
