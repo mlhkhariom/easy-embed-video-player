@@ -1,27 +1,134 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>easy-embed-video-player</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <title>FreeCinema - Stream Movies & TV Shows</title>
+    <meta name="description" content="Stream your favorite movies and TV shows online for free. Enjoy unlimited entertainment with FreeCinema." />
+    <meta name="author" content="FreeCinema" />
+    <meta name="theme-color" content="#1a1f2c" />
 
-    <meta property="og:title" content="Lovable Generated Project" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="FreeCinema - Stream Movies & TV Shows" />
+    <meta property="og:description" content="Stream your favorite movies and TV shows online for free. Enjoy unlimited entertainment with FreeCinema." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:site" content="@freecinema" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    <script type="module" crossorigin src="/assets/index-iShZBKdn.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C1wM5NWT.css">
+    
+    <!-- Preconnect to important domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- AOS Animation Library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" />
+
+    <!-- Plyr Video Player CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
+    <!-- Custom Styles -->
+    <style>
+      /* Base font settings */
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Poppins', sans-serif;
+      }
+      
+      /* Improved scrollbar for Firefox */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary) rgba(26, 31, 44, 0.4);
+      }
+      
+      /* Smooth scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      /* Plyr video player customizations */
+      .plyr--full-ui input[type=range] {
+        color: var(--primary, #9b87f5);
+      }
+      
+      .plyr--video .plyr__control--overlaid {
+        background: var(--primary, #9b87f5);
+      }
+      
+      .plyr--video .plyr__control.plyr__tab-focus,
+      .plyr--video .plyr__control:hover,
+      .plyr--video .plyr__control[aria-expanded=true] {
+        background: var(--primary-dark, #8270d8);
+      }
+      
+      .plyr__control.plyr__tab-focus {
+        box-shadow: 0 0 0 5px rgba(155, 135, 245, .5);
+      }
+      
+      .plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
+        background: var(--primary, #9b87f5);
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-D5WfZlMu.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B44f4Yvd.css">
   </head>
 
   <body>
     <div id="root"></div>
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    
+    <!-- AOS Animation Library -->
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    
+    <!-- Plyr Video Player -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    
+    <!-- HLS.js for streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Initialize libraries -->
+    <script>
+      // Initialize AOS animations
+      document.addEventListener('DOMContentLoaded', function() {
+        AOS.init({
+          duration: 800,
+          easing: 'ease-in-out',
+          once: true,
+          mirror: false
+        });
+      });
+      
+      // Helper function to initialize Plyr for video elements
+      window.initPlyr = function(selector) {
+        const players = Plyr.setup(selector, {
+          captions: { active: true },
+          quality: { default: 720, options: [4320, 2880, 2160, 1440, 1080, 720, 576, 480, 360, 240] }
+        });
+        
+        return players;
+      };
+      
+      // Helper for HLS streaming with fallback
+      window.initHlsPlayer = function(videoElement, src) {
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(src);
+          hls.attachMedia(videoElement);
+        } 
+        else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          videoElement.src = src;
+        }
+      };
+    </script>
+    
+    <!-- Main application script -->
   </body>
 </html>
