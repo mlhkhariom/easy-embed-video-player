@@ -179,6 +179,39 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_files: {
+        Row: {
+          file_id: string
+          file_name: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          size: number
+          upload_date: string | null
+          url: string | null
+        }
+        Insert: {
+          file_id: string
+          file_name: string
+          id?: string
+          metadata?: Json | null
+          mime_type: string
+          size: number
+          upload_date?: string | null
+          url?: string | null
+        }
+        Update: {
+          file_id?: string
+          file_name?: string
+          id?: string
+          metadata?: Json | null
+          mime_type?: string
+          size?: number
+          upload_date?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -57,14 +57,25 @@ export const uploadFileToTelegram = async (options: TelegramUploadOptions): Prom
  */
 export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
   try {
+    // Use raw query instead of typed query since our types don't include the new table yet
     const { data, error } = await supabase
       .from('telegram_files')
       .select('*')
-      .order('uploadDate', { ascending: false });
+      .order('upload_date', { ascending: false });
     
     if (error) throw error;
-    
-    return data || [];
+
+    // Transform the DB column names to our interface format
+    return (data || []).map(file => ({
+      id: file.id,
+      fileId: file.file_id,
+      fileName: file.file_name,
+      mimeType: file.mime_type,
+      size: file.size,
+      metadata: file.metadata || {},
+      uploadDate: file.upload_date,
+      url: getTelegramFileUrl(file.file_id)
+    }));
   } catch (error) {
     console.error('Error fetching Telegram files:', error);
     return [];
@@ -76,10 +87,11 @@ export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
  */
 export const deleteTelegramFile = async (fileId: string): Promise<boolean> => {
   try {
+    // Use raw query instead of typed query
     const { error } = await supabase
       .from('telegram_files')
       .delete()
-      .eq('fileId', fileId);
+      .eq('file_id', fileId);
     
     if (error) throw error;
     
