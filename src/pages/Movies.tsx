@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -13,7 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { FadeIn, StaggerContainer, StaggerItem, ScrollReveal } from '../components/ui/animations';
 import { GlassCard } from '../components/ui/effects';
 import { CardsGridSkeleton } from '../components/ui/loaders';
-import { Film, Filter, Search, SortDesc, Calendar } from 'lucide-react';
+import { Film, Filter, Search, SortDesc, Star as StarIcon } from 'lucide-react';
 
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,11 +33,9 @@ const Movies = () => {
   const [yearFilter, setYearFilter] = useState('');
   const { toast } = useToast();
   
-  // Intersection observer
   const observer = useRef<IntersectionObserver | null>(null);
   const lastMovieElementRef = useRef<HTMLDivElement>(null);
   
-  // Handle tab change
   const handleTabChange = (value: string) => {
     setSearchParams({ category: value });
     setMovies([]);
@@ -50,7 +47,6 @@ const Movies = () => {
     window.scrollTo(0, 0);
   };
   
-  // Fetch movie genres
   useEffect(() => {
     const fetchGenres = async () => {
       try {
@@ -64,7 +60,6 @@ const Movies = () => {
     fetchGenres();
   }, []);
   
-  // Fetch movies based on category
   const fetchMovies = useCallback(async (resetMovies = false) => {
     try {
       if (resetMovies) {
@@ -115,12 +110,10 @@ const Movies = () => {
     }
   }, [categoryParam, genreParam, page, toast]);
   
-  // Initial fetch
   useEffect(() => {
     fetchMovies(true);
   }, [categoryParam, genreParam, fetchMovies]);
   
-  // Setup intersection observer for infinite scrolling
   const lastMovieRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoading || isLoadingMore) return;
     
@@ -140,20 +133,17 @@ const Movies = () => {
     }
   }, [isLoading, isLoadingMore, hasMore]);
   
-  // Fetch more when page changes
   useEffect(() => {
     if (page > 1) {
       fetchMovies();
     }
   }, [page, fetchMovies]);
   
-  // Handle search and filtering
   useEffect(() => {
     if (!movies.length) return;
     
     let results = [...movies];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(movie => 
@@ -162,14 +152,12 @@ const Movies = () => {
       );
     }
     
-    // Apply genre filter
     if (selectedGenres.length > 0) {
       results = results.filter(movie => 
         movie.genre_ids?.some(id => selectedGenres.includes(id))
       );
     }
     
-    // Apply year filter
     if (yearFilter) {
       results = results.filter(movie => 
         movie.release_date && movie.release_date.includes(yearFilter)
@@ -179,7 +167,6 @@ const Movies = () => {
     setFilteredMovies(results);
   }, [searchQuery, selectedGenres, yearFilter, movies]);
   
-  // Toggle genre selection
   const toggleGenre = (genreId: number) => {
     setSelectedGenres(prev => 
       prev.includes(genreId) 
@@ -188,14 +175,12 @@ const Movies = () => {
     );
   };
   
-  // Reset filters
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedGenres([]);
     setYearFilter('');
   };
   
-  // Get page title based on params
   const getPageTitle = () => {
     if (genreParam) {
       const genre = genres.find(g => g.id === parseInt(genreParam));
@@ -246,7 +231,7 @@ const Movies = () => {
                   Popular
                 </TabsTrigger>
                 <TabsTrigger value="top_rated" className="flex items-center gap-1">
-                  <Star className="h-4 w-4" />
+                  <StarIcon className="h-4 w-4" />
                   Top Rated
                 </TabsTrigger>
               </TabsList>

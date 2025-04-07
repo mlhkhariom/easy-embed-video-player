@@ -1,3 +1,4 @@
+
 import { MovieResponse, TvResponse, Movie, TvShow, Credits, Episode, Season } from '../types';
 import { safeFetch, handleAPIError, APIError } from './error-handler';
 
@@ -256,4 +257,43 @@ export const getMoviesByGenre = (genreId: number, page: number = 1): Promise<Mov
   return fetchApi<MovieResponse>(
     `/discover/movie?api_key=${API_KEY}&language=en-US&with_genres=${genreId}&page=${page}&sort_by=popularity.desc`
   );
+};
+
+// Adding missing functions that are required by our components
+export const getGenres = (): Promise<{ genres: { id: number, name: string }[] }> => {
+  return fetchApi<{ genres: { id: number, name: string }[] }>(
+    `/genre/movie/list?api_key=${API_KEY}&language=en-US`
+  );
+};
+
+export const getTrendingContent = (mediaType: 'all' | 'movie' | 'tv', timeWindow: 'day' | 'week'): Promise<MovieResponse | TvResponse> => {
+  return fetchApi<MovieResponse | TvResponse>(
+    `/trending/${mediaType}/${timeWindow}?api_key=${API_KEY}&language=en-US`
+  );
+};
+
+export const discoverContent = (options: {
+  type: 'movie' | 'tv',
+  genreIds?: number[],
+  sortBy?: string,
+  year?: number,
+  page?: number
+}): Promise<MovieResponse | TvResponse> => {
+  const { type, genreIds = [], sortBy = 'popularity.desc', year, page = 1 } = options;
+  
+  let endpoint = `/discover/${type}?api_key=${API_KEY}&language=en-US&page=${page}&sort_by=${sortBy}`;
+  
+  if (genreIds.length > 0) {
+    endpoint += `&with_genres=${genreIds.join(',')}`;
+  }
+  
+  if (year) {
+    if (type === 'movie') {
+      endpoint += `&primary_release_year=${year}`;
+    } else {
+      endpoint += `&first_air_date_year=${year}`;
+    }
+  }
+  
+  return fetchApi<MovieResponse | TvResponse>(endpoint);
 };

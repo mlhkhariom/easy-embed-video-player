@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -25,7 +24,6 @@ const Explore = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Fetch genres
   useEffect(() => {
     const fetchGenres = async () => {
       try {
@@ -44,7 +42,6 @@ const Explore = () => {
     fetchGenres();
   }, [toast]);
   
-  // Fetch initial content
   useEffect(() => {
     const fetchInitialContent = async () => {
       setIsLoading(true);
@@ -75,7 +72,6 @@ const Explore = () => {
     }
   }, [contentType, toast]);
   
-  // Handle genre toggle
   const toggleGenre = (genreId: number) => {
     setActiveGenres(prev => 
       prev.includes(genreId)
@@ -84,7 +80,6 @@ const Explore = () => {
     );
   };
   
-  // Handle filtering
   const handleFilter = async () => {
     setIsLoading(true);
     try {
@@ -107,14 +102,12 @@ const Explore = () => {
     }
   };
   
-  // Reset filters
   const resetFilters = () => {
     setActiveGenres([]);
     setSortBy('popularity.desc');
     setYear('');
   };
   
-  // Navigate to genre page
   const navigateToGenre = (genreId: number, genreName: string) => {
     navigate(`/genre/${genreId}?name=${genreName}&type=${contentType}`);
   };
@@ -225,7 +218,7 @@ const Explore = () => {
         
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <DotsLoader size="lg" color="primary" />
+            <DotsLoader className="text-primary" />
           </div>
         ) : discoverResults.length > 0 ? (
           <StaggerContainer>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -27,20 +26,13 @@ const WebSeries = () => {
   const [filterNetwork, setFilterNetwork] = useState('');
   const { toast } = useToast();
   
-  // Helper function to filter web series from TV shows
   const filterWebSeries = (shows: any[]) => {
     return shows.filter(show => {
-      // Web series typically have:
-      // - Higher production value (reflected in vote_average)
-      // - Fewer episodes per season (compared to traditional TV)
-      // - Recent release years (past ~15 years)
       const isHighRated = show.vote_average >= 6.5;
       const hasFewerEpisodes = !show.number_of_episodes || show.number_of_episodes < 30;
       const isRecent = show.first_air_date && new Date(show.first_air_date).getFullYear() >= 2008;
       
-      // Additional factors:
-      // - Often streaming platforms
-      const streamingNetworks = [213, 1024, 2739, 2552, 4344, 2703, 3186]; // Netflix, Prime, Disney+, etc.
+      const streamingNetworks = [213, 1024, 2739, 2552, 4344, 2703, 3186];
       const isOnStreaming = show.networks?.some((network: any) => 
         streamingNetworks.includes(network.id)
       );
@@ -49,7 +41,6 @@ const WebSeries = () => {
     });
   };
   
-  // Fetch web series data
   useEffect(() => {
     const fetchWebSeries = async () => {
       setIsLoading(true);
@@ -73,13 +64,11 @@ const WebSeries = () => {
     fetchWebSeries();
   }, [toast]);
   
-  // Handle search and filtering
   useEffect(() => {
     if (!webSeries.length) return;
     
     let results = [...webSeries];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(show => 
@@ -88,28 +77,23 @@ const WebSeries = () => {
       );
     }
     
-    // Apply year filter
     if (filterYear) {
       results = results.filter(show => 
         show.first_air_date && show.first_air_date.includes(filterYear)
       );
     }
     
-    // Apply language filter
     if (filterLanguage) {
       results = results.filter(show => 
         show.original_language === filterLanguage.toLowerCase()
       );
     }
     
-    // TODO: Network filtering would require additional API calls to get full show details
-    
     setFilteredSeries(results);
   }, [searchQuery, filterYear, filterLanguage, filterNetwork, webSeries]);
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Search handled in useEffect
   };
   
   const resetFilters = () => {
