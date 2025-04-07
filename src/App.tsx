@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -5,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { AdminProvider } from './contexts/AdminContext';
 import { AdminGuard } from './components/admin/AdminGuard';
 import GlobalCSS from './components/GlobalCSS';
+import DynamicStyles from './components/DynamicStyles';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminContent from './pages/admin/AdminContent';
@@ -41,6 +43,7 @@ const App = () => {
           <QueryClientProvider client={queryClient}>
             <AdminProvider>
               <GlobalCSS />
+              <DynamicStyles />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/movie/:id" element={<Movie />} />
