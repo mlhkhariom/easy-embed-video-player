@@ -7,7 +7,8 @@ import {
   Film,
   Tv,
   Layers,
-  CloudLightning
+  CloudLightning,
+  FileVideo
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,6 +49,20 @@ export function Sidebar({ className }: SidebarProps) {
         >
           <Layers className="h-4 w-4" />
           <span>Content</span>
+        </NavLink>
+
+        <NavLink
+          to="/admin/media"
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all ${
+              isActive
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-secondary/50 text-muted-foreground hover:text-foreground'
+            }`
+          }
+        >
+          <FileVideo className="h-4 w-4" />
+          <span>Media</span>
         </NavLink>
 
         <NavLink

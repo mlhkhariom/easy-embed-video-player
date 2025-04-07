@@ -15,3 +15,5 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
   return <>{children}</>;
 };
+
+export default AdminGuard;

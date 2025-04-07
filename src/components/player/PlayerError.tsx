@@ -69,6 +69,7 @@ const PlayerError = ({ playerError, resetError }: PlayerErrorProps) => {
                 <li>Try a different browser or disable browser extensions</li>
                 <li>The content source may be temporarily unavailable</li>
                 <li>Wait a few minutes and try again later</li>
+                <li>Try a different player API source in settings</li>
               </ul>
             </motion.div>
           )}
