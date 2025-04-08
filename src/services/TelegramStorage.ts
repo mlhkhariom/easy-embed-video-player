@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { formatBytes } from '@/lib/utils';
 
 export interface TelegramFile {
   id: string;
@@ -57,16 +58,19 @@ export const uploadFileToTelegram = async (options: TelegramUploadOptions): Prom
  */
 export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
   try {
-    // Use raw query instead of typed query since our types don't include the new table yet
+    // Use raw query to get the data
     const { data, error } = await supabase
       .from('telegram_files')
       .select('*')
       .order('upload_date', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching telegram files:', error);
+      throw error;
+    }
 
     // Transform the DB column names to our interface format
-    return (data || []).map(file => ({
+    return (data || []).map((file: any) => ({
       id: file.id,
       fileId: file.file_id,
       fileName: file.file_name,
@@ -87,13 +91,16 @@ export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
  */
 export const deleteTelegramFile = async (fileId: string): Promise<boolean> => {
   try {
-    // Use raw query instead of typed query
+    // Use raw query to delete the file
     const { error } = await supabase
       .from('telegram_files')
       .delete()
       .eq('file_id', fileId);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting telegram file:', error);
+      throw error;
+    }
     
     return true;
   } catch (error) {
