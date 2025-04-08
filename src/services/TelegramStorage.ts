@@ -62,7 +62,7 @@ export const uploadFileToTelegram = async (options: TelegramUploadOptions): Prom
  */
 export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
   try {
-    // Execute raw SQL query instead of using the typed client
+    // Execute stored procedure instead of using the typed client
     const { data, error } = await supabase.rpc('get_all_telegram_files');
     
     if (error) {
@@ -92,7 +92,7 @@ export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
  */
 export const searchTelegramFiles = async (query: string): Promise<TelegramFile[]> => {
   try {
-    // Execute raw SQL query for search
+    // Execute stored procedure for search
     const { data, error } = await supabase.rpc('search_telegram_files', { 
       search_query: query.toLowerCase() 
     });
@@ -124,7 +124,7 @@ export const searchTelegramFiles = async (query: string): Promise<TelegramFile[]
  */
 export const deleteTelegramFile = async (fileId: string): Promise<boolean> => {
   try {
-    // Execute raw SQL query for delete
+    // Execute stored procedure for delete
     const { error } = await supabase.rpc('delete_telegram_file', {
       file_id_param: fileId
     });

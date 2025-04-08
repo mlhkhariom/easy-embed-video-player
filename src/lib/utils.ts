@@ -1,15 +1,14 @@
-
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
  
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
- * Format bytes to human readable string
+ * Format bytes to human-readable format
  */
-export function formatBytes(bytes: number, decimals = 2): string {
+export function formatBytes(bytes: number, decimals: number = 2): string {
   if (bytes === 0) return '0 Bytes';
 
   const k = 1024;
