@@ -62,6 +62,7 @@ const PlayerContainer = ({
   }, [isLoading]);
   
   const handlePlayerError = (error: string) => {
+    console.error("Player error:", error);
     setPlayerError(error);
   };
   
@@ -100,27 +101,31 @@ const PlayerContainer = ({
       onMouseMove={handleMouseMove}
     >
       <div className="freecinema-player relative aspect-video w-full bg-black">
-        <VideoPlayer
-          tmdbId={contentId}
-          imdbId={imdbId}
-          type={isMovie ? 'movie' : 'tv'}
-          season={!isMovie ? selectedSeason : undefined}
-          episode={!isMovie ? selectedEpisode : undefined}
-          onError={handlePlayerError}
-        />
+        {!playerError && (
+          <VideoPlayer
+            tmdbId={contentId}
+            imdbId={imdbId}
+            type={isMovie ? 'movie' : 'tv'}
+            season={!isMovie ? selectedSeason : undefined}
+            episode={!isMovie ? selectedEpisode : undefined}
+            onError={handlePlayerError}
+          />
+        )}
         
         <AnimatePresence>
-          <PlayerLoading 
-            isLoading={isLoading}
-            isMovie={isMovie}
-            title={title}
-            episodeTitle={episodeTitle}
-            selectedEpisode={selectedEpisode}
-          />
+          {isLoading && (
+            <PlayerLoading 
+              isLoading={isLoading}
+              isMovie={isMovie}
+              title={title}
+              episodeTitle={episodeTitle}
+              selectedEpisode={selectedEpisode}
+            />
+          )}
         </AnimatePresence>
         
         <AnimatePresence>
-          {!isLoading && (
+          {!isLoading && !playerError && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -142,19 +147,21 @@ const PlayerContainer = ({
           )}
         </AnimatePresence>
         
-        <PlayerControls 
-          isLoading={isLoading}
-          isPlaying={isPlaying}
-          isMuted={isMuted}
-          progress={progress}
-          volume={volume}
-          showControls={showControls}
-          togglePlay={togglePlay}
-          toggleMute={toggleMute}
-          toggleFullscreen={toggleFullscreen}
-          handleVolumeChange={handleVolumeChange}
-          setProgress={setProgress}
-        />
+        {!playerError && (
+          <PlayerControls 
+            isLoading={isLoading}
+            isPlaying={isPlaying}
+            isMuted={isMuted}
+            progress={progress}
+            volume={volume}
+            showControls={showControls}
+            togglePlay={togglePlay}
+            toggleMute={toggleMute}
+            toggleFullscreen={toggleFullscreen}
+            handleVolumeChange={handleVolumeChange}
+            setProgress={setProgress}
+          />
+        )}
       </div>
       
       <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-moviemate-primary/10 blur-3xl"></div>

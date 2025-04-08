@@ -45,7 +45,14 @@ const PlayerVideo = ({
         }
         
         // Initialize new player instance
-        jwPlayerRef.current = window.jwplayer(playerContainerRef.current.id);
+        jwPlayerRef.current = window.jwplayer ? window.jwplayer(playerContainerRef.current.id) : null;
+        
+        // Check if jwplayer is available
+        if (!jwPlayerRef.current) {
+          console.error("JW Player not available");
+          onError?.("Player failed to load. Please refresh the page.");
+          return;
+        }
         
         // Configure and setup player
         jwPlayerRef.current.setup({

@@ -34,7 +34,7 @@ const MoviePage = () => {
       
       try {
         const externalIds = await getMovieExternalIds(movieId);
-        movieData.imdb_id = externalIds.imdb_id;
+        movieData.imdb_id = externalIds?.imdb_id || null;
       } catch (error) {
         console.error('Error fetching external IDs:', error);
       }
@@ -43,9 +43,19 @@ const MoviePage = () => {
       
       try {
         const related = await getRelatedMovies(movieId);
-        setRelatedMovies(related.results.slice(0, 10));
+        if (related && related.results) {
+          // Ensure each movie has a unique key by adding index if needed
+          const uniqueRelated = related.results.slice(0, 10).map((movie, index) => ({
+            ...movie,
+            uniqueId: `${movie.id}-${index}`
+          }));
+          setRelatedMovies(uniqueRelated);
+        } else {
+          setRelatedMovies([]);
+        }
       } catch (error) {
         console.error('Error fetching related movies:', error);
+        setRelatedMovies([]);
       }
       
     } catch (error) {
@@ -88,10 +98,12 @@ const MoviePage = () => {
               setShowPlayer={setShowPlayer}
             />
             
-            <RelatedMovies 
-              movieId={movie.id}
-              initialMovies={relatedMovies}
-            />
+            {relatedMovies.length > 0 && (
+              <RelatedMovies 
+                movieId={movie.id}
+                initialMovies={relatedMovies}
+              />
+            )}
           </>
         ) : (
           <MovieError message="Movie not found" onRetry={handleRetry} isRetrying={isRetrying} />

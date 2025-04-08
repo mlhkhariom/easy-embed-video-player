@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Film } from "lucide-react";
 import PlayerHeader from '../player/PlayerHeader';
 import PlayerContainer from '../player/PlayerContainer';
 import PlayerError from '../player/PlayerError';
@@ -32,13 +31,17 @@ const PlayerSection = ({
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    if (!showPlayer) return;
+    
     setIsLoading(true);
+    setPlayerError(null);
+    
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [contentId, selectedSeason, selectedEpisode]);
+  }, [showPlayer, contentId, selectedSeason, selectedEpisode]);
   
   if (!showPlayer) return null;
   
