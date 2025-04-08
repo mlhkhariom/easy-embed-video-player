@@ -21,6 +21,10 @@ export interface TelegramUploadOptions {
   onProgress?: (progress: number) => void;
 }
 
+// Telegram Bot configuration
+const TELEGRAM_BOT_TOKEN = '7932369696:AAH420iQ3bgzOcz0JsW2pmq342BIupjw7dw';
+const TELEGRAM_CHANNEL_ID = '1924990488';
+
 /**
  * Upload a file to Telegram storage through our backend
  */
@@ -58,11 +62,8 @@ export const uploadFileToTelegram = async (options: TelegramUploadOptions): Prom
  */
 export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
   try {
-    // Use raw query to get the data
-    const { data, error } = await supabase
-      .from('telegram_files')
-      .select('*')
-      .order('upload_date', { ascending: false });
+    // Execute raw SQL query instead of using the typed client
+    const { data, error } = await supabase.rpc('get_all_telegram_files');
     
     if (error) {
       console.error('Error fetching telegram files:', error);
@@ -87,15 +88,46 @@ export const getTelegramFiles = async (): Promise<TelegramFile[]> => {
 };
 
 /**
+ * Search files in Telegram storage by name or metadata
+ */
+export const searchTelegramFiles = async (query: string): Promise<TelegramFile[]> => {
+  try {
+    // Execute raw SQL query for search
+    const { data, error } = await supabase.rpc('search_telegram_files', { 
+      search_query: query.toLowerCase() 
+    });
+    
+    if (error) {
+      console.error('Error searching telegram files:', error);
+      throw error;
+    }
+
+    // Transform the DB column names to our interface format
+    return (data || []).map((file: any) => ({
+      id: file.id,
+      fileId: file.file_id,
+      fileName: file.file_name,
+      mimeType: file.mime_type,
+      size: file.size,
+      metadata: file.metadata || {},
+      uploadDate: file.upload_date,
+      url: getTelegramFileUrl(file.file_id)
+    }));
+  } catch (error) {
+    console.error('Error searching Telegram files:', error);
+    return [];
+  }
+};
+
+/**
  * Delete a file from Telegram storage
  */
 export const deleteTelegramFile = async (fileId: string): Promise<boolean> => {
   try {
-    // Use raw query to delete the file
-    const { error } = await supabase
-      .from('telegram_files')
-      .delete()
-      .eq('file_id', fileId);
+    // Execute raw SQL query for delete
+    const { error } = await supabase.rpc('delete_telegram_file', {
+      file_id_param: fileId
+    });
     
     if (error) {
       console.error('Error deleting telegram file:', error);
@@ -106,6 +138,76 @@ export const deleteTelegramFile = async (fileId: string): Promise<boolean> => {
   } catch (error) {
     console.error('Error deleting Telegram file:', error);
     return false;
+  }
+};
+
+/**
+ * Upload media content from API to Telegram
+ */
+export const uploadContentToTelegram = async (
+  contentData: { title: string; posterUrl: string; backdropUrl?: string; type: string; id: string },
+  onProgress?: (progress: number) => void
+): Promise<Record<string, string>> => {
+  try {
+    const results: Record<string, string> = {};
+    let progress = 0;
+    
+    // Upload poster image
+    if (contentData.posterUrl) {
+      const posterResponse = await fetch(contentData.posterUrl);
+      if (posterResponse.ok) {
+        const posterBlob = await posterResponse.blob();
+        const fileName = `${contentData.type}_${contentData.id}_poster.${posterBlob.type.split('/')[1] || 'jpg'}`;
+        
+        const posterFile = await uploadFileToTelegram({
+          fileName,
+          fileData: posterBlob,
+          metadata: {
+            contentType: contentData.type,
+            contentId: contentData.id,
+            imageType: 'poster',
+            title: contentData.title
+          }
+        });
+        
+        if (posterFile) {
+          results.poster = posterFile.url || '';
+          progress = 50;
+          if (onProgress) onProgress(progress);
+        }
+      }
+    }
+    
+    // Upload backdrop image if available
+    if (contentData.backdropUrl) {
+      const backdropResponse = await fetch(contentData.backdropUrl);
+      if (backdropResponse.ok) {
+        const backdropBlob = await backdropResponse.blob();
+        const fileName = `${contentData.type}_${contentData.id}_backdrop.${backdropBlob.type.split('/')[1] || 'jpg'}`;
+        
+        const backdropFile = await uploadFileToTelegram({
+          fileName,
+          fileData: backdropBlob,
+          metadata: {
+            contentType: contentData.type,
+            contentId: contentData.id,
+            imageType: 'backdrop',
+            title: contentData.title
+          }
+        });
+        
+        if (backdropFile) {
+          results.backdrop = backdropFile.url || '';
+          progress = 100;
+          if (onProgress) onProgress(progress);
+        }
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error uploading content to Telegram:', error);
+    return {};
   }
 };
 
