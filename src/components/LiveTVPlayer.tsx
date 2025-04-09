@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Channel } from '../services/iptv';
@@ -8,6 +7,26 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Script } from '@/components/ui/script';
+
+interface JWPlayer {
+  setup: (config: any) => void;
+  on: (event: string, callback: (event?: any) => void) => void;
+  remove: () => void;
+  play: () => void;
+  pause: () => void;
+  setMute: (mute: boolean) => void;
+  setVolume: (volume: number) => void;
+  setFullscreen: (fullscreen: boolean) => void;
+  getQualityLevels: () => Array<{label: string}>;
+  setCurrentQuality: (index: number) => void;
+  load: () => void;
+}
+
+declare global {
+  interface Window {
+    jwplayer: (elementId: string) => JWPlayer;
+  }
+}
 
 interface LiveTVPlayerProps {
   channel: Channel;
@@ -39,13 +58,11 @@ const LiveTVPlayer = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Initialize JW Player when component mounts
   useEffect(() => {
     const loadJwPlayer = () => {
       if (window.jwplayer) {
         setJwPlayerReady(true);
       } else {
-        // If JW Player isn't loaded yet, retry in 200ms
         setTimeout(loadJwPlayer, 200);
       }
     };
@@ -63,11 +80,9 @@ const LiveTVPlayer = ({
     };
   }, []);
 
-  // Setup or update JW Player when stream URL changes or player is ready
   useEffect(() => {
     if (jwPlayerReady && streamUrl && playerContainerRef.current && !isLoading) {
       try {
-        // Clean up previous player instance if it exists
         if (jwPlayerRef.current) {
           try {
             jwPlayerRef.current.remove();
@@ -76,10 +91,8 @@ const LiveTVPlayer = ({
           }
         }
         
-        // Initialize new player instance
         jwPlayerRef.current = window.jwplayer(playerContainerRef.current.id);
         
-        // Configure and setup player
         jwPlayerRef.current.setup({
           file: streamUrl,
           image: channel.logo || undefined,
@@ -98,7 +111,6 @@ const LiveTVPlayer = ({
           }
         });
 
-        // Player event listeners
         jwPlayerRef.current.on('ready', () => {
           setIsPlaying(true);
           setPlayerError(null);
@@ -132,7 +144,6 @@ const LiveTVPlayer = ({
     }
   }, [jwPlayerReady, streamUrl, isLoading, channel.logo, isMuted, volume]);
 
-  // Show controls on mouse move and hide after inactivity
   const handleMouseMove = () => {
     setShowControls(true);
     
@@ -147,7 +158,6 @@ const LiveTVPlayer = ({
     }, 3000);
   };
 
-  // Toggle play/pause
   const togglePlay = () => {
     if (jwPlayerRef.current) {
       if (isPlaying) {
@@ -158,14 +168,12 @@ const LiveTVPlayer = ({
     }
   };
 
-  // Toggle mute
   const toggleMute = () => {
     if (jwPlayerRef.current) {
       jwPlayerRef.current.setMute(!isMuted);
     }
   };
 
-  // Handle volume change
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
@@ -182,28 +190,24 @@ const LiveTVPlayer = ({
     }
   };
 
-  // Toggle fullscreen
   const toggleFullscreen = () => {
     if (jwPlayerRef.current) {
       jwPlayerRef.current.setFullscreen(!isFullscreen);
     }
   };
 
-  // Toggle information overlay
   const toggleInfo = () => {
     setShowInfo(!showInfo);
     setShowSettings(false);
     setShowControls(true);
   };
 
-  // Toggle settings overlay
   const toggleSettings = () => {
     setShowSettings(!showSettings);
     setShowInfo(false);
     setShowControls(true);
   };
 
-  // Handle quality change
   const changeQuality = (quality: string) => {
     setSelectedQuality(quality);
     
@@ -231,7 +235,6 @@ const LiveTVPlayer = ({
     setShowSettings(false);
   };
 
-  // Reset player error
   const handleRetry = () => {
     setPlayerError(null);
     
@@ -246,7 +249,6 @@ const LiveTVPlayer = ({
     });
   };
 
-  // Clean up timeout on unmount
   useEffect(() => {
     return () => {
       if (controlsTimeoutRef.current) {
@@ -267,7 +269,6 @@ const LiveTVPlayer = ({
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && !showInfo && !showSettings && setShowControls(false)}
     >
-      {/* JW Player Script */}
       <Script 
         src="https://cdn.jwplayer.com/libraries/IDzF9Zmk.js" 
         async 
@@ -276,7 +277,6 @@ const LiveTVPlayer = ({
         onError={() => setPlayerError("Failed to load player. Please refresh the page and try again.")}
       />
       
-      {/* Loading Overlay */}
       <AnimatePresence>
         {isLoading && (
           <motion.div 
@@ -300,7 +300,6 @@ const LiveTVPlayer = ({
         )}
       </AnimatePresence>
 
-      {/* Error Overlay */}
       <AnimatePresence>
         {playerError && (
           <motion.div 
@@ -327,14 +326,12 @@ const LiveTVPlayer = ({
         )}
       </AnimatePresence>
 
-      {/* JW Player Container */}
       <div 
         id="livetv-player-container" 
         ref={playerContainerRef} 
         className="h-full w-full"
       />
 
-      {/* Information Overlay */}
       <AnimatePresence>
         {showInfo && (
           <motion.div 
@@ -401,7 +398,6 @@ const LiveTVPlayer = ({
         )}
       </AnimatePresence>
 
-      {/* Settings Overlay */}
       <AnimatePresence>
         {showSettings && (
           <motion.div 
@@ -449,7 +445,6 @@ const LiveTVPlayer = ({
         )}
       </AnimatePresence>
 
-      {/* Player Controls */}
       <AnimatePresence>
         {showControls && !showInfo && !showSettings && (
           <motion.div 
@@ -459,7 +454,6 @@ const LiveTVPlayer = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Top Bar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {onBackClick && (
@@ -488,7 +482,6 @@ const LiveTVPlayer = ({
               </div>
             </div>
             
-            {/* Center Play Button */}
             <div className="absolute inset-0 flex items-center justify-center">
               {!isPlaying && (
                 <motion.button
@@ -502,7 +495,6 @@ const LiveTVPlayer = ({
               )}
             </div>
             
-            {/* Bottom Controls */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
                 <button 

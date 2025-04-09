@@ -12,6 +12,26 @@ interface VideoPlayerProps {
   onError?: (error: string) => void;
 }
 
+// Define the JWPlayer type to include the methods we use
+interface JWPlayer {
+  setMute: (muted: boolean) => void;
+  setVolume: (volume: number) => void;
+  remove: () => void;
+  load: () => void;
+  play: () => void;
+  setup: (config: any) => void;
+  getQualityLevels: () => any[];
+  setCurrentQuality: (index: number) => void;
+  on: (event: string, callback: (event?: any) => void) => void;
+}
+
+// Extend the Window interface to include jwplayer
+declare global {
+  interface Window {
+    jwplayer: (elementId: string) => JWPlayer;
+  }
+}
+
 const VideoPlayer = ({ tmdbId, imdbId, type, season, episode, onError }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
