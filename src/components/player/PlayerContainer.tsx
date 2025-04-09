@@ -5,6 +5,7 @@ import { Play, Pause } from "lucide-react";
 import VideoPlayer from '../VideoPlayer';
 import PlayerControls from './PlayerControls';
 import PlayerLoading from './PlayerLoading';
+import PlayerError from './PlayerError';
 
 interface PlayerContainerProps {
   isMovie: boolean;
@@ -113,7 +114,7 @@ const PlayerContainer = ({
         )}
         
         <AnimatePresence>
-          {isLoading && (
+          {isLoading && !playerError && (
             <PlayerLoading 
               isLoading={isLoading}
               isMovie={isMovie}
@@ -163,6 +164,13 @@ const PlayerContainer = ({
           />
         )}
       </div>
+      
+      {playerError && (
+        <PlayerError
+          playerError={playerError}
+          resetError={() => setPlayerError(null)}
+        />
+      )}
       
       <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-moviemate-primary/10 blur-3xl"></div>
       <div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-purple-700/10 blur-3xl"></div>

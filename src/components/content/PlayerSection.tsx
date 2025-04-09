@@ -33,6 +33,7 @@ const PlayerSection = ({
   useEffect(() => {
     if (!showPlayer) return;
     
+    // Reset state when content changes or player first shows
     setIsLoading(true);
     setPlayerError(null);
     
@@ -70,25 +71,18 @@ const PlayerSection = ({
         resetError={resetError}
       />
       
-      {playerError ? (
-        <PlayerError 
-          playerError={playerError} 
-          resetError={resetError} 
-        />
-      ) : (
-        <PlayerContainer 
-          isMovie={isMovie}
-          contentId={contentId}
-          imdbId={imdbId}
-          selectedSeason={selectedSeason}
-          selectedEpisode={selectedEpisode}
-          title={title}
-          episodeTitle={episodeTitle}
-          isLoading={isLoading}
-          playerError={playerError}
-          setPlayerError={setPlayerError}
-        />
-      )}
+      <PlayerContainer 
+        isMovie={isMovie}
+        contentId={contentId}
+        imdbId={imdbId}
+        selectedSeason={selectedSeason}
+        selectedEpisode={selectedEpisode}
+        title={title}
+        episodeTitle={episodeTitle}
+        isLoading={isLoading}
+        playerError={playerError}
+        setPlayerError={setPlayerError}
+      />
       
       <PlayerFooter isMovie={isMovie} />
     </motion.div>

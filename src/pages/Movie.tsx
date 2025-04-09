@@ -44,10 +44,11 @@ const MoviePage = () => {
       try {
         const related = await getRelatedMovies(movieId);
         if (related && related.results) {
-          // Ensure each movie has a unique key by adding index if needed
-          const uniqueRelated = related.results.slice(0, 10).map((movie, index) => ({
+          // Create a unique identifier to avoid React key warnings
+          const uniqueRelated = related.results.slice(0, 10).map(movie => ({
             ...movie,
-            uniqueId: `${movie.id}-${index}`
+            // Use a combination of id and timestamp for truly unique keys
+            key: `${movie.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           }));
           setRelatedMovies(uniqueRelated);
         } else {

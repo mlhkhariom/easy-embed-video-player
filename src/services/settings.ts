@@ -83,7 +83,10 @@ export const updateSettings = async (updates: Partial<Settings>): Promise<Settin
 // Get best available player API based on priority
 export const getBestPlayerAPI = async (): Promise<PlayerAPI | null> => {
   const settings = await fetchSettings();
-  const activeAPIs = settings.playerAPIs.filter(api => api.isActive);
+  
+  // Safely handle the case where playerAPIs might be undefined
+  const playerAPIs = settings.playerAPIs || [];
+  const activeAPIs = playerAPIs.filter(api => api.isActive);
   
   if (activeAPIs.length === 0) return null;
   
