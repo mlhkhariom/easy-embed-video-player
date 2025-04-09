@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Film, Link as LinkIcon, FilePlus2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
 import PlayerAPIManager from '@/components/admin/player/PlayerAPIManager';
 import PlayerSettings from '@/components/admin/player/PlayerSettings';
@@ -37,10 +37,12 @@ const AdminPlayer = () => {
           
           <div className="flex items-center space-x-2">
             <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
-              <Button variant="outline" onClick={handleOpenTestPlayer}>
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Test Player
-              </Button>
+              <DialogTrigger asChild>
+                <Button variant="outline" onClick={handleOpenTestPlayer}>
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Test Player
+                </Button>
+              </DialogTrigger>
               <DialogContent className="max-w-4xl">
                 <DialogHeader>
                   <DialogTitle>Player Testing</DialogTitle>
@@ -57,10 +59,12 @@ const AdminPlayer = () => {
             </Dialog>
             
             <Dialog open={addSourceDialogOpen} onOpenChange={setAddSourceDialogOpen}>
-              <Button variant="default" onClick={handleAddSource}>
-                <FilePlus2 className="h-4 w-4 mr-2" />
-                Add Source
-              </Button>
+              <DialogTrigger asChild>
+                <Button variant="default" onClick={handleAddSource}>
+                  <FilePlus2 className="h-4 w-4 mr-2" />
+                  Add Source
+                </Button>
+              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Source</DialogTitle>

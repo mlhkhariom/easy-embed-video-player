@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import PlayerHeader from '../player/PlayerHeader';
 import PlayerContainer from '../player/PlayerContainer';
 import PlayerError from '../player/PlayerError';
