@@ -3,19 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Script } from '@/components/ui/script';
 import { useToast } from '@/components/ui/use-toast';
 
-// Define the JWPlayer type to include the methods we use
-interface JWPlayer {
-  setup: (config: any) => void;
-  on: (event: string, callback: (event?: any) => void) => void;
-  remove: () => void;
-}
-
-// Extend the Window interface to include jwplayer
-declare global {
-  interface Window {
-    jwplayer: (elementId: string) => JWPlayer;
-  }
-}
+// Note: We're removing the JWPlayer interface and Window interface extension
+// since they're already defined in global.d.ts
 
 interface PlayerVideoProps {
   streamUrl: string;
