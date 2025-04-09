@@ -41,15 +41,20 @@ const MoviePage = () => {
       
       setMovie(movieData);
       
+      // Fetch related movies in parallel
       try {
         const related = await getRelatedMovies(movieId);
         if (related && related.results) {
-          // Create a unique identifier to avoid React key warnings
-          const uniqueRelated = related.results.slice(0, 10).map(movie => ({
-            ...movie,
-            // Use a combination of id and timestamp for truly unique keys
-            key: `${movie.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-          }));
+          const uniqueRelated = related.results
+            .filter((movie, index, self) => 
+              index === self.findIndex((m) => m.id === movie.id)
+            )
+            .slice(0, 10)
+            .map(movie => ({
+              ...movie,
+              // Use the id directly as the key since we've already filtered for uniqueness
+              key: `related-${movie.id}`
+            }));
           setRelatedMovies(uniqueRelated);
         } else {
           setRelatedMovies([]);

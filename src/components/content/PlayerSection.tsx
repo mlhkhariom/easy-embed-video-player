@@ -5,6 +5,7 @@ import PlayerHeader from '../player/PlayerHeader';
 import PlayerContainer from '../player/PlayerContainer';
 import PlayerError from '../player/PlayerError';
 import PlayerFooter from '../player/PlayerFooter';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PlayerSectionProps {
   showPlayer: boolean;
@@ -29,11 +30,12 @@ const PlayerSection = ({
 }: PlayerSectionProps) => {
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   
+  // Reset state when content changes or player first shows
   useEffect(() => {
     if (!showPlayer) return;
     
-    // Reset state when content changes or player first shows
     setIsLoading(true);
     setPlayerError(null);
     
@@ -49,6 +51,13 @@ const PlayerSection = ({
   const resetError = () => {
     setPlayerError(null);
     setIsLoading(true);
+    
+    // Show loading state briefly to give APIs time to initialize
+    toast({
+      title: "Retrying playback",
+      description: "Attempting to reconnect to the streaming source..."
+    });
+    
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);

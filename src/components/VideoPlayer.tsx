@@ -49,7 +49,7 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode, onError }: VideoPl
       if (!window.jwplayer || !playerRef.current) return;
       
       const playerInstance = window.jwplayer(playerRef.current.id);
-      if (!playerInstance || typeof playerInstance.getState !== 'function') return;
+      if (!playerInstance) return;
       
       const settings = await fetchSettings();
       
