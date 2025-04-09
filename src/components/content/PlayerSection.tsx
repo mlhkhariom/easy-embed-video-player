@@ -7,6 +7,8 @@ import PlayerContainer from '../player/PlayerContainer';
 import PlayerError from '../player/PlayerError';
 import PlayerFooter from '../player/PlayerFooter';
 import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import ErrorHandler from '@/components/ErrorHandler';
 
 interface PlayerSectionProps {
   showPlayer: boolean;
@@ -32,6 +34,7 @@ const PlayerSection = ({
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorObject, setErrorObject] = useState<Error | null>(null);
   const { toast } = useToast();
   
   // Reset state when content changes or player first shows
@@ -40,6 +43,8 @@ const PlayerSection = ({
     
     setIsLoading(true);
     setPlayerError(null);
+    setErrorObject(null);
+    setErrorDialogOpen(false);
     
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -52,6 +57,7 @@ const PlayerSection = ({
   
   const resetError = () => {
     setPlayerError(null);
+    setErrorObject(null);
     setIsLoading(true);
     setErrorDialogOpen(false);
     
@@ -66,8 +72,14 @@ const PlayerSection = ({
     }, 2000);
   };
   
-  const handleError = (errorMessage: string) => {
+  const handleError = (errorMessage: string, error?: Error) => {
     setPlayerError(errorMessage);
+    if (error) {
+      setErrorObject(error);
+    } else {
+      setErrorObject(new Error(errorMessage));
+    }
+    
     // Only show the error dialog for serious errors
     if (errorMessage.includes("failed to load") || errorMessage.includes("network error")) {
       setErrorDialogOpen(true);
@@ -91,6 +103,8 @@ const PlayerSection = ({
         resetError={resetError}
       />
       
+      <ErrorHandler error={errorObject} resetError={resetError} />
+      
       <PlayerContainer 
         isMovie={isMovie}
         contentId={contentId}
@@ -113,12 +127,12 @@ const PlayerSection = ({
             <h3 className="text-lg font-semibold mb-2">Playback Error</h3>
             <p className="text-muted-foreground mb-4">{playerError}</p>
             <div className="flex justify-center space-x-2">
-              <button 
+              <Button 
                 className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md"
                 onClick={resetError}
               >
                 Try Again
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>

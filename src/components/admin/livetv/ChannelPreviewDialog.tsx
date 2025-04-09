@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import LiveTVPlayer from '@/components/LiveTVPlayer';
 import { Channel } from '@/services/iptv';
+import ErrorHandler from '@/components/ErrorHandler';
 
 interface ChannelPreviewDialogProps {
     channel: Channel;
@@ -14,28 +15,27 @@ interface ChannelPreviewDialogProps {
 const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
     const [streamUrl, setStreamUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
         const loadStream = async () => {
             try {
                 setIsLoading(true);
+                setError(null);
                 const { getStreamForChannel } = await import('@/services/iptv');
                 const stream = await getStreamForChannel(channel.id);
                 if (stream) {
                     setStreamUrl(stream.url);
                 } else {
-                    toast({
-                        title: "Stream Unavailable",
-                        description: "No stream found for this channel",
-                        variant: "destructive",
-                    });
+                    throw new Error("No stream found for this channel");
                 }
             } catch (error) {
                 console.error("Error loading stream:", error);
+                setError(error instanceof Error ? error : new Error(String(error)));
                 toast({
-                    title: "Error",
-                    description: "Failed to load the stream. Please try again.",
+                    title: "Stream Unavailable",
+                    description: "Failed to load the stream",
                     variant: "destructive",
                 });
             } finally {
@@ -45,6 +45,40 @@ const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
 
         loadStream();
     }, [channel.id, toast]);
+
+    const handleRetry = () => {
+        setStreamUrl(null);
+        setIsLoading(true);
+        setError(null);
+        
+        // Re-trigger the useEffect by updating a key dependency
+        const timestamp = Date.now();
+        const retryChannel = { ...channel, _retry: timestamp };
+        // This hack forces the useEffect to re-run
+        setTimeout(() => {
+            const loadStream = async () => {
+                try {
+                    const { getStreamForChannel } = await import('@/services/iptv');
+                    const stream = await getStreamForChannel(retryChannel.id);
+                    if (stream) {
+                        setStreamUrl(stream.url);
+                    } else {
+                        throw new Error("No stream found for this channel");
+                    }
+                } catch (error) {
+                    setError(error instanceof Error ? error : new Error(String(error)));
+                    toast({
+                        title: "Stream Unavailable",
+                        description: "Failed to load the stream on retry",
+                        variant: "destructive",
+                    });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            loadStream();
+        }, 1000);
+    };
 
     return (
         <DialogContent className="max-w-3xl">
@@ -56,6 +90,7 @@ const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
             </DialogHeader>
             
             <div className="mt-4">
+                <ErrorHandler error={error} resetError={handleRetry} inline />
                 <LiveTVPlayer
                     channel={channel}
                     streamUrl={streamUrl}

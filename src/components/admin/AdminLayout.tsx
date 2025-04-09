@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -31,6 +30,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import AdminErrorBoundary from './AdminErrorBoundary';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -45,7 +45,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const isMobile = useIsMobile();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
-  // Apply theme when component mounts or theme changes
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
@@ -175,24 +174,28 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   );
 
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[240px_1fr]">
-      {isMobile ? (
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetContent side="left" className="w-[240px] p-0">
+    <AdminErrorBoundary>
+      <div className="grid min-h-screen grid-cols-1 md:grid-cols-[240px_1fr]">
+        {isMobile ? (
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetContent side="left" className="w-[240px] p-0">
+              {sidebar}
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <div className="hidden border-r bg-background md:block">
             {sidebar}
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <div className="hidden border-r bg-background md:block">
-          {sidebar}
+          </div>
+        )}
+        
+        <div className="flex min-h-screen flex-col">
+          {renderHeader()}
+          <main className="flex-1 p-4 md:p-6">
+            {children}
+          </main>
         </div>
-      )}
-      
-      <div className="flex min-h-screen flex-col">
-        {renderHeader()}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
-    </div>
+    </AdminErrorBoundary>
   );
 };
 

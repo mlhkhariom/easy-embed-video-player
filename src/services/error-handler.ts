@@ -44,6 +44,11 @@ export const errorToast = (error: unknown): string => {
     if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
       return 'Network connection error. Please check your internet connection.';
     }
+    
+    if (error.message.includes('must be used within')) {
+      return 'Component structure error. Please refresh the page.';
+    }
+    
     return error.message;
   }
   
@@ -133,13 +138,67 @@ export const getUserFriendlyErrorMessage = (error: unknown): string => {
   }
   
   if (error instanceof Error) {
+    // Dialog component errors
+    if (error.message.includes('must be used within')) {
+      return "UI component error. Please refresh the page and try again.";
+    }
+    
+    // Network errors
     if (error.message.includes('Failed to fetch') || 
         error.message.includes('Network error') ||
         error.message.includes('NetworkError')) {
       return "Network connection issue. Please check your internet and try again.";
     }
+    
+    // JW Player errors
+    if (error.message.includes('setup failed') ||
+        error.message.includes('jwplayer') ||
+        error.message.includes('player error')) {
+      return "Video player failed to load. Please check your connection and try again.";
+    }
+    
     return error.message;
   }
   
   return "An unexpected error occurred. Please try again later.";
+};
+
+// Create a centralized error capturer for use with async/await
+export const tryCatch = async <T>(promise: Promise<T>, errorContext?: string): Promise<[T | null, Error | null]> => {
+  try {
+    const data = await promise;
+    return [data, null];
+  } catch (error) {
+    if (errorContext) {
+      console.error(`Error in ${errorContext}:`, error);
+    } else {
+      console.error('Error caught by tryCatch:', error);
+    }
+    return [null, error instanceof Error ? error : new Error(String(error))];
+  }
+};
+
+// Helper to wrap a component in a try-catch block
+export function tryCatchComponent<T>(fn: () => T, fallback: T): T {
+  try {
+    return fn();
+  } catch (error) {
+    console.error('Component error:', error);
+    return fallback;
+  }
+}
+
+// Global error handler for unhandled promise rejections
+export const setupGlobalErrorHandlers = () => {
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled Promise Rejection:', event.reason);
+    // Prevent the default browser behavior
+    event.preventDefault();
+  });
+  
+  window.addEventListener('error', (event) => {
+    console.error('Uncaught Error:', event.error);
+    // Prevent the default browser behavior
+    event.preventDefault();
+  });
 };
