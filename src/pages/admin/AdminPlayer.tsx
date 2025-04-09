@@ -4,12 +4,25 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Film, Link, FilePlus2, Settings as SettingsIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Film, Link as LinkIcon, FilePlus2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
 import PlayerAPIManager from '@/components/admin/player/PlayerAPIManager';
 import PlayerSettings from '@/components/admin/player/PlayerSettings';
 
 const AdminPlayer = () => {
   const [activeTab, setActiveTab] = useState('sources');
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [addSourceDialogOpen, setAddSourceDialogOpen] = useState(false);
+
+  const handleOpenTestPlayer = () => {
+    setTestDialogOpen(true);
+  };
+  
+  const handleAddSource = () => {
+    // We'll set this to true and switch to the sources tab
+    setActiveTab('sources');
+    setAddSourceDialogOpen(true);
+  };
 
   return (
     <AdminLayout>
@@ -23,14 +36,41 @@ const AdminPlayer = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button variant="outline">
-              <Link className="h-4 w-4 mr-2" />
-              Test Player
-            </Button>
-            <Button variant="default">
-              <FilePlus2 className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
+            <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+              <Button variant="outline" onClick={handleOpenTestPlayer}>
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Test Player
+              </Button>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Player Testing</DialogTitle>
+                  <DialogDescription>Test your configured video sources with sample content</DialogDescription>
+                </DialogHeader>
+                <div className="aspect-video bg-black rounded-md flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <ExternalLink className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Player preview will appear here</p>
+                    <p className="text-sm text-gray-400 mt-1">This feature is coming soon</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={addSourceDialogOpen} onOpenChange={setAddSourceDialogOpen}>
+              <Button variant="default" onClick={handleAddSource}>
+                <FilePlus2 className="h-4 w-4 mr-2" />
+                Add Source
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Source</DialogTitle>
+                  <DialogDescription>Add a new video player API source</DialogDescription>
+                </DialogHeader>
+                <p className="py-4">
+                  Please use the form in the API Sources tab to add a new source.
+                </p>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         
@@ -48,7 +88,7 @@ const AdminPlayer = () => {
           
           <TabsContent value="sources" className="space-y-6">
             {/* Player API Manager */}
-            <PlayerAPIManager />
+            <PlayerAPIManager addSourceDialogOpen={addSourceDialogOpen} setAddSourceDialogOpen={setAddSourceDialogOpen} />
             
             {/* Testing Card */}
             <Card>

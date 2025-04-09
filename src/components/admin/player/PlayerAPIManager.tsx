@@ -11,7 +11,12 @@ import PlayerAPISourceTable from './PlayerAPISourceTable';
 import PlayerAPISourceForm from './PlayerAPISourceForm';
 import PlayerAPIHelpDialog from './PlayerAPIHelpDialog';
 
-const PlayerAPIManager = () => {
+interface PlayerAPIManagerProps {
+  addSourceDialogOpen?: boolean;
+  setAddSourceDialogOpen?: (open: boolean) => void;
+}
+
+const PlayerAPIManager = ({ addSourceDialogOpen, setAddSourceDialogOpen }: PlayerAPIManagerProps) => {
   const { settings, updateSettings } = useAdmin();
   const [playerAPIs, setPlayerAPIs] = useState<PlayerAPI[]>([]);
   const [editingAPI, setEditingAPI] = useState<PlayerAPI | null>(null);
@@ -24,6 +29,16 @@ const PlayerAPIManager = () => {
       setPlayerAPIs(settings.playerAPIs);
     }
   }, [settings.playerAPIs]);
+
+  // Effect to handle add source dialog from parent
+  useEffect(() => {
+    if (addSourceDialogOpen) {
+      handleAddNew();
+      if (setAddSourceDialogOpen) {
+        setAddSourceDialogOpen(false);
+      }
+    }
+  }, [addSourceDialogOpen, setAddSourceDialogOpen]);
 
   const handleAddNew = () => {
     const newAPI: PlayerAPI = {

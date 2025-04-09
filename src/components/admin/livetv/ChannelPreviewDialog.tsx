@@ -1,11 +1,11 @@
 
 import { useEffect, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../../components/ui/dialog';
-import { Button } from '../../../components/ui/button';
-import { useToast } from '../../../hooks/use-toast';
-import LiveTVPlayer from '../../../components/LiveTVPlayer';
-import { Channel } from '../../../services/iptv';
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import LiveTVPlayer from '@/components/LiveTVPlayer';
+import { Channel } from '@/services/iptv';
 
 interface ChannelPreviewDialogProps {
     channel: Channel;
@@ -20,7 +20,7 @@ const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
         const loadStream = async () => {
             try {
                 setIsLoading(true);
-                const { getStreamForChannel } = await import('../../../services/iptv');
+                const { getStreamForChannel } = await import('@/services/iptv');
                 const stream = await getStreamForChannel(channel.id);
                 if (stream) {
                     setStreamUrl(stream.url);
