@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../../../components/ui/badge';
 import { Switch } from '../../../components/ui/switch';
 import { Button } from '../../../components/ui/button';
-import { Dialog, DialogTrigger } from '../../../components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '../../../components/ui/dialog';
 import { Channel } from '../../../services/iptv';
 import ChannelPreviewDialog from './ChannelPreviewDialog';
 import { Skeleton } from '../../../components/ui/skeleton';
