@@ -22,10 +22,7 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
     const verifyAuth = async () => {
       try {
         setError(null);
-        // If checkAuthentication exists, call it to verify admin auth status
-        if (typeof checkAuthentication === 'function') {
-          await checkAuthentication();
-        }
+        await checkAuthentication();
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Authentication check failed'));
         toast({

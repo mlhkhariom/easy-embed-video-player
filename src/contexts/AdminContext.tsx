@@ -17,6 +17,7 @@ interface AdminContextType {
   updateCloudstreamRepos: (repos: CloudStreamRepo[]) => void;
   cloudstreamPlugins: CloudStreamPlugin[];
   updateCloudstreamPlugins: (plugins: CloudStreamPlugin[]) => void;
+  checkAuthentication: () => Promise<boolean>;
 }
 
 export interface M3USource {
@@ -245,6 +246,19 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(false);
   };
 
+  const checkAuthentication = async (): Promise<boolean> => {
+    try {
+      const adminAuth = localStorage.getItem('adminAuth');
+      if (adminAuth) {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking authentication status:', error);
+      throw new Error('Failed to verify authentication status');
+    }
+  };
+
   const updateSettings = (newSettings: Partial<AdminSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
@@ -287,6 +301,7 @@ export const AdminProvider = ({ children }: { children: React.ReactNode }) => {
         updateCloudstreamRepos,
         cloudstreamPlugins,
         updateCloudstreamPlugins,
+        checkAuthentication,
       }}
     >
       {children}
