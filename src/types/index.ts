@@ -158,6 +158,13 @@ export interface Movie {
   budget?: number;
   revenue?: number;
   imdb_id?: string;
+  original_language?: string;
+  production_companies?: {
+    id: number;
+    name: string;
+    logo_path: string | null;
+    origin_country: string;
+  }[];
   videos?: {
     results: Video[];
   };
