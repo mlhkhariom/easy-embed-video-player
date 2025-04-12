@@ -55,7 +55,6 @@ const MoviePage = () => {
             .slice(0, isMobile ? 6 : 10)
             .map(movie => ({
               ...movie,
-              // Use the id directly as the key since we've already filtered for uniqueness
               key: `related-${movie.id}`
             }));
           setRelatedMovies(uniqueRelated);
@@ -90,7 +89,6 @@ const MoviePage = () => {
     fetchMovieDetails();
   };
   
-  // Page animations
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -111,11 +109,9 @@ const MoviePage = () => {
     }
   };
   
-  // Function to scroll to player when play button is clicked
   const handleShowPlayerChange = (show: boolean) => {
     setShowPlayer(show);
     
-    // If showing player, wait for a moment for it to render and then scroll to it
     if (show) {
       setTimeout(() => {
         const playerElement = document.getElementById('player-section');
@@ -145,14 +141,12 @@ const MoviePage = () => {
           <MovieError message={error} onRetry={handleRetry} isRetrying={isRetrying} />
         ) : movie ? (
           <div className="space-y-8">
-            {/* Movie Details without the player inside */}
             <MovieDetails 
               movie={movie}
               showPlayer={showPlayer}
               setShowPlayer={handleShowPlayerChange}
             />
             
-            {/* Player section at top after header */}
             {showPlayer && (
               <motion.div
                 id="player-section"
@@ -173,7 +167,6 @@ const MoviePage = () => {
               </motion.div>
             )}
             
-            {/* Related Movies Section */}
             {relatedMovies.length > 0 && (
               <RelatedMovies 
                 movieId={movie.id}
