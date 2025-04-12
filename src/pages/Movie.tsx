@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Movie } from '../types';
@@ -12,6 +11,7 @@ import MovieError from '../components/movie/MovieError';
 import RelatedMovies from '../components/movie/RelatedMovies';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import PlayerSection from '../components/content/PlayerSection';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
