@@ -327,18 +327,18 @@ const MoviePage = () => {
                           <span>{movie.status}</span>
                         </li>
                       )}
-                      {movie.original_language && (
+                      {movie.original_language ? (
                         <li className="flex text-sm">
                           <span className="w-32 opacity-70">Language:</span>
                           <span>{movie.original_language.toUpperCase()}</span>
                         </li>
-                      )}
-                      {movie.production_companies && movie.production_companies.length > 0 && (
+                      ) : null}
+                      {movie.production_companies && movie.production_companies.length > 0 ? (
                         <li className="flex text-sm">
                           <span className="w-32 opacity-70">Production:</span>
                           <span>{movie.production_companies.map(company => company.name).join(', ')}</span>
                         </li>
-                      )}
+                      ) : null}
                       {movie.vote_count && movie.vote_count > 0 && (
                         <li className="flex text-sm">
                           <span className="w-32 opacity-70">Vote Count:</span>
