@@ -10,6 +10,7 @@ import MovieDetails from '../components/movie/MovieDetails';
 import MovieLoading from '../components/movie/MovieLoading';
 import MovieError from '../components/movie/MovieError';
 import RelatedMovies from '../components/movie/RelatedMovies';
+import { motion } from 'framer-motion';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -87,11 +88,40 @@ const MoviePage = () => {
     fetchMovieDetails();
   };
   
+  // Page animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        when: "beforeChildren",
+        staggerChildren: 0.2
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.5 }
+    }
+  };
+  
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-b from-moviemate-background to-black"
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-24">
+      <motion.main 
+        className="container mx-auto px-4 pt-24 pb-24"
+        variants={itemVariants}
+      >
         {isLoading ? (
           <MovieLoading />
         ) : error ? (
@@ -114,8 +144,8 @@ const MoviePage = () => {
         ) : (
           <MovieError message="Movie not found" onRetry={handleRetry} isRetrying={isRetrying} />
         )}
-      </main>
-    </div>
+      </motion.main>
+    </motion.div>
   );
 };
 

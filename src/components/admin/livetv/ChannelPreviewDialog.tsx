@@ -81,15 +81,15 @@ const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
     };
 
     return (
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl rounded-xl bg-card/90 backdrop-blur-md border border-white/10 shadow-xl">
             <DialogHeader>
-                <DialogTitle>Previewing: {channel.name}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-xl">Previewing: {channel.name}</DialogTitle>
+                <DialogDescription className="text-gray-400">
                     Check the stream quality and availability
                 </DialogDescription>
             </DialogHeader>
             
-            <div className="mt-4">
+            <div className="mt-4 rounded-xl overflow-hidden shadow-lg">
                 <ErrorHandler error={error} resetError={handleRetry} inline />
                 <LiveTVPlayer
                     channel={channel}
@@ -98,40 +98,41 @@ const ChannelPreviewDialog = ({ channel }: ChannelPreviewDialogProps) => {
                 />
             </div>
             
-            <div className="mt-4 rounded-md bg-secondary/50 p-3">
-                <h3 className="mb-2 text-sm font-medium">Channel Details</h3>
-                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                    <div>
-                        <span className="font-medium">Categories:</span>{' '}
-                        {channel.categories.join(', ')}
+            <div className="mt-4 rounded-xl bg-moviemate-card/30 backdrop-blur-sm p-4 border border-white/5">
+                <h3 className="mb-3 text-sm font-medium text-moviemate-primary">Channel Details</h3>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div className="bg-black/20 p-2 rounded-lg">
+                        <span className="font-medium text-gray-300">Categories:</span>{' '}
+                        <span className="text-white">{channel.categories.join(', ')}</span>
                     </div>
-                    <div>
-                        <span className="font-medium">Languages:</span>{' '}
-                        {channel.languages.length ? channel.languages.join(', ') : 'N/A'}
+                    <div className="bg-black/20 p-2 rounded-lg">
+                        <span className="font-medium text-gray-300">Languages:</span>{' '}
+                        <span className="text-white">{channel.languages.length ? channel.languages.join(', ') : 'N/A'}</span>
                     </div>
-                    <div>
-                        <span className="font-medium">Broadcast Area:</span>{' '}
-                        {channel.broadcast_area.length ? channel.broadcast_area.join(', ') : 'N/A'}
+                    <div className="bg-black/20 p-2 rounded-lg">
+                        <span className="font-medium text-gray-300">Broadcast Area:</span>{' '}
+                        <span className="text-white">{channel.broadcast_area.length ? channel.broadcast_area.join(', ') : 'N/A'}</span>
                     </div>
                     {channel.website && (
-                        <div>
-                            <span className="font-medium">Website:</span>{' '}
+                        <div className="bg-black/20 p-2 rounded-lg">
+                            <span className="font-medium text-gray-300">Website:</span>{' '}
                             <a 
                                 href={channel.website} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-primary underline"
+                                className="text-moviemate-primary underline hover:text-moviemate-primary/80 transition-colors flex items-center gap-1"
                             >
                                 Visit Website
+                                <ExternalLink className="h-3 w-3" />
                             </a>
                         </div>
                     )}
                 </div>
             </div>
             
-            <DialogFooter>
-                <Button variant="outline" size="sm">
-                    <ExternalLink className="mr-2 h-4 w-4" />
+            <DialogFooter className="mt-4">
+                <Button variant="outline" size="sm" className="rounded-full flex items-center gap-2 hover:bg-moviemate-primary/10 transition-colors">
+                    <ExternalLink className="mr-1 h-4 w-4" />
                     Open in Live TV
                 </Button>
             </DialogFooter>

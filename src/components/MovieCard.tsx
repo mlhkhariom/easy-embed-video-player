@@ -49,7 +49,7 @@ const MovieCard = ({
 
   return (
     <motion.div 
-      className={`movie-card relative overflow-hidden rounded-lg ${className}`}
+      className={`movie-card relative overflow-hidden rounded-xl ${className}`}
       whileHover={{ 
         scale: 1.05,
         transition: { duration: 0.3 }
@@ -58,7 +58,7 @@ const MovieCard = ({
       onHoverEnd={() => setIsHovered(false)}
     >
       <Link to={linkPath}>
-        <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-moviemate-card">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-moviemate-card shadow-lg">
           <motion.div 
             className={`absolute inset-0 ${imageLoaded ? 'image-loaded' : 'image-loading'}`}
             initial={{ rotateY: 0 }}
@@ -69,16 +69,16 @@ const MovieCard = ({
             <img
               src={getImageUrl(posterPath, 'w500')}
               alt={title}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover rounded-xl"
               onLoad={() => setImageLoaded(true)}
               loading="lazy"
             />
           </motion.div>
           
-          {/* 3D lighting effect */}
+          {/* Enhanced 3D lighting effect */}
           {isHovered && (
             <motion.div 
-              className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-transparent"
+              className="absolute inset-0 bg-gradient-to-tr from-purple-500/20 to-transparent rounded-xl"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -86,22 +86,22 @@ const MovieCard = ({
             />
           )}
           
-          {/* Glass effect card info */}
+          {/* Improved glass effect card info */}
           <motion.div 
-            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12"
+            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12 backdrop-blur-sm rounded-b-xl"
             animate={{ 
               y: isHovered ? 0 : 10,
               opacity: isHovered ? 1 : 0.8
             }}
             transition={{ duration: 0.3 }}
           >
-            <div className="space-y-1">
+            <div className="space-y-2">
               <h3 className="line-clamp-1 text-sm font-medium text-white">{title}</h3>
               {year && (
                 <p className="text-xs text-gray-300">{year}</p>
               )}
               <div className="flex items-center">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 bg-yellow-500/20 backdrop-blur-sm px-2 py-1 rounded-full">
                   <span className="text-xs font-medium text-yellow-400">{rating?.toFixed(1)}</span>
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -119,14 +119,15 @@ const MovieCard = ({
           </motion.div>
         </div>
         
-        {/* 3D shadow effect */}
+        {/* Enhanced 3D shadow effect */}
         <motion.div 
           className="absolute -bottom-2 left-0 right-0 h-6 blur-md"
           initial={{ opacity: 0 }}
-          animate={{ opacity: isHovered ? 0.5 : 0 }}
+          animate={{ opacity: isHovered ? 0.6 : 0 }}
           style={{
-            background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.3), transparent)',
-            transformOrigin: 'center bottom'
+            background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.4), transparent)',
+            transformOrigin: 'center bottom',
+            borderRadius: '50%'
           }}
         />
       </Link>
