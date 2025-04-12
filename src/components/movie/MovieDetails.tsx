@@ -1,4 +1,3 @@
-
 import { Movie } from '../../types';
 import ContentHeader from '../content/ContentHeader';
 import PlayerSection from '../content/PlayerSection';
