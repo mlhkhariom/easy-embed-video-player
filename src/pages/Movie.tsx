@@ -11,6 +11,7 @@ import MovieLoading from '../components/movie/MovieLoading';
 import MovieError from '../components/movie/MovieError';
 import RelatedMovies from '../components/movie/RelatedMovies';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MoviePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ const MoviePage = () => {
   const [relatedMovies, setRelatedMovies] = useState<Movie[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const fetchMovieDetails = useCallback(async () => {
     if (!id) return;
@@ -50,7 +52,7 @@ const MoviePage = () => {
             .filter((movie, index, self) => 
               index === self.findIndex((m) => m.id === movie.id)
             )
-            .slice(0, 10)
+            .slice(0, isMobile ? 6 : 10)
             .map(movie => ({
               ...movie,
               // Use the id directly as the key since we've already filtered for uniqueness
@@ -77,7 +79,7 @@ const MoviePage = () => {
       setIsLoading(false);
       setIsRetrying(false);
     }
-  }, [id, toast]);
+  }, [id, toast, isMobile]);
   
   useEffect(() => {
     fetchMovieDetails();
@@ -119,7 +121,7 @@ const MoviePage = () => {
       <Navbar />
       
       <motion.main 
-        className="container mx-auto px-4 pt-24 pb-24"
+        className={`container mx-auto px-2 sm:px-4 pt-16 sm:pt-24 pb-16 sm:pb-24 ${isMobile ? 'max-w-full' : ''}`}
         variants={itemVariants}
       >
         {isLoading ? (

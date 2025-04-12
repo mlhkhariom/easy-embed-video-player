@@ -6,11 +6,14 @@ import { FadeIn } from '../components/ui/animations';
 import { useToast } from '@/components/ui/use-toast';
 import { getPopularTvShows } from '../services/tmdb';
 import { Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 import WebSeriesHeader from '../components/web-series/WebSeriesHeader';
 import WebSeriesFilters from '../components/web-series/WebSeriesFilters';
 import WebSeriesResults from '../components/web-series/WebSeriesResults';
 import { filterWebSeries } from '../services/WebSeriesService';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const WebSeries = () => {
   const [searchParams] = useSearchParams();
@@ -24,6 +27,7 @@ const WebSeries = () => {
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterNetwork, setFilterNetwork] = useState('');
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const fetchWebSeries = async () => {
@@ -86,18 +90,51 @@ const WebSeries = () => {
     setFilterLanguage('');
     setFilterNetwork('');
   };
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        when: "beforeChildren",
+        staggerChildren: 0.1
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.4 }
+    }
+  };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-moviemate-background via-purple-900/10 to-moviemate-background">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-b from-moviemate-background via-purple-900/10 to-moviemate-background"
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-16">
-        <WebSeriesHeader 
-          showAdvancedFilters={showAdvancedFilters} 
-          onFilterToggle={() => setShowAdvancedFilters(!showAdvancedFilters)} 
-        />
+      <main className="container mx-auto px-2 sm:px-4 pt-16 sm:pt-24 pb-16">
+        <motion.div variants={itemVariants}>
+          <WebSeriesHeader 
+            showAdvancedFilters={showAdvancedFilters} 
+            onFilterToggle={() => setShowAdvancedFilters(!showAdvancedFilters)} 
+          />
+        </motion.div>
         
-        <FadeIn>
+        <motion.div 
+          variants={isMobile ? { 
+            hidden: { height: showAdvancedFilters ? 'auto' : 0, opacity: showAdvancedFilters ? 1 : 0 },
+            visible: { height: 'auto', opacity: 1, transition: { duration: 0.3 } } 
+          } : itemVariants}
+        >
           <WebSeriesFilters
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -109,15 +146,17 @@ const WebSeries = () => {
             showAdvancedFilters={showAdvancedFilters}
             onSubmit={handleSearch}
           />
-        </FadeIn>
+        </motion.div>
         
-        <WebSeriesResults 
-          isLoading={isLoading}
-          filteredSeries={filteredSeries}
-          onResetFilters={resetFilters}
-        />
+        <motion.div variants={itemVariants}>
+          <WebSeriesResults 
+            isLoading={isLoading}
+            filteredSeries={filteredSeries}
+            onResetFilters={resetFilters}
+          />
+        </motion.div>
       </main>
-    </div>
+    </motion.div>
   );
 };
 

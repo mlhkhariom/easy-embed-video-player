@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { CloudStreamContent } from '@/types';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CloudStreamContentCardProps {
   content: CloudStreamContent;
@@ -12,6 +13,7 @@ interface CloudStreamContentCardProps {
 const CloudStreamContentCard = ({ content, onClick }: CloudStreamContentCardProps) => {
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleImageError = () => {
     setImageError(true);
@@ -20,9 +22,10 @@ const CloudStreamContentCard = ({ content, onClick }: CloudStreamContentCardProp
   return (
     <motion.div
       whileHover={{ 
-        scale: 1.05,
+        scale: isMobile ? 1.02 : 1.05,
         transition: { duration: 0.3 }
       }}
+      whileTap={isMobile ? { scale: 0.98 } : undefined}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
@@ -39,26 +42,26 @@ const CloudStreamContentCard = ({ content, onClick }: CloudStreamContentCardProp
           className="h-full w-full object-cover"
         />
         
-        {/* Enhanced glass effect info panel */}
+        {/* Enhanced glass effect info panel - responsive for mobile and desktop */}
         <motion.div 
-          className="absolute bottom-0 left-0 right-0 p-4 z-20 backdrop-blur-sm bg-black/30"
+          className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-20 backdrop-blur-sm bg-black/30"
           animate={{ 
             y: isHovered ? 0 : 5,
             opacity: isHovered ? 1 : 0.9
           }}
           transition={{ duration: 0.3 }}
         >
-          <h3 className="font-semibold text-white text-sm sm:text-base line-clamp-2">{content.title}</h3>
+          <h3 className="font-semibold text-white text-xs sm:text-sm md:text-base line-clamp-2">{content.title}</h3>
           
-          <div className="flex items-center text-xs text-white/70 mt-2">
+          <div className="flex flex-wrap items-center text-xs text-white/70 mt-1 sm:mt-2 gap-1 sm:gap-2">
             {content.year && (
-              <span className="mr-2 bg-white/10 px-2 py-1 rounded-full">{content.year}</span>
+              <span className="bg-white/10 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs">{content.year}</span>
             )}
             
-            <span className="capitalize text-moviemate-primary bg-moviemate-primary/10 px-2 py-1 rounded-full">{content.type}</span>
+            <span className="capitalize text-moviemate-primary bg-moviemate-primary/10 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[10px] sm:text-xs">{content.type}</span>
             
             {content.source && (
-              <span className="ml-auto text-xs text-white/50 bg-white/5 px-2 py-1 rounded-full">{content.source}</span>
+              <span className="text-[10px] sm:text-xs text-white/50 bg-white/5 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full ml-auto truncate max-w-[80px] sm:max-w-none">{content.source}</span>
             )}
           </div>
         </motion.div>

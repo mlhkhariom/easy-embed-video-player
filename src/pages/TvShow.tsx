@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { TvShow, Episode } from '../types';
@@ -14,6 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import MovieCard from '../components/MovieCard';
 import SeasonCarousel from '../components/content/SeasonCarousel';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { motion } from 'framer-motion';
 
 const TvShowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +32,7 @@ const TvShowPage = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastShowElementRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const handleEpisodeChange = (episodeNumber: number) => {
     setSelectedEpisode(episodeNumber);
@@ -89,7 +93,7 @@ const TvShowPage = () => {
         
         try {
           const related = await getRelatedTvShows(tvId);
-          setRelatedShows(related.results.slice(0, 8));
+          setRelatedShows(related.results.slice(0, isMobile ? 6 : 8));
         } catch (error) {
           console.error('Error fetching related shows:', error);
         }
@@ -121,7 +125,7 @@ const TvShowPage = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [id, toast]);
+  }, [id, toast, isMobile]);
   
   const lastShowRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoadingMore) return;
@@ -139,7 +143,7 @@ const TvShowPage = () => {
             setIsLoadingMore(true);
             const tvId = parseInt(id);
             const more = await getRelatedTvShows(tvId, relatedShows.length / 20 + 1);
-            setRelatedShows(prev => [...prev, ...more.results.slice(0, 8)]);
+            setRelatedShows(prev => [...prev, ...more.results.slice(0, isMobile ? 4 : 8)]);
           } catch (error) {
             console.error('Error loading more related shows:', error);
           } finally {
@@ -154,7 +158,7 @@ const TvShowPage = () => {
     if (node) {
       observerRef.current.observe(node);
     }
-  }, [id, isLoadingMore, relatedShows.length]);
+  }, [id, isLoadingMore, relatedShows.length, isMobile]);
   
   const getFormattedTvShowDetails = () => {
     if (!tvShow) return { title: '', formattedDate: '', formattedRuntime: '', rating: '' };
@@ -179,58 +183,90 @@ const TvShowPage = () => {
   
   const { title, formattedDate, formattedRuntime, rating } = getFormattedTvShowDetails();
   
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        when: "beforeChildren",
+        staggerChildren: 0.1
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.4 }
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-24">
+      <motion.main 
+        className={`container mx-auto px-2 sm:px-4 pt-16 sm:pt-24 pb-16 sm:pb-24 ${isMobile ? 'max-w-full' : ''}`}
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
         {isLoading ? (
-          <Card className="w-full p-8">
+          <Card className="w-full p-4 sm:p-8">
             <div className="animate-pulse space-y-4">
-              <div className="h-8 w-2/3 rounded-md bg-muted"></div>
-              <div className="h-4 w-1/3 rounded-md bg-muted"></div>
-              <div className="h-32 w-full rounded-md bg-muted"></div>
+              <div className="h-6 sm:h-8 w-2/3 rounded-md bg-muted"></div>
+              <div className="h-3 sm:h-4 w-1/3 rounded-md bg-muted"></div>
+              <div className="h-24 sm:h-32 w-full rounded-md bg-muted"></div>
             </div>
           </Card>
         ) : error ? (
-          <Card className="w-full p-8 border-red-500/20 bg-red-500/10">
-            <h2 className="mb-4 text-2xl font-bold">Error</h2>
+          <Card className="w-full p-4 sm:p-8 border-red-500/20 bg-red-500/10">
+            <h2 className="mb-4 text-xl sm:text-2xl font-bold">Error</h2>
             <p>{error}</p>
           </Card>
         ) : tvShow ? (
-          <div className="space-y-8">
-            <ContentHeader 
-              content={tvShow} 
-              type="tv"
-              title={title}
-              formattedDate={formattedDate}
-              formattedRuntime={formattedRuntime}
-              rating={rating}
-              showPlayer={showPlayer}
-              setShowPlayer={setShowPlayer}
-            />
+          <div className="space-y-6 sm:space-y-8">
+            <motion.div variants={itemVariants}>
+              <ContentHeader 
+                content={tvShow} 
+                type="tv"
+                title={title}
+                formattedDate={formattedDate}
+                formattedRuntime={formattedRuntime}
+                rating={rating}
+                showPlayer={showPlayer}
+                setShowPlayer={setShowPlayer}
+              />
+            </motion.div>
             
             {showPlayer && (
               <>
-                <SeasonCarousel
-                  seasons={tvShow.seasons || null}
-                  selectedSeason={selectedSeason}
-                  onSeasonChange={handleSeasonChange}
-                  tvShowId={tvShow.id}
-                />
+                <motion.div variants={itemVariants}>
+                  <SeasonCarousel
+                    seasons={tvShow.seasons || null}
+                    selectedSeason={selectedSeason}
+                    onSeasonChange={handleSeasonChange}
+                    tvShowId={tvShow.id}
+                  />
+                </motion.div>
                 
-                <PlayerSection 
-                  showPlayer={showPlayer}
-                  isMovie={false}
-                  contentId={tvShow.id}
-                  imdbId={tvShow.imdb_id}
-                  selectedSeason={selectedSeason}
-                  selectedEpisode={selectedEpisode}
-                  title={tvShow.name}
-                  episodeTitle={currentEpisode?.name}
-                />
+                <motion.div variants={itemVariants}>
+                  <PlayerSection 
+                    showPlayer={showPlayer}
+                    isMovie={false}
+                    contentId={tvShow.id}
+                    imdbId={tvShow.imdb_id}
+                    selectedSeason={selectedSeason}
+                    selectedEpisode={selectedEpisode}
+                    title={tvShow.name}
+                    episodeTitle={currentEpisode?.name}
+                  />
+                </motion.div>
                 
-                <div className="episode-selector">
+                <motion.div className="episode-selector" variants={itemVariants}>
                   <SeasonEpisodeSelector 
                     seasons={tvShow.seasons || null}
                     selectedSeason={selectedSeason}
@@ -239,43 +275,47 @@ const TvShowPage = () => {
                     onEpisodeChange={handleEpisodeChange}
                     tvShowId={tvShow.id}
                   />
-                </div>
+                </motion.div>
               </>
             )}
             
             {showPlayer && currentEpisode && (
-              <Card className="bg-moviemate-card border-gray-700">
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-white mb-2">
-                    {currentEpisode.name || `Episode ${currentEpisode.episode_number}`}
-                  </h3>
-                  
-                  <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-                    <span>Season {selectedSeason}</span>
-                    <span>Episode {currentEpisode.episode_number}</span>
-                    {currentEpisode.air_date && (
-                      <span>Air Date: {new Date(currentEpisode.air_date).toLocaleDateString()}</span>
-                    )}
-                    {currentEpisode.vote_average > 0 && (
-                      <span>Rating: {currentEpisode.vote_average.toFixed(1)}/10</span>
-                    )}
+              <motion.div variants={itemVariants}>
+                <Card className="bg-moviemate-card border-gray-700">
+                  <div className="p-3 sm:p-6">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                      {currentEpisode.name || `Episode ${currentEpisode.episode_number}`}
+                    </h3>
+                    
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">
+                      <span>Season {selectedSeason}</span>
+                      <span>Episode {currentEpisode.episode_number}</span>
+                      {currentEpisode.air_date && (
+                        <span>Air Date: {new Date(currentEpisode.air_date).toLocaleDateString()}</span>
+                      )}
+                      {currentEpisode.vote_average > 0 && (
+                        <span>Rating: {currentEpisode.vote_average.toFixed(1)}/10</span>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm sm:text-base text-gray-300">
+                      {currentEpisode.overview || 'No episode description available.'}
+                    </p>
                   </div>
-                  
-                  <p className="text-gray-300">
-                    {currentEpisode.overview || 'No episode description available.'}
-                  </p>
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
             )}
             
-            <ContentDetails content={tvShow} type="tv" />
+            <motion.div variants={itemVariants}>
+              <ContentDetails content={tvShow} type="tv" />
+            </motion.div>
             
             {relatedShows.length > 0 && (
-              <div className="mt-12">
-                <h2 className="text-2xl font-bold mb-4">You May Also Like</h2>
-                <Separator className="mb-6" />
+              <motion.div className="mt-8 sm:mt-12" variants={itemVariants}>
+                <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">You May Also Like</h2>
+                <Separator className="mb-4 sm:mb-6" />
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
                   {relatedShows.map((show, index) => (
                     <div 
                       key={show.id} 
@@ -293,7 +333,7 @@ const TvShowPage = () => {
                   
                   {isLoadingMore && (
                     <>
-                      {[1, 2, 3, 4].map((i) => (
+                      {Array.from({ length: isMobile ? 2 : 4 }).map((_, i) => (
                         <div key={`skeleton-${i}`} className="rounded-lg overflow-hidden">
                           <Skeleton className="aspect-[2/3] w-full" />
                           <Skeleton className="h-4 w-2/3 mt-2" />
@@ -303,11 +343,11 @@ const TvShowPage = () => {
                     </>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
         ) : null}
-      </main>
+      </motion.main>
     </div>
   );
 };

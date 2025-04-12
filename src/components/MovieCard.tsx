@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Movie, TvShow } from '../types';
 import { getImageUrl } from '../services/tmdb';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MovieCardProps {
   item?: Movie | TvShow;
@@ -28,6 +29,7 @@ const MovieCard = ({
 }: MovieCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const isMobile = useIsMobile();
   
   // Determine if we're using props or item object
   const isUsingProps = !!movieId;
@@ -51,9 +53,10 @@ const MovieCard = ({
     <motion.div 
       className={`movie-card relative overflow-hidden rounded-xl ${className}`}
       whileHover={{ 
-        scale: 1.05,
+        scale: isMobile ? 1.02 : 1.05,
         transition: { duration: 0.3 }
       }}
+      whileTap={isMobile ? { scale: 0.98 } : undefined}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
@@ -88,25 +91,25 @@ const MovieCard = ({
           
           {/* Improved glass effect card info */}
           <motion.div 
-            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12 backdrop-blur-sm rounded-b-xl"
+            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 sm:p-4 pt-6 sm:pt-12 backdrop-blur-sm rounded-b-xl"
             animate={{ 
               y: isHovered ? 0 : 10,
               opacity: isHovered ? 1 : 0.8
             }}
             transition={{ duration: 0.3 }}
           >
-            <div className="space-y-2">
-              <h3 className="line-clamp-1 text-sm font-medium text-white">{title}</h3>
+            <div className="space-y-1 sm:space-y-2">
+              <h3 className="line-clamp-1 text-xs sm:text-sm font-medium text-white">{title}</h3>
               {year && (
-                <p className="text-xs text-gray-300">{year}</p>
+                <p className="text-[10px] sm:text-xs text-gray-300">{year}</p>
               )}
               <div className="flex items-center">
-                <div className="flex items-center gap-1 bg-yellow-500/20 backdrop-blur-sm px-2 py-1 rounded-full">
-                  <span className="text-xs font-medium text-yellow-400">{rating?.toFixed(1)}</span>
+                <div className="flex items-center gap-1 bg-yellow-500/20 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full">
+                  <span className="text-[10px] sm:text-xs font-medium text-yellow-400">{rating?.toFixed(1)}</span>
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
-                    width="12" 
-                    height="12" 
+                    width="10" 
+                    height="10" 
                     viewBox="0 0 24 24" 
                     fill="currentColor"
                     className="text-yellow-400"
