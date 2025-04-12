@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { TvShow, Episode } from '../types';
@@ -42,10 +41,27 @@ const TvShowPage = () => {
     setSelectedSeason(seasonNumber);
     setSelectedEpisode(1);
     
-    document.querySelector('.episode-selector')?.scrollIntoView({ 
-      behavior: 'smooth',
-      block: 'start'
-    });
+    if (showPlayer) {
+      setTimeout(() => {
+        const playerElement = document.getElementById('player-section');
+        if (playerElement) {
+          playerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  };
+  
+  const handleShowPlayerChange = (show: boolean) => {
+    setShowPlayer(show);
+    
+    if (show) {
+      setTimeout(() => {
+        const playerElement = document.getElementById('player-section');
+        if (playerElement) {
+          playerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
   };
   
   useEffect(() => {
@@ -183,7 +199,6 @@ const TvShowPage = () => {
   
   const { title, formattedDate, formattedRuntime, rating } = getFormattedTvShowDetails();
   
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -238,7 +253,7 @@ const TvShowPage = () => {
                 formattedRuntime={formattedRuntime}
                 rating={rating}
                 showPlayer={showPlayer}
-                setShowPlayer={setShowPlayer}
+                setShowPlayer={handleShowPlayerChange}
               />
             </motion.div>
             
@@ -253,17 +268,25 @@ const TvShowPage = () => {
                   />
                 </motion.div>
                 
-                <motion.div variants={itemVariants}>
-                  <PlayerSection 
-                    showPlayer={showPlayer}
-                    isMovie={false}
-                    contentId={tvShow.id}
-                    imdbId={tvShow.imdb_id}
-                    selectedSeason={selectedSeason}
-                    selectedEpisode={selectedEpisode}
-                    title={tvShow.name}
-                    episodeTitle={currentEpisode?.name}
-                  />
+                <motion.div 
+                  id="player-section"
+                  variants={itemVariants}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="rounded-xl overflow-hidden bg-moviemate-card shadow-lg border border-gray-800">
+                    <PlayerSection 
+                      showPlayer={showPlayer}
+                      isMovie={false}
+                      contentId={tvShow.id}
+                      imdbId={tvShow.imdb_id}
+                      selectedSeason={selectedSeason}
+                      selectedEpisode={selectedEpisode}
+                      title={tvShow.name}
+                      episodeTitle={currentEpisode?.name}
+                    />
+                  </div>
                 </motion.div>
                 
                 <motion.div className="episode-selector" variants={itemVariants}>
@@ -281,7 +304,7 @@ const TvShowPage = () => {
             
             {showPlayer && currentEpisode && (
               <motion.div variants={itemVariants}>
-                <Card className="bg-moviemate-card border-gray-700">
+                <Card className="bg-moviemate-card border-gray-700 rounded-xl">
                   <div className="p-3 sm:p-6">
                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
                       {currentEpisode.name || `Episode ${currentEpisode.episode_number}`}

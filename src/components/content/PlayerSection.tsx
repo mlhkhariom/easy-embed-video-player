@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PlayerHeader from '../player/PlayerHeader';
 import PlayerContainer from '../player/PlayerContainer';
 import PlayerError from '../player/PlayerError';
@@ -88,7 +88,7 @@ const PlayerSection = ({
   
   return (
     <motion.div 
-      className="mb-12 animate-scale-in"
+      className="mb-6 animate-scale-in"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
