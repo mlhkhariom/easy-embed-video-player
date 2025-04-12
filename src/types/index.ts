@@ -36,6 +36,14 @@ export interface PlayerAPI {
   isActive: boolean;
   priority: number;
   apiKey?: string;
+  supportsMovies?: boolean;
+  supportsTVShows?: boolean;
+  supportsIMDB?: boolean;
+  supportsTMDB?: boolean;
+  supportsAvailabilityCheck?: boolean;
+  availabilityCheckUrl?: string;
+  description?: string;
+  adFree?: boolean;
 }
 
 export interface PlayerSettings {
