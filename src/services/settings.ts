@@ -37,7 +37,7 @@ const defaultSettings: Settings = {
       description: 'Latest quality with fast streaming speeds'
     },
     {
-      id: 'embedsu',
+      id: 'embed-su',
       name: 'Embed.su',
       url: 'https://embed.su/embed/{type}/{id}/{season}/{episode}',
       isActive: true,
@@ -49,7 +49,7 @@ const defaultSettings: Settings = {
       description: 'Auto updates with new content daily'
     },
     {
-      id: 'vidlink',
+      id: 'vidlink-pro',
       name: 'VidLink Pro',
       url: 'https://vidlink.pro/{type}/{id}/{season}/{episode}',
       isActive: true,
@@ -72,53 +72,6 @@ const defaultSettings: Settings = {
       supportsAvailabilityCheck: true,
       availabilityCheckUrl: 'https://multiembed.mov/directstream.php?video_id={id}&check=1',
       description: 'Multi quality with minimal ads'
-    },
-    {
-      id: 'multiembed-basic',
-      name: 'MultiEmbed Basic',
-      url: 'https://multiembed.mov/?video_id={id}&{type}=1&s={season}&e={episode}',
-      isActive: true,
-      priority: 5,
-      supportsMovies: true,
-      supportsTVShows: true,
-      supportsIMDB: true,
-      supportsTMDB: true,
-      description: 'Simple player that works on all platforms'
-    },
-    {
-      id: 'vidsrc-dev',
-      name: 'VidSrc Dev',
-      url: 'https://vidsrc.dev/embed/{type}/{id}',
-      isActive: true,
-      priority: 6,
-      supportsMovies: true,
-      supportsTVShows: true,
-      supportsIMDB: true,
-      supportsTMDB: true,
-      description: 'High quality streaming'
-    },
-    {
-      id: 'superembed',
-      name: 'SuperEmbed',
-      url: 'https://multiembed.mov/directstream.php?video_id={id}&{type}=1',
-      isActive: true,
-      priority: 7,
-      supportsMovies: true,
-      supportsTVShows: true,
-      supportsIMDB: true,
-      supportsTMDB: true,
-      description: 'Fast streaming with minimal ads'
-    },
-    {
-      id: 'dbgo',
-      name: 'DBGO',
-      url: 'https://dbgo.fun/imdb.php?id={id}',
-      isActive: true,
-      priority: 8,
-      supportsMovies: true,
-      supportsTVShows: true,
-      supportsIMDB: true,
-      description: 'High quality streaming'
     }
   ],
   playerSettings: {
@@ -134,7 +87,20 @@ const defaultSettings: Settings = {
 export const fetchSettings = async (): Promise<Settings> => {
   try {
     const storedSettings = localStorage.getItem('adminSettings');
-    return storedSettings ? JSON.parse(storedSettings) : defaultSettings;
+    if (!storedSettings) return defaultSettings;
+    
+    const parsedSettings = JSON.parse(storedSettings);
+    
+    // Ensure playerAPIs exist and have at least one entry
+    if (!parsedSettings.playerAPIs || parsedSettings.playerAPIs.length === 0) {
+      console.warn('No player APIs found in stored settings, using default player APIs');
+      return {
+        ...parsedSettings,
+        playerAPIs: defaultSettings.playerAPIs
+      };
+    }
+    
+    return parsedSettings;
   } catch (error) {
     console.error('Error fetching settings:', error);
     return defaultSettings;
@@ -160,10 +126,13 @@ export const getBestPlayerAPI = async (): Promise<PlayerAPI | null> => {
   const settings = await fetchSettings();
   
   // Safely handle the case where playerAPIs might be undefined
-  const playerAPIs = settings.playerAPIs || [];
+  const playerAPIs = settings.playerAPIs || defaultSettings.playerAPIs;
   const activeAPIs = playerAPIs.filter(api => api.isActive);
   
-  if (activeAPIs.length === 0) return null;
+  if (activeAPIs.length === 0) {
+    console.warn("No active player APIs found, falling back to default APIs");
+    return defaultSettings.playerAPIs[0]; // Return the first default API
+  }
   
   // Return the API with the highest priority (lowest number)
   return activeAPIs.sort((a, b) => a.priority - b.priority)[0];
@@ -231,16 +200,26 @@ export const findBestAvailableAPI = async (
 ): Promise<{api: PlayerAPI, url: string} | null> => {
   const settings = await fetchSettings();
   
-  if (!settings.playerAPIs || settings.playerAPIs.length === 0) {
-    throw new Error('No player APIs configured');
+  // Use default APIs if none are configured
+  const playerAPIs = settings.playerAPIs?.length > 0 
+    ? settings.playerAPIs 
+    : defaultSettings.playerAPIs;
+  
+  if (!playerAPIs || playerAPIs.length === 0) {
+    console.error("No player APIs configured, even in defaults");
+    throw new Error("No player APIs configured");
   }
   
-  const activeAPIs = settings.playerAPIs
+  const activeAPIs = playerAPIs
     .filter(api => api.isActive)
     .sort((a, b) => a.priority - b.priority);
   
   if (activeAPIs.length === 0) {
-    throw new Error('No active player APIs available');
+    console.warn("No active player APIs, using first default API");
+    // Use the first default API as fallback
+    const fallbackAPI = defaultSettings.playerAPIs[0];
+    const url = generatePlayerUrl(fallbackAPI, type, contentId);
+    return { api: fallbackAPI, url };
   }
   
   // First check if we have an IMDB ID, and try APIs that support it
@@ -266,6 +245,20 @@ export const findBestAvailableAPI = async (
     // For TMDB APIs, use the contentId directly
     const url = generatePlayerUrl(api, type, contentId);
     return { api, url };
+  }
+  
+  // If we get here, try any active API as a last resort
+  if (activeAPIs.length > 0) {
+    const firstAPI = activeAPIs[0];
+    const url = generatePlayerUrl(firstAPI, type, contentId);
+    return { api: firstAPI, url };
+  }
+  
+  // If all else fails, use the first default API
+  if (defaultSettings.playerAPIs?.length > 0) {
+    const fallbackAPI = defaultSettings.playerAPIs[0];
+    const url = generatePlayerUrl(fallbackAPI, type, contentId);
+    return { api: fallbackAPI, url };
   }
   
   // If we get here, none of the APIs worked

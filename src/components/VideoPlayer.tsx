@@ -58,6 +58,12 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode, onError }: VideoPl
         const errorMsg = "No compatible player APIs available. Please configure player sources in admin settings.";
         console.error(errorMsg);
         onError?.(errorMsg);
+        toast({
+          variant: "destructive",
+          title: "Player Error",
+          description: errorMsg,
+        });
+        setIsLoading(false);
         return;
       }
       
@@ -82,6 +88,12 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode, onError }: VideoPl
       console.error("Error setting up player:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown player error";
       onError?.(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Player Error",
+        description: errorMessage,
+      });
+      setIsLoading(false);
     }
   };
 
@@ -102,8 +114,23 @@ const VideoPlayer = ({ tmdbId, imdbId, type, season, episode, onError }: VideoPl
     return (
       <div className="relative w-full h-full bg-black flex items-center justify-center">
         <div className="text-white text-center p-4">
-          <div className="loading-spinner mb-4"></div>
-          <p>Loading player...</p>
+          {isLoading ? (
+            <>
+              <div className="loading-spinner mb-4"></div>
+              <p>Loading player...</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl mb-2">Player Configuration Error</p>
+              <p className="text-sm opacity-80">Please configure player sources in admin settings</p>
+              <a 
+                href="/admin/player"
+                className="inline-block mt-4 px-4 py-2 bg-blue-600 rounded text-white text-sm hover:bg-blue-700 transition-colors"
+              >
+                Configure Player
+              </a>
+            </>
+          )}
         </div>
       </div>
     );
